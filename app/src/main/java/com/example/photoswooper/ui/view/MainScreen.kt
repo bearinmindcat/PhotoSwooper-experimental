@@ -2,42 +2,96 @@ package com.example.photoswooper.ui.view
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.rememberSplineBasedDecay
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
+import kotlinx.coroutines.flow.collectLatest
+import kotlin.math.roundToInt
+
+enum class DragAnchors {
+    Left,
+    Center,
+    Right,
+}
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 fun MainScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
     val blurState = remember { HazeState() } // For bottom bar
+    val density = LocalDensity.current
+    val decayAnimationSpec = rememberSplineBasedDecay<Float>()
+//    val anchors = remember { DraggableAnchors {  } }
+    val anchoredDraggableState = remember {
+        AnchoredDraggableState(
+            initialValue = DragAnchors.Center,
+            positionalThreshold = { distance: Float -> distance * 0.5f },
+            velocityThreshold = { with(density) { 100.dp.toPx() } },
+            anchors = DraggableAnchors {
+                DragAnchors.Left at with(density) { -200.dp.toPx() }
+                DragAnchors.Center at 0f
+                DragAnchors.Right at with(density) { 200.dp.toPx() }
+            },
+            snapAnimationSpec = tween(),
+            decayAnimationSpec = decayAnimationSpec
+        )
+    }
+//    SideEffect {
+//        state.updateAnchors(Dragg)
+//    }
     val view = LocalView.current
+
+    LaunchedEffect(anchoredDraggableState) {
+        snapshotFlow { anchoredDraggableState.settledValue }
+            .collectLatest { position ->
+                when (position) {
+//                    delay(300)
+                    DragAnchors.Left -> {
+                        viewModel.markPhotoDelete()
+                        anchoredDraggableState.animateTo(DragAnchors.Center)
+                    }
+                    DragAnchors.Right -> {
+                        viewModel.markPhotoKeep()
+                        anchoredDraggableState.animateTo(DragAnchors.Center)
+                    }
+                    else -> { /* Maybe add a markPhotoUnset() function if necessary? */ }
+                }
+            }
+    }
 
     Scaffold {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxSize()
         ) {
-//            if (uiState.photos.isNotEmpty())
+            if (viewModel.getUnCategorisedPhotos().isNotEmpty())
                 Image(
-                    painter = painterResource(R.drawable.test_image),
+                    bitmap = viewModel.currentPhotoBitmap().asImageBitmap(),
                     contentDescription = null,
+                    contentScale = ContentScale.FillWidth,
                     modifier = Modifier
+                        .fillMaxWidth()
                         .padding(dimensionResource(R.dimen.padding_medium))
                         .haze(
                             blurState,
@@ -45,18 +99,28 @@ fun MainScreen(viewModel: MainViewModel) {
                             tint = Color.Black.copy(alpha = .2f),
                             blurRadius = 30.dp,
                         )
-                )
+                        .anchoredDraggable(
+                            state = anchoredDraggableState,
+                            orientation = Orientation.Horizontal
+                        )
+                        .offset {
+                            IntOffset(
+                                x = anchoredDraggableState.requireOffset().roundToInt(),
+                                y = 0
+                            )
+                        }
+                    )
+            else
+                Button(onClick = {
+                    // TODO("Button to fetch more photos")
+                }) { Text("Fetch more Photos") }
                 Column(
-                    verticalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.Bottom,
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(dimensionResource(R.dimen.padding_medium))
                 ) {
-                    Text(
-                        text = "Title",
-                        style = MaterialTheme.typography.titleLarge
-                    )
                     Row(
                         horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically,
@@ -102,7 +166,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                     modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
                                 )
                                 Text(
-                                    text = "Delete ${uiState.toDelete.size} photos",
+                                    text = "Delete ${viewModel.getPhotosToDelete().size} photos",
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
                                 )
