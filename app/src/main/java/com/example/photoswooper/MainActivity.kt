@@ -25,7 +25,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val contentResolverInterface = ContentResolverInterface(this)
-        val mainViewModel = MainViewModel(contentResolverInterface)
+        val mainViewModel = MainViewModel(
+            context = this,
+            contentResolverInterface = contentResolverInterface
+        )
 
         val permissionsLauncher =
             registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
@@ -47,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 
         // FIXME("Unable to use if statement on whether permissions are obtained?")
 //        if (permissionsToRequest.isEmpty() || permissionsGranted) {
-        mainViewModel.getPhotos(contentResolver)
+        mainViewModel.getPhotos()
 //        }
 
         setContent {

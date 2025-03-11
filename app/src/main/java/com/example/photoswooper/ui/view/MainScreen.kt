@@ -70,10 +70,12 @@ fun MainScreen(viewModel: MainViewModel) {
                     DragAnchors.Left -> {
                         viewModel.markPhotoDelete()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
+                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     }
                     DragAnchors.Right -> {
                         viewModel.markPhotoKeep()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
+                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     }
                     else -> { /* Maybe add a markPhotoUnset() function if necessary? */ }
                 }
@@ -85,13 +87,13 @@ fun MainScreen(viewModel: MainViewModel) {
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxSize()
         ) {
-            if (viewModel.getUnCategorisedPhotos().isNotEmpty())
+            if (uiState.uncategorisedPhotos > 0)
                 Image(
-                    bitmap = viewModel.currentPhotoBitmap().asImageBitmap(),
+                    bitmap = viewModel.getPhotoBitmap().asImageBitmap(),
                     contentDescription = null,
                     contentScale = ContentScale.FillWidth,
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .padding(dimensionResource(R.dimen.padding_medium))
                         .haze(
                             blurState,
@@ -112,8 +114,9 @@ fun MainScreen(viewModel: MainViewModel) {
                     )
             else
                 Button(onClick = {
-                    // TODO("Button to fetch more photos")
-                }) { Text("Fetch more Photos") }
+                    viewModel.getPhotos()
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                }) { Text("Review") }
                 Column(
                     verticalArrangement = Arrangement.Bottom,
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -130,7 +133,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     ){
                         FilledIconButton(
                             onClick = {
-                            /* TODO: undo button */
+                                viewModel.undo()
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 }
