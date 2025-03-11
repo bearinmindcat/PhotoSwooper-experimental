@@ -6,5 +6,6 @@ import com.example.photoswooper.data.photoLimit
 data class MainUiState(
     val photos: List<Photo> = listOf<Photo>(),
     val currentPhotoIndex: Int = 0,
-    val uncategorisedPhotos: Int = photoLimit
+    val numUnset: Int = photoLimit,
+    val showReviewDialog: Boolean = false,
 )

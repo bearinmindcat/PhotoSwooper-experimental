@@ -6,7 +6,6 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
-import com.example.photoswooper.data.photoLimit
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.utils.ContentResolverInterface
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,33 +33,38 @@ class MainViewModel(
             currentState.copy(
                 photos = newPhotos,
                 currentPhotoIndex = 0,
-                uncategorisedPhotos = photoLimit
+                numUnset = newPhotos.size
             )
         }
     }
 
-    fun markPhotoDelete() {
+    fun markPhoto(status: PhotoStatus, index: Int = uiState.value.currentPhotoIndex) {
         // Set the status
-        _uiState.value.photos[uiState.value.currentPhotoIndex].status = PhotoStatus.DELETE
-        Log.d("Photo marking", "Photo at index ${uiState.value.currentPhotoIndex} marked as ${_uiState.value.photos[uiState.value.currentPhotoIndex].status}")
+        _uiState.value.photos[index].status = status
+        Log.d("Photo marking", "Photo at index ${index} marked as ${_uiState.value.photos[index].status}")
+        if (status == PhotoStatus.UNSET)
+            _uiState.update { currentState ->
+                currentState.copy(
+                    currentPhotoIndex = currentState.photos.indexOfFirst { it.status == PhotoStatus.UNSET },
+                    numUnset = currentState.numUnset + 1
+                )
+            }
+    }
+
+    fun nextPhoto() {
         // Increment currentPhotoIndex
         _uiState.update { currentState ->
             currentState.copy(
                 currentPhotoIndex = currentState.currentPhotoIndex + 1,
-                uncategorisedPhotos = currentState.uncategorisedPhotos - 1
+                numUnset = currentState.numUnset - 1
             )
         }
     }
 
-    fun markPhotoKeep() {
-        // Set the status
-        _uiState.value.photos[uiState.value.currentPhotoIndex].status = PhotoStatus.KEEP
-        Log.d("Photo marking", "Photo at index ${uiState.value.currentPhotoIndex} marked as ${_uiState.value.photos[uiState.value.currentPhotoIndex].status}")
-        // Increment currentPhotoIndex
+    fun findUnsetPhoto() {
         _uiState.update { currentState ->
             currentState.copy(
-                currentPhotoIndex = currentState.currentPhotoIndex + 1,
-                uncategorisedPhotos = currentState.uncategorisedPhotos - 1
+                currentPhotoIndex = currentState.photos.indexOfFirst { it.status == PhotoStatus.UNSET }
             )
         }
     }
@@ -71,7 +75,7 @@ class MainViewModel(
             _uiState.update { currentState ->
                 currentState.copy(
                     currentPhotoIndex = currentState.currentPhotoIndex - 1,
-                    uncategorisedPhotos = currentState.uncategorisedPhotos + 1
+                    numUnset = currentState.numUnset + 1
                 )
             }
             // Unset the status
@@ -83,6 +87,37 @@ class MainViewModel(
                 "Nothing to undo!",
                 Toast.LENGTH_SHORT
             ).show()
+        }
+    }
+
+    fun showReviewDialog() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showReviewDialog = true
+            )
+        }
+    }
+    fun dismissReviewDialog() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showReviewDialog = false
+            )
+        }
+    }
+
+    fun deletePhotos(photosToDelete: List<Photo> = getPhotosToDelete()) {
+        if(photosToDelete.isNotEmpty()) {
+            contentResolverInterface.deletePhotos(photosToDelete.map { it.uri })
+            dismissReviewDialog()
+            if (photosToDelete.isEmpty()) getPhotos()
+            else _uiState.update { currentState ->
+                currentState.copy(
+                    photos = currentState.photos.filter {
+                        !photosToDelete.contains(it)
+                    },
+                    currentPhotoIndex = currentState.currentPhotoIndex - photosToDelete.size,
+                )
+            }
         }
     }
 }
