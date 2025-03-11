@@ -90,6 +90,22 @@ class MainViewModel(
         }
     }
 
+    fun deletePhotos(photosToDelete: List<Photo> = getPhotosToDelete()) {
+        if(photosToDelete.isNotEmpty()) {
+            contentResolverInterface.deletePhotos(photosToDelete.map { it.uri })
+            dismissReviewDialog()
+            if (photosToDelete.isEmpty()) getPhotos()
+            else _uiState.update { currentState ->
+                currentState.copy(
+                    photos = currentState.photos.filter {
+                        !photosToDelete.contains(it)
+                    },
+                    currentPhotoIndex = currentState.currentPhotoIndex - photosToDelete.size,
+                )
+            }
+        }
+    }
+
     fun showReviewDialog() {
         _uiState.update { currentState ->
             currentState.copy(
@@ -104,20 +120,12 @@ class MainViewModel(
             )
         }
     }
-
-    fun deletePhotos(photosToDelete: List<Photo> = getPhotosToDelete()) {
-        if(photosToDelete.isNotEmpty()) {
-            contentResolverInterface.deletePhotos(photosToDelete.map { it.uri })
-            dismissReviewDialog()
-            if (photosToDelete.isEmpty()) getPhotos()
-            else _uiState.update { currentState ->
-                currentState.copy(
-                    photos = currentState.photos.filter {
-                        !photosToDelete.contains(it)
-                    },
-                    currentPhotoIndex = currentState.currentPhotoIndex - photosToDelete.size,
-                )
-            }
+    
+    fun toggleInfo() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showInfo = !currentState.showInfo
+            )
         }
     }
 }

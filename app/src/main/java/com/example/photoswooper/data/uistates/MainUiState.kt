@@ -8,4 +8,5 @@ data class MainUiState(
     val currentPhotoIndex: Int = 0,
     val numUnset: Int = photoLimit,
     val showReviewDialog: Boolean = false,
+    val showInfo: Boolean = false
 )
