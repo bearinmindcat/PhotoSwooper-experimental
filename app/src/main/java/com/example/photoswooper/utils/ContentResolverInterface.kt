@@ -1,16 +1,20 @@
 package com.example.photoswooper.utils
 
+import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.CancellationSignal
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import androidx.annotation.RequiresApi
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.app.ActivityCompat.startIntentSenderForResult
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
@@ -54,7 +58,6 @@ class ContentResolverInterface(val context: Context) {
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     fetchedId
                 )
-                Log.d("MediaStore", "Adding to photos list")
                 if (photos.size <= photoLimit) {
                     photos.add(
                         Photo(
@@ -71,11 +74,39 @@ class ContentResolverInterface(val context: Context) {
     }
 
     @RequiresApi(Build.VERSION_CODES.Q) // TODO("lower API - should be ok once transitioned to a viewer using media3 maybe?")
-    fun getImageBitmap(uri: Uri, size: Size = Size(999999999, 999999999)): Bitmap {
+    fun getImageBitmap(uri: Uri, size: Size = Size(999999999, 999999999)): ImageBitmap {
         return try { // If there is embedded artwork found, return the artwork as bitmap
-            contentResolver.loadThumbnail(uri, size, CancellationSignal())
+            contentResolver.loadThumbnail(uri, size, CancellationSignal()).asImageBitmap()
         } catch (e: FileNotFoundException) { // If there is no embedded artwork found, return the placeholder
-            BitmapFactory.decodeResource(context.resources, R.drawable.file_not_found_cat)
+            BitmapFactory.decodeResource(context.resources, R.drawable.file_not_found_cat).asImageBitmap()
         }
+    }
+
+    fun deletePhotos(uris: List<Uri>) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val editPendingIntent =
+                MediaStore.createTrashRequest(
+                    contentResolver,
+                    uris,
+                    true
+                )
+
+            val activity: Activity = context as Activity
+            // Launch a system prompt requesting user permission for the operation.
+            startIntentSenderForResult(activity, editPendingIntent.intentSender, 100, null, 0, 0, 0, Bundle.EMPTY)
+        }
+        else {
+        uris.forEach { uri ->
+
+            val outputtedRows = contentResolver.delete(uri, null, null)
+
+            val path = uri.encodedPath
+            if (outputtedRows == 0) {
+                Log.e("deletePhotos", "Could not delete $path :(")
+            } else {
+                Log.d("deletePhotos", "Deleted $path ^_^")
+            }
+        }
+            }
     }
 }
