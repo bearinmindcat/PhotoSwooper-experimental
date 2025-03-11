@@ -20,6 +20,9 @@ import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.data.photoLimit
 import java.io.FileNotFoundException
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 class ContentResolverInterface(val context: Context) {
     val contentResolver = context.contentResolver
@@ -34,6 +37,7 @@ class ContentResolverInterface(val context: Context) {
         }
         val projection = arrayOf(
             MediaStore.Images.Media.DATE_TAKEN,
+            MediaStore.Images.Media.DATE_ADDED,
             MediaStore.Images.Media._ID,
         ) // The columns (metadata types) we want to retrieve from the MediaStore
 
@@ -48,25 +52,34 @@ class ContentResolverInterface(val context: Context) {
 
             val idColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val dateTakenColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_TAKEN)
+            val dateAddedColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
 
             /* add these values to the list of tracks */
             Log.d("MediaStore", "Iterating over database output")
             while (cursor.moveToNext()) { // While there is another audio file to iterate over, iterate over to the next one and:
                 val fetchedId = cursor.getLong(idColumnIndex)
-                val fetchedDateTaken = cursor.getString(dateTakenColumnIndex)
+                val fetchedDateTaken = cursor.getLong(dateTakenColumnIndex)
+                val fetchedDateAdded = cursor.getLong(dateAddedColumnIndex)
                 val fetchedUri = ContentUris.withAppendedId(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     fetchedId
                 )
                 if (photos.size <= photoLimit) {
+                    val formattedDate =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && fetchedDateTaken > 0)
+                            LocalDateTime.ofInstant(Instant.ofEpochMilli(fetchedDateTaken), ZoneId.systemDefault())
+                        else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && fetchedDateTaken <= 0) // if date taken is not found, use date added
+                        LocalDateTime.ofInstant(Instant.ofEpochMilli(fetchedDateAdded), ZoneId.systemDefault())
+                        else
+                            0 // TODO("Format date for Android version < O")
                     photos.add(
-                        Photo(
-                            id = fetchedId,
-                            dateTaken = fetchedDateTaken,
-                            uri = fetchedUri,
-                            status = PhotoStatus.UNSET
+                            Photo(
+                                id = fetchedId,
+                                dateTaken = formattedDate.toString().substringBefore("T"),
+                                uri = fetchedUri,
+                                status = PhotoStatus.UNSET
+                            )
                         )
-                    )
                 } else { return photos.toList() }
             }
         }

@@ -3,12 +3,17 @@ package com.example.photoswooper.ui.view
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.rememberSplineBasedDecay
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +46,9 @@ enum class DragAnchors {
 fun MainScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
+    val currentPhoto =
+        try { uiState.photos[uiState.currentPhotoIndex] }
+        catch (_: IndexOutOfBoundsException) { null }
 
     val blurState = remember { HazeState() } // For bottom bar
     val density = LocalDensity.current
@@ -107,14 +115,14 @@ fun MainScreen(viewModel: MainViewModel) {
             modifier = Modifier.fillMaxSize()
         ) {
             if (uiState.numUnset > 0) // First check if there are unset photos in the list
-                if (uiState.photos[uiState.currentPhotoIndex].status == PhotoStatus.UNSET) // Then check if the current photo is unset
+            {
+                if (currentPhoto?.status == PhotoStatus.UNSET) // Then check if the current photo is unset
                     Image(
                         bitmap = viewModel.getPhotoBitmap(),
                         contentDescription = null,
                         contentScale = ContentScale.FillWidth,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(dimensionResource(R.dimen.padding_medium))
                             .haze(
                                 blurState,
                                 backgroundColor = MaterialTheme.colorScheme.background,
@@ -133,7 +141,8 @@ fun MainScreen(viewModel: MainViewModel) {
                             }
                         )
                 else
-                    viewModel.findUnsetPhoto() // if the current photo is not unset, find the next one in the list
+                    viewModel.findUnsetPhoto()
+            } // if the current photo is not unset, find the next one in the list
             else { // If there are no unset photos in the list, ask the user to delete the photos selected
                 if (numToDelete > 0)
                     ReviewDeletedButton(view, viewModel, numToDelete)
@@ -153,13 +162,52 @@ fun MainScreen(viewModel: MainViewModel) {
                     .fillMaxSize()
                     .padding(dimensionResource(R.dimen.padding_medium))
             ) {
+                AnimatedVisibility(
+                    visible = uiState.showInfo && currentPhoto != null,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+                            .background(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                shape = MaterialTheme.shapes.large.copy(
+                                    bottomEnd = CornerSize(0.dp),
+                                    bottomStart = CornerSize(0.dp)
+                                )
+                            )
+                    ) {
+                        Column(Modifier.padding(dimensionResource(R.dimen.padding_small))) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painterResource(R.drawable.calendar),
+                                    null,
+                                    Modifier
+                                        .padding(dimensionResource(R.dimen.padding_xsmall))
+                                        .size(12.dp)
+                                )
+                                Text("Date", style = MaterialTheme.typography.titleSmall)
+                            }
+                            Text(currentPhoto?.dateTaken?: "", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
                 /* Bottom blurred-background bar */
                 Row(
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .padding(dimensionResource(R.dimen.padding_medium))
-                        .hazeChild(state = blurState, shape = MaterialTheme.shapes.large)
+                        .fillMaxWidth()
+                        .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+                        .hazeChild(
+                            state = blurState,
+                            shape = MaterialTheme.shapes.large.copy(
+                                topEnd = CornerSize(0.dp),
+                                topStart = CornerSize(0.dp)
+                            )
+                        )
                 ){
                     /* Undo button */
                     FilledIconButton(
@@ -185,7 +233,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     /* Info button */
                     FilledTonalIconButton(
                         onClick = {
-                        /* TODO: info button*/
+                        viewModel.toggleInfo()
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             }
