@@ -1,6 +1,8 @@
 package com.example.photoswooper.ui.view
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
@@ -90,21 +92,6 @@ class MainViewModel(
         }
     }
 
-    fun showReviewDialog() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                showReviewDialog = true
-            )
-        }
-    }
-    fun dismissReviewDialog() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                showReviewDialog = false
-            )
-        }
-    }
-
     fun deletePhotos(photosToDelete: List<Photo> = getPhotosToDelete()) {
         if(photosToDelete.isNotEmpty()) {
             contentResolverInterface.deletePhotos(photosToDelete.map { it.uri })
@@ -119,5 +106,34 @@ class MainViewModel(
                 )
             }
         }
+    }
+
+    fun showReviewDialog() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showReviewDialog = true
+            )
+        }
+    }
+    fun dismissReviewDialog() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showReviewDialog = false
+            )
+        }
+    }
+    
+    fun toggleInfo() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showInfo = !currentState.showInfo
+            )
+        }
+    }
+
+    fun openLocationInMapsApp(photo: Photo?) {
+        val uri: String? = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+        context.startActivity(intent)
     }
 }
