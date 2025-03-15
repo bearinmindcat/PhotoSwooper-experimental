@@ -3,24 +3,16 @@ package com.example.photoswooper.utils
 import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
-import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
-import android.graphics.ImageDecoder.decodeBitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.ActivityCompat.startIntentSenderForResult
 import androidx.exifinterface.media.ExifInterface
-import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.data.photoLimit
-import java.io.FileNotFoundException
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -115,15 +107,6 @@ class ContentResolverInterface(val context: Context) {
             }
         }
         return photos.toList()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q) // TODO("lower API - should be ok once transitioned to a viewer using media3 maybe?")
-    fun getImageBitmap(uri: Uri, size: Size = Size(999999999, 999999999)): ImageBitmap {
-        return try { // If there is embedded artwork found, return the artwork as bitmap
-            contentResolver.loadThumbnail(uri, size, CancellationSignal()).asImageBitmap()
-        } catch (e: FileNotFoundException) { // If there is no embedded artwork found, return the placeholder
-            BitmapFactory.decodeResource(context.resources, R.drawable.file_not_found_cat).asImageBitmap()
-        }
     }
 
     fun deletePhotos(uris: List<Uri>) {

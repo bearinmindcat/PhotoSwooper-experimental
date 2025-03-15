@@ -24,10 +24,6 @@ class MainViewModel(
     fun getPhotosToDelete() = uiState.value.photos.filter { photo ->
         photo.status == PhotoStatus.DELETE
     }
-    fun getPhotoBitmap(photo: Photo = uiState.value.photos[uiState.value.currentPhotoIndex]) =
-        contentResolverInterface.getImageBitmap(
-        uri = photo.uri,
-    )
 
     fun getPhotos() {
         val newPhotos = contentResolverInterface.getPhotos()

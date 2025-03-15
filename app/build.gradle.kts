@@ -62,9 +62,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.coil.compose) // For loading images
     implementation(libs.haze.jetpack.compose) // For blurry bottom bar
     implementation(libs.androidx.exifinterface)
+    implementation(libs.coil.compose) // For loading images
 
 
     testImplementation(libs.junit)
