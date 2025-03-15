@@ -8,5 +8,6 @@ data class MainUiState(
     val currentPhotoIndex: Int = 0,
     val numUnset: Int = photoLimit,
     val showReviewDialog: Boolean = false,
+    val reviewDialogEnabled: Boolean = true, // Whether to show review dialog, or just delete photos
     val showInfo: Boolean = false
 )
