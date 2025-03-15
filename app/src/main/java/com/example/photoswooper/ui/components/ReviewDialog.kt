@@ -3,8 +3,11 @@ package com.example.photoswooper.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,9 +20,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
-import com.example.photoswooper.utils.ContentResolverInterface
 
 @Composable
 fun ReviewDialog(
@@ -27,8 +30,7 @@ fun ReviewDialog(
     onDismissRequest: () -> Unit,
     onCancellation: () -> Unit,
     onUnsetPhoto: (Photo) -> Unit,
-    onConfirmation: () -> Unit,
-    contentResolverInterface: ContentResolverInterface
+    onConfirmation: () -> Unit
 ) {
 
     Dialog(onDismissRequest = { onDismissRequest() }) {
@@ -62,8 +64,8 @@ fun ReviewDialog(
                                     .size(96.dp)
                                     .padding(horizontal = 4.dp)
                             ) {
-                                Image(
-                                    bitmap = contentResolverInterface.getImageBitmap(photo.uri),
+                                AsyncImage(
+                                    model = photo.uri,
                                     contentDescription = null,
                                     contentScale = ContentScale.Fit
                                 )

@@ -10,7 +10,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
@@ -108,7 +108,6 @@ fun MainScreen(viewModel: MainViewModel) {
             onCancellation = { viewModel.getPhotos() },
             onUnsetPhoto = { viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
             onConfirmation = { viewModel.deletePhotos() },
-            contentResolverInterface = viewModel.contentResolverInterface
         )
     }
 
@@ -122,8 +121,8 @@ fun MainScreen(viewModel: MainViewModel) {
             if (uiState.numUnset > 0) // First check if there are unset photos in the list
             {
                 if (currentPhoto?.status == PhotoStatus.UNSET) // Then check if the current photo is unset
-                    Image(
-                        bitmap = viewModel.getPhotoBitmap(),
+                    AsyncImage(
+                        model = currentPhoto.uri,
                         contentDescription = null,
                         contentScale = ContentScale.FillWidth,
                         modifier = Modifier
