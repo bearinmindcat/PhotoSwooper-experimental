@@ -357,7 +357,7 @@ fun InfoRow(
             )
         }
         Row(
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier.fillMaxWidth()
         ) {
             Info(
@@ -367,6 +367,13 @@ fun InfoRow(
                     Text(currentPhoto?.resolution ?: "", style = MaterialTheme.typography.bodyMedium)
                 }
             )
+            OutlinedIconButton(
+                onClick = { viewModel.sharePhoto() }
+            ) { Icon(
+                painterResource(R.drawable.share_network),
+                contentDescription = "Share photo",
+                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+            ) }
         }
     }
 }

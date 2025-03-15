@@ -132,4 +132,15 @@ class MainViewModel(
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
         context.startActivity(intent)
     }
+
+    fun sharePhoto(photo: Photo? = _uiState.value.photos[uiState.value.currentPhotoIndex]) {
+        if (photo != null) {
+            val shareIntent: Intent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_STREAM, photo.uri)
+                type = context.contentResolver.getType(photo.uri)
+            }
+            context.startActivity(Intent.createChooser(shareIntent, null))
+        }
+    }
 }
