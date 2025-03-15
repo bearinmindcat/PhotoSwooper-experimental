@@ -1,6 +1,7 @@
 package com.example.photoswooper.ui.view
 
 import android.os.Build
+import android.text.format.Formatter.formatShortFileSize
 import android.view.HapticFeedbackConstants
 import android.view.View
 import androidx.compose.animation.AnimatedVisibility
@@ -11,6 +12,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CornerSize
@@ -19,14 +21,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
+import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.ui.components.ReviewDialog
 import dev.chrisbanes.haze.HazeState
@@ -50,10 +58,9 @@ fun MainScreen(viewModel: MainViewModel) {
         try { uiState.photos[uiState.currentPhotoIndex] }
         catch (_: IndexOutOfBoundsException) { null }
 
-    val blurState = remember { HazeState() } // For bottom bar
     val density = LocalDensity.current
+    val blurState = remember { HazeState() } // For bottom bar
     val decayAnimationSpec = rememberSplineBasedDecay<Float>()
-//    val anchors = remember { DraggableAnchors {  } }
     val anchoredDraggableState = remember {
         AnchoredDraggableState(
             initialValue = DragAnchors.Center,
@@ -68,9 +75,6 @@ fun MainScreen(viewModel: MainViewModel) {
             decayAnimationSpec = decayAnimationSpec
         )
     }
-//    SideEffect {
-//        state.updateAnchors(Dragg)
-//    }
     val view = LocalView.current
 
     /* LaunchedEffect for the functions to be called when the photo is dragged to each anchor */
@@ -78,7 +82,6 @@ fun MainScreen(viewModel: MainViewModel) {
         snapshotFlow { anchoredDraggableState.settledValue }
             .collectLatest { position ->
                 when (position) {
-//                    delay(300)
                     DragAnchors.Left -> {
                         viewModel.markPhoto(PhotoStatus.DELETE)
                         viewModel.nextPhoto()
@@ -109,10 +112,12 @@ fun MainScreen(viewModel: MainViewModel) {
         )
     }
 
-    Scaffold {
+    Scaffold { paddingValues ->
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
         ) {
             if (uiState.numUnset > 0) // First check if there are unset photos in the list
             {
@@ -167,32 +172,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     enter = expandVertically(),
                     exit = shrinkVertically()
                 ) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = dimensionResource(R.dimen.padding_medium))
-                            .background(
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                shape = MaterialTheme.shapes.large.copy(
-                                    bottomEnd = CornerSize(0.dp),
-                                    bottomStart = CornerSize(0.dp)
-                                )
-                            )
-                    ) {
-                        Column(Modifier.padding(dimensionResource(R.dimen.padding_small))) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    painterResource(R.drawable.calendar),
-                                    null,
-                                    Modifier
-                                        .padding(dimensionResource(R.dimen.padding_xsmall))
-                                        .size(12.dp)
-                                )
-                                Text("Date", style = MaterialTheme.typography.titleSmall)
-                            }
-                            Text(currentPhoto?.dateTaken?: "", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
+                    InfoRow(viewModel, currentPhoto)
                 }
                 /* Bottom blurred-background bar */
                 Row(
@@ -284,9 +264,134 @@ fun ReviewDeletedButton(view: View, viewModel: MainViewModel, numToDelete: Int) 
             )
             Text(
                 text = "Delete ${numToDelete} photos",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
             )
         }
+    }
+}
+
+@Composable
+fun InfoRow(
+    viewModel: MainViewModel,
+    currentPhoto: Photo?
+) {
+    val context = LocalContext.current
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.large.copy(
+                    bottomEnd = CornerSize(0.dp),
+                    bottomStart = CornerSize(0.dp)
+                )
+            )
+    ) {
+        Text(
+            text = currentPhoto?.title?: "Title",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+                .padding(
+                    start = dimensionResource(R.dimen.padding_medium),
+                    end =  dimensionResource(R.dimen.padding_medium),
+                    top = dimensionResource(R.dimen.padding_medium),
+                    bottom = dimensionResource(R.dimen.padding_small))
+//                .align(Alignment.Start)
+        )
+        if (currentPhoto?.description != null)
+            Text(
+                text = currentPhoto.description,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+    //                .align(Alignment.Start)
+            )
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Info(
+                title = "Date",
+                icon = painterResource(R.drawable.calendar),
+                value = {
+                    Text(currentPhoto?.dateTaken ?: "", style = MaterialTheme.typography.bodyMedium)
+                }
+            )
+            Info(
+                title = "Size",
+                icon = painterResource(R.drawable.hard_drives),
+                value = {
+                    Text(
+                        formatShortFileSize(context, currentPhoto?.size ?: 0),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            )
+            Info(
+                title = "Location",
+                icon = painterResource(R.drawable.map),
+                value = {
+                    Text(
+                        currentPhoto?.location?.toString() ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textDecoration = TextDecoration.Underline,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            viewModel.openLocationInMapsApp(currentPhoto)
+                        }
+                    )
+                }
+            )
+            Info(
+                title = "Album",
+                icon = painterResource(R.drawable.books),
+                value = {
+                    Text(currentPhoto?.album ?: "", style = MaterialTheme.typography.bodyMedium)
+                }
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Info(
+                title = "Resolution",
+                icon = painterResource(R.drawable.frame_corners),
+                value = {
+                    Text(currentPhoto?.resolution ?: "", style = MaterialTheme.typography.bodyMedium)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun Info(
+    title: String,
+    icon: Painter,
+    value: @Composable () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon,
+                null,
+                Modifier
+                    .padding(end = dimensionResource(R.dimen.padding_xsmall))
+                    .size(12.dp)
+            )
+            Text(title, style = MaterialTheme.typography.titleMedium)
+        }
+        value()
     }
 }

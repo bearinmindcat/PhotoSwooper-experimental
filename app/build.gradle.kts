@@ -64,6 +64,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.coil.compose) // For loading images
     implementation(libs.haze.jetpack.compose) // For blurry bottom bar
+    implementation(libs.androidx.exifinterface)
 
 
     testImplementation(libs.junit)

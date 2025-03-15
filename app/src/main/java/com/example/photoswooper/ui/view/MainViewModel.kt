@@ -1,6 +1,8 @@
 package com.example.photoswooper.ui.view
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
@@ -127,5 +129,11 @@ class MainViewModel(
                 showInfo = !currentState.showInfo
             )
         }
+    }
+
+    fun openLocationInMapsApp(photo: Photo?) {
+        val uri: String? = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+        context.startActivity(intent)
     }
 }
