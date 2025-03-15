@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">PhotoSwooper</string>
+    <string name="confirm_delete">Are you sure you want to delete these photos?</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel_delete">Cancel deletion</string>
+    <string name="show_review_dialog_again">Don\'t show this screen again</string>
 </resources>

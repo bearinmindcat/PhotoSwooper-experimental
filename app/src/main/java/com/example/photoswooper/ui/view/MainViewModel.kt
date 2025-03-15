@@ -143,4 +143,12 @@ class MainViewModel(
             context.startActivity(Intent.createChooser(shareIntent, null))
         }
     }
+
+    fun disableReviewDialog() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                reviewDialogEnabled = false
+            )
+        }
+    }
 }

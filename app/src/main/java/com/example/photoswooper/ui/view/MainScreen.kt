@@ -108,6 +108,7 @@ fun MainScreen(viewModel: MainViewModel) {
             onCancellation = { viewModel.getPhotos() },
             onUnsetPhoto = { viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
             onConfirmation = { viewModel.deletePhotos() },
+            onDisableReviewDialog = { viewModel.disableReviewDialog() },
         )
     }
 
@@ -149,7 +150,7 @@ fun MainScreen(viewModel: MainViewModel) {
             } // if the current photo is not unset, find the next one in the list
             else { // If there are no unset photos in the list, ask the user to delete the photos selected
                 if (numToDelete > 0)
-                    ReviewDeletedButton(view, viewModel, numToDelete)
+                    ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
                 else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                     Button(onClick = {
                         viewModel.getPhotos()
@@ -208,7 +209,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         )
                     }
                     /* Review deleted photos button */
-                    ReviewDeletedButton(view, viewModel, numToDelete)
+                    ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
                     /* Info button */
                     FilledTonalIconButton(
                         onClick = {
@@ -241,10 +242,15 @@ fun MainScreen(viewModel: MainViewModel) {
 }
 
 @Composable
-fun ReviewDeletedButton(view: View, viewModel: MainViewModel, numToDelete: Int) {
+fun ReviewDeletedButton(view: View, viewModel: MainViewModel, numToDelete: Int, reviewDialogEnabled: Boolean) {
     ElevatedButton(
         onClick = {
-            if(numToDelete > 0) viewModel.showReviewDialog()
+            if(numToDelete > 0) {
+                if (reviewDialogEnabled)
+                    viewModel.showReviewDialog()
+                else
+                    viewModel.deletePhotos()
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
             }
@@ -292,7 +298,7 @@ fun InfoRow(
     ) {
         Text(
             text = currentPhoto?.title?: "Title",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             modifier = Modifier
                 .padding(
                     start = dimensionResource(R.dimen.padding_medium),
