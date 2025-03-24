@@ -7,11 +7,13 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.data.photoLimit
 import com.example.photoswooper.data.uistates.MainUiState
+import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.utils.ContentResolverInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.*
 
 class MainViewModel(
     val contentResolverInterface: ContentResolverInterface,
@@ -32,12 +35,22 @@ class MainViewModel(
         photo.status == PhotoStatus.DELETE
     }
 
+    init {
+        viewModelScope.launch {
+            _uiState.update { currentState ->
+                currentState.copy(
+                    spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
+                )
+            }
+        }
+    }
+
     /* Get new photos and add them to the UI state */
     suspend fun getPhotos() {
         _uiState.update { currentState ->
             currentState.copy(
                 currentPhotoIndex = 0,
-                numUnset = photoLimit
+                numUnset = photoLimit,
             )
         }
         contentResolverInterface.getPhotos(
@@ -137,6 +150,7 @@ class MainViewModel(
                         !photosToDelete.contains(it)
                     }.toMutableList(),
                     currentPhotoIndex = currentState.currentPhotoIndex - photosToDelete.size,
+                    spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
                 )
             }
         }
@@ -165,7 +179,7 @@ class MainViewModel(
             )
         }
     }
-    
+
     fun toggleInfo() {
         _uiState.update { currentState ->
             currentState.copy(
@@ -197,5 +211,30 @@ class MainViewModel(
                 reviewDialogEnabled = false
             )
         }
+    }
+
+    suspend fun cycleStatsTimeFrame() {
+        val currentTimeFrame = _uiState.value.currentStatsTimeFrame
+        val newTimeFrame =
+            if (currentTimeFrame != TimeFrame.entries.last())
+                TimeFrame.entries[currentTimeFrame.ordinal + 1]
+            else
+                TimeFrame.entries.first()
+        _uiState.update { currentState ->
+            currentState.copy(
+                currentStatsTimeFrame =  newTimeFrame,
+                spaceSavedInTimeFrame = getSpaceSavedInTimeFrame(newTimeFrame)
+            )
+        }
+    }
+    suspend fun getSpaceSavedInTimeFrame(timeFrame: TimeFrame = _uiState.value.currentStatsTimeFrame): Long {
+        val currentDate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Date().toInstant().toEpochMilli()
+        } else {
+            TODO("Get current date in epoch milli for Android version < O")
+        }
+        val firstDateInTimeFrame = currentDate - timeFrame.milliseconds
+
+        return mediaStatusDao.getSizeBetweenDates(firstDateInTimeFrame, currentDate)?.sum()?: 0
     }
 }
