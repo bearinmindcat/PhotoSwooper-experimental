@@ -364,7 +364,7 @@ fun InfoRow(
     ) {
         Text(
             text = currentPhoto?.title?: "Title",
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier
                 .padding(
                     start = dimensionResource(R.dimen.padding_medium),
@@ -470,7 +470,7 @@ fun Info(
                 null,
                 Modifier
                     .padding(end = dimensionResource(R.dimen.padding_xsmall))
-                    .size(12.dp)
+                    .size(16.dp)
             )
             Text(title, style = MaterialTheme.typography.titleMedium)
         }
