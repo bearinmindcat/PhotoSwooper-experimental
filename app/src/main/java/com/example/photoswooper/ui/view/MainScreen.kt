@@ -35,7 +35,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
@@ -81,8 +81,6 @@ fun MainScreen(viewModel: MainViewModel) {
             decayAnimationSpec = decayAnimationSpec
         )
     }
-    val context = LocalContext.current
-    val view = LocalView.current
 
     /* When user drags to one of the anchors, without releasing yet */
     LaunchedEffect(anchoredDraggableState) {
@@ -193,6 +191,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     .fillMaxSize()
                     .padding(dimensionResource(R.dimen.padding_medium))
             ) {
+                /* Space saved text row */
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -204,11 +203,21 @@ fun MainScreen(viewModel: MainViewModel) {
                         }
                         .padding(dimensionResource(R.dimen.padding_small))
                         .clip(MaterialTheme.shapes.medium)
+                        .hazeChild(
+                        state = blurState,
+                        shape = MaterialTheme.shapes.small
+                    )
                 ) {
                     val statsTextStyle = MaterialTheme.typography.bodyLarge
                     Text(
                         text = "Space saved this ",
                         style = statsTextStyle,
+                        modifier = Modifier
+                            .padding(
+                                start = dimensionResource(R.dimen.padding_small),
+                                top = dimensionResource(R.dimen.padding_small),
+                                bottom = dimensionResource(R.dimen.padding_small)
+                            )
                     )
                     Icon(
                         painter = painterResource(R.drawable.shuffle),
@@ -225,6 +234,12 @@ fun MainScreen(viewModel: MainViewModel) {
                             append(": ${formatShortFileSize(context, uiState.spaceSavedInTimeFrame)}")
                         },
                         style = statsTextStyle,
+                        modifier = Modifier
+                            .padding(
+                                end = dimensionResource(R.dimen.padding_small),
+                                top = dimensionResource(R.dimen.padding_small),
+                                bottom = dimensionResource(R.dimen.padding_small)
+                            )
                     )
                 }
                 Column {
