@@ -105,9 +105,9 @@ fun MainScreen(viewModel: MainViewModel) {
         ReviewDialog(
             photosToDelete = viewModel.getPhotosToDelete(),
             onDismissRequest = { viewModel.dismissReviewDialog() },
-            onCancellation = { viewModel.getPhotos() },
+            onCancellation = { CoroutineScope(Dispatchers.Main).launch { viewModel.getPhotos() } },
             onUnsetPhoto = { viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
-            onConfirmation = { viewModel.deletePhotos() },
+            onConfirmation = { CoroutineScope(Dispatchers.Main).launch { viewModel.deletePhotos() } },
             onDisableReviewDialog = { viewModel.disableReviewDialog() },
         )
     }
@@ -153,7 +153,9 @@ fun MainScreen(viewModel: MainViewModel) {
                     ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
                 else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                     Button(onClick = {
-                        viewModel.getPhotos()
+                        CoroutineScope(Dispatchers.Main).launch {
+                            viewModel.getPhotos()
+                        }
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     }) {
@@ -249,11 +251,12 @@ fun ReviewDeletedButton(view: View, viewModel: MainViewModel, numToDelete: Int, 
                 if (reviewDialogEnabled)
                     viewModel.showReviewDialog()
                 else
-                    viewModel.deletePhotos()
+                    CoroutineScope(Dispatchers.Main).launch {
+                        viewModel.deletePhotos()
+                    }
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-            }
         },
         modifier = Modifier.padding(
             horizontal = dimensionResource(R.dimen.padding_small),
@@ -326,7 +329,7 @@ fun InfoRow(
                 title = "Date",
                 icon = painterResource(R.drawable.calendar),
                 value = {
-                    Text(currentPhoto?.dateTaken ?: "", style = MaterialTheme.typography.bodyMedium)
+                    Text(currentPhoto?.getFormattedDate() ?: "", style = MaterialTheme.typography.bodyMedium)
                 }
             )
             Info(
@@ -374,7 +377,11 @@ fun InfoRow(
                 }
             )
             OutlinedIconButton(
-                onClick = { viewModel.sharePhoto() }
+                onClick = {
+                    viewModel.sharePhoto()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                }
             ) { Icon(
                 painterResource(R.drawable.share_network),
                 contentDescription = "Share photo",
