@@ -85,7 +85,7 @@ fun MainScreen(viewModel: MainViewModel) {
     val view = LocalView.current
 
     /* When user drags to one of the anchors, without releasing yet */
-    LaunchedEffect(anchoredDraggableState.currentValue) {
+    LaunchedEffect(anchoredDraggableState) {
         snapshotFlow { anchoredDraggableState.currentValue }
             .collectLatest { position ->
                 when (position) {
@@ -106,7 +106,7 @@ fun MainScreen(viewModel: MainViewModel) {
     }
 
     /* When user releases drag motion */
-    LaunchedEffect(anchoredDraggableState.settledValue) {
+    LaunchedEffect(anchoredDraggableState) {
         snapshotFlow { anchoredDraggableState.settledValue }
             .collectLatest { position ->
                 when (position) {
@@ -114,15 +114,11 @@ fun MainScreen(viewModel: MainViewModel) {
                         viewModel.markPhoto(PhotoStatus.DELETE)
                         viewModel.nextPhoto()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     }
                     DragAnchors.Right -> {
                         viewModel.markPhoto(PhotoStatus.KEEP)
                         viewModel.nextPhoto()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     }
                     else -> { /* Maybe add a markPhotoUnset() function if necessary? */ }
                 }
