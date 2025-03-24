@@ -57,7 +57,13 @@ enum class DragAnchors {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(
+    viewModel: MainViewModel,
+    imageLoader: coil3.ImageLoader
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+
     val uiState by viewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
     val currentPhoto =
@@ -146,6 +152,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 if (currentPhoto?.status == PhotoStatus.UNSET) // Then check if the current photo is unset
                     AsyncImage(
                         model = currentPhoto.uri,
+                        imageLoader = imageLoader,
                         contentDescription = null,
                         contentScale = ContentScale.FillWidth,
                         modifier = Modifier

@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.haze.jetpack.compose) // For blurry bottom bar
     implementation(libs.androidx.exifinterface)
     implementation(libs.coil.compose) // For loading images
+    implementation(libs.coil.gif) // For animated GIFs
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx) // for database
     ksp(libs.androidx.room.compiler)
