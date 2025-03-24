@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
@@ -27,6 +28,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,7 +43,10 @@ import com.example.photoswooper.ui.components.ReviewDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 enum class DragAnchors {
@@ -75,6 +81,7 @@ fun MainScreen(viewModel: MainViewModel) {
             decayAnimationSpec = decayAnimationSpec
         )
     }
+    val context = LocalContext.current
     val view = LocalView.current
 
     /* LaunchedEffect for the functions to be called when the photo is dragged to each anchor */
@@ -163,72 +170,109 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
             }
             Column(
-                verticalArrangement = Arrangement.Bottom,
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(dimensionResource(R.dimen.padding_medium))
             ) {
-                AnimatedVisibility(
-                    visible = uiState.showInfo && currentPhoto != null,
-                    enter = expandVertically(),
-                    exit = shrinkVertically()
-                ) {
-                    InfoRow(viewModel, currentPhoto)
-                }
-                /* Bottom blurred-background bar */
                 Row(
-                    horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = dimensionResource(R.dimen.padding_medium))
-                        .hazeChild(
-                            state = blurState,
-                            shape = MaterialTheme.shapes.large.copy(
-                                topEnd = CornerSize(0.dp),
-                                topStart = CornerSize(0.dp)
-                            )
-                        )
-                ){
-                    /* Undo button */
-                    FilledIconButton(
-                        onClick = {
-                            viewModel.undo()
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        .wrapContentSize()
+                        .clickable(onClickLabel = "Click to change time frame") {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                viewModel.cycleStatsTimeFrame()
                             }
+                        }
+                        .padding(dimensionResource(R.dimen.padding_small))
+                        .clip(MaterialTheme.shapes.medium)
+                ) {
+                    val statsTextStyle = MaterialTheme.typography.bodyLarge
+                    Text(
+                        text = "Space saved this ",
+                        style = statsTextStyle,
+                    )
+                    Icon(
+                        painter = painterResource(R.drawable.shuffle),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(16.dp)
+                    )
+                    Text(
+                        text = buildAnnotatedString {
+                            append(" ")
+                            pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
+                            append(uiState.currentStatsTimeFrame.name.lowercase())
+                            pop()
+                            append(": ${formatShortFileSize(context, uiState.spaceSavedInTimeFrame)}")
                         },
-                        modifier = Modifier.padding(
-                            horizontal = dimensionResource(R.dimen.padding_small),
-                            vertical = dimensionResource(R.dimen.padding_medium)
-                        )
+                        style = statsTextStyle,
+                    )
+                }
+                Column {
+                    AnimatedVisibility(
+                        visible = uiState.showInfo && currentPhoto != null,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.undo),
-                            contentDescription = "Undo deletion",
-                            modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
-                        )
+                        InfoRow(viewModel, currentPhoto)
                     }
-                    /* Review deleted photos button */
-                    ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
-                    /* Info button */
-                    FilledTonalIconButton(
-                        onClick = {
-                        viewModel.toggleInfo()
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            }
-                        },
-                        modifier = Modifier.padding(
-                            horizontal = dimensionResource(R.dimen.padding_small),
-                            vertical = dimensionResource(R.dimen.padding_medium)
-                        )                        ) {
-                        Icon(
-                            painter = painterResource(R.drawable.info_bold),
-                            contentDescription = "Show more image information",
-                            modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
-                        )
+                    /* Bottom blurred-background bar */
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+                            .hazeChild(
+                                state = blurState,
+                                shape = MaterialTheme.shapes.medium.copy(
+                                    topEnd = CornerSize(0.dp),
+                                    topStart = CornerSize(0.dp)
+                                )
+                            )
+                    ) {
+                        /* Undo button */
+                        FilledIconButton(
+                            onClick = {
+                                viewModel.undo()
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                }
+                            },
+                            modifier = Modifier.padding(
+                                horizontal = dimensionResource(R.dimen.padding_small),
+                                vertical = dimensionResource(R.dimen.padding_medium)
+                            )
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.undo),
+                                contentDescription = "Undo deletion",
+                                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+                            )
+                        }
+                        /* Review deleted photos button */
+                        ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
+                        /* Info button */
+                        FilledTonalIconButton(
+                            onClick = {
+                                viewModel.toggleInfo()
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                }
+                            },
+                            modifier = Modifier.padding(
+                                horizontal = dimensionResource(R.dimen.padding_small),
+                                vertical = dimensionResource(R.dimen.padding_medium)
+                            )
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.info_bold),
+                                contentDescription = "Show more image information",
+                                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+                            )
+                        }
                     }
                 }
             }
@@ -285,6 +329,7 @@ fun InfoRow(
     currentPhoto: Photo?
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -293,7 +338,7 @@ fun InfoRow(
             .fillMaxWidth()
             .background(
                 color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.large.copy(
+                shape = MaterialTheme.shapes.medium.copy(
                     bottomEnd = CornerSize(0.dp),
                     bottomStart = CornerSize(0.dp)
                 )
