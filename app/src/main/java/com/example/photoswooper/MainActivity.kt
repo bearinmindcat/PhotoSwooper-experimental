@@ -13,21 +13,31 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.example.photoswooper.data.database.MediaStatusDao
+import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.MainViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private var permissionsGranted = false // Will be changed if permissions are false
+    private lateinit var mediaStatusDao: MediaStatusDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val contentResolverInterface = ContentResolverInterface(this)
+        val database = MediaStatusDatabase.getDatabase(applicationContext)
+        mediaStatusDao = database.mediaStatusDao()
+
+        val contentResolverInterface = ContentResolverInterface(mediaStatusDao, this)
         val mainViewModel = MainViewModel(
-            context = this,
-            contentResolverInterface = contentResolverInterface
+            context = this.applicationContext,
+            contentResolverInterface = contentResolverInterface,
+            mediaStatusDao = mediaStatusDao
         )
 
         val permissionsLauncher =
@@ -50,7 +60,7 @@ class MainActivity : AppCompatActivity() {
 
         // FIXME("Unable to use if statement on whether permissions are obtained?")
 //        if (permissionsToRequest.isEmpty() || permissionsGranted) {
-        mainViewModel.getPhotos()
+        CoroutineScope(Dispatchers.IO).launch { mainViewModel.getPhotos() }
 //        }
 
         setContent {

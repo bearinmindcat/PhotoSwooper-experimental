@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -65,6 +66,9 @@ dependencies {
     implementation(libs.haze.jetpack.compose) // For blurry bottom bar
     implementation(libs.androidx.exifinterface)
     implementation(libs.coil.compose) // For loading images
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx) // for database
+    ksp(libs.androidx.room.compiler)
 
 
     testImplementation(libs.junit)
