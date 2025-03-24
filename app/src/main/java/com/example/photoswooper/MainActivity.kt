@@ -3,6 +3,7 @@ package com.example.photoswooper
 import android.Manifest.permission.*
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -13,6 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import coil3.ImageLoader
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
@@ -32,6 +36,17 @@ class MainActivity : AppCompatActivity() {
 
         val database = MediaStatusDatabase.getDatabase(applicationContext)
         mediaStatusDao = database.mediaStatusDao()
+
+        /* Custom image loader for animated GIFs */
+        val imageLoader = ImageLoader.Builder(this)
+            .components {
+                if (SDK_INT >= 28) {
+                    add(AnimatedImageDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
+            }
+            .build()
 
         val contentResolverInterface = ContentResolverInterface(mediaStatusDao, this)
         val mainViewModel = MainViewModel(
@@ -71,7 +86,8 @@ class MainActivity : AppCompatActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen(
-                        viewModel = mainViewModel
+                        viewModel = mainViewModel,
+                        imageLoader = imageLoader
                     )
                 }
             }
