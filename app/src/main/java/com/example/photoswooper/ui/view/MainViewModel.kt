@@ -3,19 +3,29 @@ package com.example.photoswooper.ui.view
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.photoLimit
 import com.example.photoswooper.data.uistates.MainUiState
+import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.utils.ContentResolverInterface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.util.*
 
 class MainViewModel(
     val contentResolverInterface: ContentResolverInterface,
+    val mediaStatusDao: MediaStatusDao,
     val context: Context
 ): ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
@@ -25,21 +35,45 @@ class MainViewModel(
         photo.status == PhotoStatus.DELETE
     }
 
-    fun getPhotos() {
-        val newPhotos = contentResolverInterface.getPhotos()
+    init {
+        viewModelScope.launch {
+            _uiState.update { currentState ->
+                currentState.copy(
+                    spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
+                )
+            }
+        }
+    }
+
+    /* Get new photos and add them to the UI state */
+    suspend fun getPhotos() {
         _uiState.update { currentState ->
             currentState.copy(
-                photos = newPhotos,
                 currentPhotoIndex = 0,
-                numUnset = newPhotos.size
+                numUnset = photoLimit,
             )
         }
+        contentResolverInterface.getPhotos(
+            onAddPhoto = {
+                _uiState.value.photos.add(it)
+            }
+        )
+
     }
 
     fun markPhoto(status: PhotoStatus, index: Int = uiState.value.currentPhotoIndex) {
         // Set the status
+        val photo = _uiState.value.photos[index]
         _uiState.value.photos[index].status = status
-        Log.d("Photo marking", "Photo at index ${index} marked as ${_uiState.value.photos[index].status}")
+
+        /* Update database only if keeping/unsetting the photo. Only marked as DELETE when confirmed and the file is deleted */
+        CoroutineScope(Dispatchers.IO).launch {
+            if (status != PhotoStatus.DELETE)
+                mediaStatusDao.update(photo.getMediaStatusEntity())
+        }
+
+        /* If photo being marked as UNSET, update the unset count & set the index to the next UNSET photo */
+        Log.d("Photo marking", "Photo at index ${index} marked as ${photo.status}")
         if (status == PhotoStatus.UNSET)
             _uiState.update { currentState ->
                 currentState.copy(
@@ -78,6 +112,12 @@ class MainViewModel(
             }
             // Unset the status
             _uiState.value.photos[uiState.value.currentPhotoIndex].status = PhotoStatus.UNSET
+
+            /* Update database  */
+            CoroutineScope(Dispatchers.IO).launch {
+                val photo = _uiState.value.photos[uiState.value.currentPhotoIndex]
+                mediaStatusDao.update(photo.getMediaStatusEntity())
+            }
         }
         else {
             Toast.makeText(
@@ -88,18 +128,39 @@ class MainViewModel(
         }
     }
 
-    fun deletePhotos(photosToDelete: List<Photo> = getPhotosToDelete()) {
+    suspend fun deletePhotos(photosToDelete: List<Photo> = getPhotosToDelete()) {
         if(photosToDelete.isNotEmpty()) {
-            contentResolverInterface.deletePhotos(photosToDelete.map { it.uri })
+            CoroutineScope(Dispatchers.IO).launch {
+                contentResolverInterface.deletePhotos(photosToDelete.map { it.uri }) // Delete the photo in user's storage
+            }
+
+            /* Update database */
+            CoroutineScope(Dispatchers.IO).launch {
+                photosToDelete.forEach { photo ->
+                    mediaStatusDao.update(photo.getMediaStatusEntity())
+                }
+            }
+
             dismissReviewDialog()
-            if (photosToDelete.isEmpty()) getPhotos()
+
+            if (photosToDelete.isEmpty()) getPhotos() // TODO("Is this if statement needed?")
             else _uiState.update { currentState ->
                 currentState.copy(
                     photos = currentState.photos.filter {
                         !photosToDelete.contains(it)
-                    },
+                    }.toMutableList(),
                     currentPhotoIndex = currentState.currentPhotoIndex - photosToDelete.size,
+                    spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
                 )
+            }
+        }
+        else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Toast.makeText(
+                    context,
+                    "No photos were deleted",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -118,7 +179,7 @@ class MainViewModel(
             )
         }
     }
-    
+
     fun toggleInfo() {
         _uiState.update { currentState ->
             currentState.copy(
@@ -150,5 +211,30 @@ class MainViewModel(
                 reviewDialogEnabled = false
             )
         }
+    }
+
+    suspend fun cycleStatsTimeFrame() {
+        val currentTimeFrame = _uiState.value.currentStatsTimeFrame
+        val newTimeFrame =
+            if (currentTimeFrame != TimeFrame.entries.last())
+                TimeFrame.entries[currentTimeFrame.ordinal + 1]
+            else
+                TimeFrame.entries.first()
+        _uiState.update { currentState ->
+            currentState.copy(
+                currentStatsTimeFrame =  newTimeFrame,
+                spaceSavedInTimeFrame = getSpaceSavedInTimeFrame(newTimeFrame)
+            )
+        }
+    }
+    suspend fun getSpaceSavedInTimeFrame(timeFrame: TimeFrame = _uiState.value.currentStatsTimeFrame): Long {
+        val currentDate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Date().toInstant().toEpochMilli()
+        } else {
+            TODO("Get current date in epoch milli for Android version < O")
+        }
+        val firstDateInTimeFrame = currentDate - timeFrame.milliseconds
+
+        return mediaStatusDao.getSizeBetweenDates(firstDateInTimeFrame, currentDate)?.sum()?: 0
     }
 }
