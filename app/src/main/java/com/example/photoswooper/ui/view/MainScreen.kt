@@ -77,8 +77,29 @@ fun MainScreen(viewModel: MainViewModel) {
     }
     val view = LocalView.current
 
-    /* LaunchedEffect for the functions to be called when the photo is dragged to each anchor */
-    LaunchedEffect(anchoredDraggableState) {
+    /* When user drags to one of the anchors, without releasing yet */
+    LaunchedEffect(anchoredDraggableState.currentValue) {
+        snapshotFlow { anchoredDraggableState.currentValue }
+            .collectLatest { position ->
+                when (position) {
+                    DragAnchors.Left -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+                    }
+                    DragAnchors.Center -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
+                    }
+                    DragAnchors.Right -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+                    }
+                }
+            }
+    }
+
+    /* When user releases drag motion */
+    LaunchedEffect(anchoredDraggableState.settledValue) {
         snapshotFlow { anchoredDraggableState.settledValue }
             .collectLatest { position ->
                 when (position) {
@@ -268,7 +289,7 @@ fun ReviewDeletedButton(view: View, viewModel: MainViewModel, numToDelete: Int, 
                 modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
             )
             Text(
-                text = "Delete ${numToDelete} photos",
+                text = "Delete $numToDelete photos",
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
             )
