@@ -196,6 +196,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     InfoRow(viewModel, currentPhoto)
                 }
                 /* Bottom blurred-background bar */
+                val barTopCornerSize = if (uiState.showInfo) CornerSize(0) else MaterialTheme.shapes.medium.topEnd
                 Row(
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically,
@@ -204,9 +205,9 @@ fun MainScreen(viewModel: MainViewModel) {
                         .padding(horizontal = dimensionResource(R.dimen.padding_medium))
                         .hazeChild(
                             state = blurState,
-                            shape = MaterialTheme.shapes.large.copy(
-                                topEnd = CornerSize(0.dp),
-                                topStart = CornerSize(0.dp)
+                            shape = MaterialTheme.shapes.medium.copy(
+                                topEnd = barTopCornerSize,
+                                topStart = barTopCornerSize
                             )
                         )
                 ){
