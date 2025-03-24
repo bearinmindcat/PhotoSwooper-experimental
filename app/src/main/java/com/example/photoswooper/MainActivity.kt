@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
 
         val contentResolverInterface = ContentResolverInterface(mediaStatusDao, this)
         val mainViewModel = MainViewModel(
-            context = this.applicationContext,
+            context = this,
             contentResolverInterface = contentResolverInterface,
             mediaStatusDao = mediaStatusDao
         )
