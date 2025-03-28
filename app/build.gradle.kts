@@ -69,8 +69,9 @@ dependencies {
     implementation(libs.coil.gif) // For animated GIFs
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx) // for database
+    implementation(libs.koalaplot.core) // For plotting graphs for stats
     ksp(libs.androidx.room.compiler)
-
+    // TODO("Clean up unused libraries from android project template")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
