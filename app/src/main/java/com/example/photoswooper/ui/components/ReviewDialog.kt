@@ -60,7 +60,7 @@ fun ReviewDialog(
                     photosToDelete.forEach { photo ->
                         var visible by remember { mutableStateOf(true) }
                         AnimatedVisibility(
-                            visible = visible,
+                            visible = photo in photosToDelete,
                             enter = expandVertically(),
                             exit = shrinkVertically()
                         ) {
@@ -132,6 +132,7 @@ fun ReviewDialog(
                         Text(
                             stringResource(R.string.cancel_delete),
                             style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.secondary
                         )
                     }
@@ -140,7 +141,7 @@ fun ReviewDialog(
                             onConfirmation()
                             if(disableReviewDialog == true)
                                 onDisableReviewDialog()
-                                  },
+                        },
                         modifier = Modifier.padding(8.dp),
                     ) {
                         Text(
