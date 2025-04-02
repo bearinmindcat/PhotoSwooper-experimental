@@ -125,7 +125,10 @@ fun MainScreen(
         ReviewDialog(
             photosToDelete = viewModel.getPhotosToDelete(),
             onDismissRequest = { viewModel.dismissReviewDialog() },
-            onCancellation = { CoroutineScope(Dispatchers.Main).launch { viewModel.getPhotos() } },
+            onCancellation = {
+                for (photo in viewModel.getPhotosToDelete()) {
+                    viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(photo))
+                } },
             onUnsetPhoto = { viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
             onConfirmation = { CoroutineScope(Dispatchers.Main).launch { viewModel.deletePhotos() } },
             onDisableReviewDialog = { viewModel.disableReviewDialog() },
