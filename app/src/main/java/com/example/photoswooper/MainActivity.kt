@@ -1,18 +1,21 @@
 package com.example.photoswooper
 
 import android.Manifest.permission.*
+import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
@@ -28,8 +31,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private var permissionsGranted = false // Will be changed if permissions are false
     private lateinit var mediaStatusDao: MediaStatusDao
+    lateinit var mainViewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,34 +52,18 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val contentResolverInterface = ContentResolverInterface(mediaStatusDao, this)
-        val mainViewModel = MainViewModel(
+        mainViewModel = MainViewModel(
             context = this,
             contentResolverInterface = contentResolverInterface,
             mediaStatusDao = mediaStatusDao
         )
 
-        val permissionsLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-                if (results.containsValue(false)) {
-                   Toast.makeText(
-                        this, // context
-                        "Cannot read photos & videos without these permissions",
-                        Toast.LENGTH_LONG
-                    ).show()
-                    permissionsGranted = false
-                } else {
-                    permissionsGranted = true
-                }
-            }
-        /* check if storage permissions are given, if not then ask for them */
-        val permissionsToRequest = checkPermissions()
-        if (permissionsToRequest.isNotEmpty())
-            permissionsLauncher.launch(permissionsToRequest)
-
-        // FIXME("Unable to use if statement on whether permissions are obtained?")
-//        if (permissionsToRequest.isEmpty() || permissionsGranted) {
-        CoroutineScope(Dispatchers.IO).launch { mainViewModel.getPhotos() }
-//        }
+        CoroutineScope(Dispatchers.Main).launch {
+            checkPermissionsAndGetPhotos(
+                context = this@MainActivity,
+                onPermissionsGranted = { mainViewModel.getPhotos() }
+            )
+        }
 
         setContent {
             PhotoSwooperTheme {
@@ -95,30 +82,83 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun checkPermissions(): Array<String> {
-        var permissionsToRequest = mutableListOf<String>()
-        /* Permissions to check depending on the android version */
-        val readPermissions =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED)
-            // TODO: might need to set readPermissions to nothing in this case so that the user doesn't get prompted to reselect allowed photos
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
-            else
-                arrayOf(READ_EXTERNAL_STORAGE)
+    /* Handle permission request result */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        val permissionMap: Map<String, Int> = permissions.associateWith { grantResults[permissions.indexOf(it)] }
 
-        /* Set readPermissionGranted to false if any of the permissions are denied */
-        readPermissions.forEach { readPermission ->
-            if (ContextCompat.checkSelfPermission(this, readPermission) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(readPermission)
-            }
+        /* Define permissions for read access of all photos/videos */
+        val fullReadPermissions = if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
+        else
+            arrayOf(READ_EXTERNAL_STORAGE)
+
+        val fullReadAccess = permissionMap.filter {
+            fullReadPermissions.contains(it.key)
+        }.values.contains(PackageManager.PERMISSION_DENIED)
+
+        val limitedReadAccess = if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            permissionMap[READ_MEDIA_VISUAL_USER_SELECTED] == PackageManager.PERMISSION_GRANTED
+        else
+            false
+
+        Log.v("Permissions", "Permissions granted = ${limitedReadAccess && fullReadAccess}")
+
+        /* If permissions denied, show Toast. Else, get photos from storage */
+        if (
+            !limitedReadAccess
+            && !fullReadAccess
+        ) {
+            Toast.makeText(
+                this, // context
+                "Cannot read photos & videos without these permissions",
+                Toast.LENGTH_LONG
+            ).show()
+        } else {
+            CoroutineScope(Dispatchers.Main).launch { mainViewModel.getPhotos() }
         }
-
-        // Check write permissions FIXME("This permission is not being requested for some reason. Might need to display rationale")
-        if (ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            permissionsToRequest.add(WRITE_EXTERNAL_STORAGE)
-        // TODO: might need to request legacy write perms for older devices?
-
-        return permissionsToRequest.toTypedArray()
     }
+}
+
+fun checkPermissionsAndGetPhotos(
+    context: Context,
+    onPermissionsGranted: suspend () -> Unit
+) {
+    var permissionsToRequest = mutableListOf<String>()
+    /* Permissions to check depending on the android version */
+    val readPermissions =
+        if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED)
+        // TODO: might need to set readPermissions to nothing in this case so that the user doesn't get prompted to reselect allowed photos
+        else if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
+        else
+            arrayOf(READ_EXTERNAL_STORAGE)
+
+    /* Set readPermissionGranted to false if any of the permissions are denied */
+    readPermissions.forEach { readPermission ->
+        if (ContextCompat.checkSelfPermission(context, readPermission) != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(readPermission)
+        }
+    }
+
+    // TODO("Add button in app to reselect photos, rather than prompting reselection on each app launch")
+
+    // Check write permissions
+//        if (ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+//            permissionsToRequest.add(WRITE_EXTERNAL_STORAGE)
+    // TODO: might need to request legacy write perms for older devices?
+
+    if (permissionsToRequest.isNotEmpty())
+        ActivityCompat.requestPermissions(
+            context as Activity,
+            permissionsToRequest.toTypedArray(),
+            101
+        ) // The result of this is handled in the onRequestPermissionsResult() function
+    else
+        CoroutineScope(Dispatchers.IO).launch { onPermissionsGranted() }
 }
