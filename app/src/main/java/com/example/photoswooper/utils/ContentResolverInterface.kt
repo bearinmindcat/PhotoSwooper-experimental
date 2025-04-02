@@ -93,12 +93,12 @@ class ContentResolverInterface(
                     TODO("VERSION.SDK_INT < TIRAMISU")
                 }
 
-                if (numPhotosAdded <= photoLimit) {
+                if (numPhotosAdded < photoLimit) {
                     val findPhotoByHash = dao.findByHash(fileHash)
                     val findById = dao.findByMediaStoreId(fetchedId)
 
                     /* Define function to add photo to photos list & database (for later use) */
-                    suspend fun addPhoto() {
+                    fun addPhoto() {
                         val date =
                             if (fetchedDateTaken > 0)
                                 fetchedDateTaken
