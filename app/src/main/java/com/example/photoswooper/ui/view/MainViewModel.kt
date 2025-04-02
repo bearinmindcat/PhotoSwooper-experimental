@@ -101,7 +101,7 @@ class MainViewModel(
         }
     }
 
-    fun undo() {
+    fun undo(): Boolean {
         if(uiState.value.currentPhotoIndex > 0) { // First check if there is an action to undo
             // Decrement currentPhotoIndex
             _uiState.update { currentState ->
@@ -118,6 +118,7 @@ class MainViewModel(
                 val photo = _uiState.value.photos[uiState.value.currentPhotoIndex]
                 mediaStatusDao.update(photo.getMediaStatusEntity())
             }
+            return true
         }
         else {
             Toast.makeText(
@@ -125,6 +126,7 @@ class MainViewModel(
                 "Nothing to undo!",
                 Toast.LENGTH_SHORT
             ).show()
+            return false
         }
     }
 
