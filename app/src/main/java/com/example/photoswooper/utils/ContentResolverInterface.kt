@@ -28,10 +28,10 @@ class ContentResolverInterface(
 
     @OptIn(ExperimentalStdlibApi::class) // For .toHexString()
     suspend fun getPhotos(
+        numPhotos: Int = photoLimit,
         onAddPhoto: (Photo) -> Unit
     ) {
         // TODO("Change so that MediaStore.Images changes to MediaStore.Videos for video types")
-        // TODO("Check read permissions on each call to this function")
         // TODO("Automatically add unset photos from app database before fetching from MediaStore")
         var numPhotosAdded = 0
 
@@ -93,7 +93,7 @@ class ContentResolverInterface(
                     TODO("VERSION.SDK_INT < TIRAMISU")
                 }
 
-                if (numPhotosAdded <= photoLimit) {
+                if (numPhotosAdded <= numPhotos) {
                     val findPhotoByHash = dao.findByHash(fileHash)
                     val findById = dao.findByMediaStoreId(fetchedId)
 
@@ -128,7 +128,7 @@ class ContentResolverInterface(
                         )
                         numPhotosAdded += 1
                         onAddPhoto(photoToAdd)
-                        Log.d("MediaStore", "Added photo with id $fetchedId & hash $fileHash to list")
+                        Log.d("MediaStore", "Added photo with id $fetchedId")
                         CoroutineScope(Dispatchers.IO).launch {
                             dao.insert(photoToAdd.getMediaStatusEntity()) // Add to database
                         }

@@ -47,18 +47,30 @@ class MainViewModel(
 
     /* Get new photos and add them to the UI state */
     suspend fun getPhotos() {
+        // Add the first two photos
+        contentResolverInterface.getPhotos(
+            onAddPhoto = {
+                _uiState.value.photos.add(it)
+            },
+            numPhotos = 2
+        )
+        // Add the rest of the photos asynchronously (speedy)
+        viewModelScope.launch {
+            contentResolverInterface.getPhotos(
+                onAddPhoto = {
+                    _uiState.value.photos.add(it)
+                },
+                numPhotos = photoLimit - 2
+            )
+        }
+
+        // Update UI state & prompt recomposition/update
         _uiState.update { currentState ->
             currentState.copy(
                 currentPhotoIndex = 0,
                 numUnset = photoLimit,
             )
         }
-        contentResolverInterface.getPhotos(
-            onAddPhoto = {
-                _uiState.value.photos.add(it)
-            }
-        )
-
     }
 
     fun markPhoto(status: PhotoStatus, index: Int = uiState.value.currentPhotoIndex) {
