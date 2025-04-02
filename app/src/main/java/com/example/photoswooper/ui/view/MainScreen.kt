@@ -275,9 +275,11 @@ fun ReviewDeletedButton(view: View, viewModel: MainViewModel, numToDelete: Int, 
                     CoroutineScope(Dispatchers.Main).launch {
                         viewModel.deletePhotos()
                     }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
         },
         modifier = Modifier.padding(
             horizontal = dimensionResource(R.dimen.padding_small),

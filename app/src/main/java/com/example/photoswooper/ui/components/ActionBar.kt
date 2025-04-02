@@ -160,9 +160,12 @@ fun ActionBar(
                     /* Undo button */
                     FilledIconButton(
                         onClick = {
-                            viewModel.undo()
+                            val result = viewModel.undo()
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                if (result == true)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                else
+                                    view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                             }
                         },
                         modifier = Modifier.padding(
