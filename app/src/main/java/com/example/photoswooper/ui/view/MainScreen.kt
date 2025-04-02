@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
+import com.example.photoswooper.checkPermissionsAndGetPhotos
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.ui.components.ActionBar
 import com.example.photoswooper.ui.components.ReviewDialog
@@ -176,91 +177,94 @@ fun MainScreen(
                     ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
                 else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                     Button(onClick = {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            viewModel.getPhotos()
-                        }
+                        checkPermissionsAndGetPhotos(
+                            context = context,
+                            onPermissionsGranted = { viewModel.getPhotos() }
+                        )
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     }) {
                         Text("Fetch more photos")
                     }
             }
-                /* Statistics row */
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            /* Statistics row */
+            Column(
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .clickable(onClickLabel = "Click to change time frame") {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            viewModel.cycleStatsTimeFrame()
-                        }
-                    }
+                    .fillMaxSize()
                     .padding(dimensionResource(R.dimen.padding_medium))
-                    .clip(MaterialTheme.shapes.medium)
-                    .hazeChild(
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .clickable(onClickLabel = "Click to change time frame") {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                viewModel.cycleStatsTimeFrame()
+                            }
+                        }
+                        .padding(dimensionResource(R.dimen.padding_small))
+                        .clip(MaterialTheme.shapes.medium)
+                        .hazeChild(
                         state = blurState,
                         shape = MaterialTheme.shapes.small
                     )
-            ) {
-                val statsTextStyle = MaterialTheme.typography.bodyLarge
-                Text(
-                    text = "Space saved this ",
-                    style = statsTextStyle,
-                    modifier = Modifier
-                        .padding(
-                            start = dimensionResource(R.dimen.padding_small),
-                            top = dimensionResource(R.dimen.padding_small),
-                            bottom = dimensionResource(R.dimen.padding_small)
-                        )
-                )
-                Icon(
-                    painter = painterResource(R.drawable.shuffle),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Text(
-                    text = buildAnnotatedString {
-                        append(" ")
-                        pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
-                        append(uiState.currentStatsTimeFrame.name.lowercase())
-                        pop()
-                        append(": ${formatShortFileSize(context, uiState.spaceSavedInTimeFrame)}")
-                    },
-                    style = statsTextStyle,
-                    modifier = Modifier
-                        .padding(
-                            end = dimensionResource(R.dimen.padding_small),
-                            top = dimensionResource(R.dimen.padding_small),
-                            bottom = dimensionResource(R.dimen.padding_small)
-                        )
-                )
-            }
-            /* Expandable action bar */
-            Box(
-                contentAlignment = Alignment.BottomCenter,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                ActionBar(
-                    currentPhoto = currentPhoto,
-                    blurState = blurState,
-                    numToDelete = numToDelete,
-                    uiState,
-                    viewModel,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxSize()
-                        .wrapContentSize()
-                )
+                ) {
+                    val statsTextStyle = MaterialTheme.typography.bodyLarge
+                    Text(
+                        text = "Space saved this ",
+                        style = statsTextStyle,
+                        modifier = Modifier
+                            .padding(
+                                start = dimensionResource(R.dimen.padding_small),
+                                top = dimensionResource(R.dimen.padding_small),
+                                bottom = dimensionResource(R.dimen.padding_small)
+                            )
+                    )
+                    Icon(
+                        painter = painterResource(R.drawable.shuffle),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(16.dp)
+                    )
+                    Text(
+                        text = buildAnnotatedString {
+                            append(" ")
+                            pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
+                            append(uiState.currentStatsTimeFrame.name.lowercase())
+                            pop()
+                            append(": ${formatShortFileSize(context, uiState.spaceSavedInTimeFrame)}")
+                        },
+                        style = statsTextStyle,
+                        modifier = Modifier
+                            .padding(
+                                end = dimensionResource(R.dimen.padding_small),
+                                top = dimensionResource(R.dimen.padding_small),
+                                bottom = dimensionResource(R.dimen.padding_small)
+                            )
+                    )
+                }
+                /* Expandable action bar */
+                Box(
+                    contentAlignment = Alignment.BottomCenter,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    ActionBar(
+                        currentPhoto = currentPhoto,
+                        blurState = blurState,
+                        numToDelete = numToDelete,
+                        uiState,
+                        viewModel,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxSize()
+                            .wrapContentSize()
+                    )
+                }
             }
         }
-//            else
-//                Column {
-//                    Text("BeepBoop no photos")
-//                    Button(onClick = { viewModel.getPhotos(context.contentResolver) }) {
-//                        Text("Get more photos!")
-//                    }
-//                }
     }
 }
 
