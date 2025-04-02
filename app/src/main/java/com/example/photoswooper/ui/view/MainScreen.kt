@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
+import com.example.photoswooper.checkPermissionsAndGetPhotos
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.ui.components.ReviewDialog
@@ -182,9 +183,10 @@ fun MainScreen(
                     ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
                 else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                     Button(onClick = {
-                        CoroutineScope(Dispatchers.Main).launch {
-                            viewModel.getPhotos()
-                        }
+                        checkPermissionsAndGetPhotos(
+                            context = context,
+                            onPermissionsGranted = { viewModel.getPhotos() }
+                        )
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     }) {
@@ -211,9 +213,9 @@ fun MainScreen(
                         .padding(dimensionResource(R.dimen.padding_small))
                         .clip(MaterialTheme.shapes.medium)
                         .hazeChild(
-                        state = blurState,
-                        shape = MaterialTheme.shapes.small
-                    )
+                            state = blurState,
+                            shape = MaterialTheme.shapes.medium
+                        )
                 ) {
                     val statsTextStyle = MaterialTheme.typography.bodyLarge
                     Text(
