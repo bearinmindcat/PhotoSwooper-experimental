@@ -181,10 +181,13 @@ fun ActionBar(
                     /* Info button */
                     FilledTonalIconButton(
                         onClick = {
-                            viewModel.toggleInfo()
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            }
+                            if (currentPhoto != null) {
+                                viewModel.toggleInfo()
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+
                         },
                         modifier = Modifier.padding(
                             horizontal = dimensionResource(R.dimen.padding_small),

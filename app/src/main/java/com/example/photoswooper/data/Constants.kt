@@ -1,3 +1,3 @@
 package com.example.photoswooper.data
 
-val photoLimit = 30 // inclusive
+val photoLimit = 30 // exclusive
