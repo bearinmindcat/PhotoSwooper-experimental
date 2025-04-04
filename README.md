@@ -8,12 +8,12 @@ Well I made just the app: PhotoSwooper :D
 
 ## Features
 
-> Features last updated 2025-03-15
+> Features last updated 2025-04-04
 
 - [X] Undo button
 - [X] Info drawer
-- [-] Review photos to be deleted
-- [ ] Statistics page
+- [X] Review photos to be deleted
+- [ ] Statistics page ([WIP](https://codeberg.org/Loowiz/PhotoSwooper/src/branch/stats-screen))
 
 ## Screenshots
 
