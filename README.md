@@ -13,7 +13,7 @@ Well I made just the app: PhotoSwooper :D
 - [X] Undo button
 - [X] Info drawer
 - [X] Review photos to be deleted
-- [ ] Statistics page ([WIP](https://codeberg.org/Loowiz/PhotoSwooper/src/branch/stats-screen))
+- [ ] Statistics page ([WIP](https://codeberg.org/Loowiz/PhotoSwooper/pulls/18))
 
 ## Screenshots
 
