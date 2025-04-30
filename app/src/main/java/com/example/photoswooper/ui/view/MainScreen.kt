@@ -3,7 +3,7 @@ package com.example.photoswooper.ui.view
 import android.os.Build
 import android.text.format.Formatter.formatShortFileSize
 import android.view.HapticFeedbackConstants
-import android.view.View
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -27,15 +26,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.checkPermissionsAndGetPhotos
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.ui.components.ActionBar
+import com.example.photoswooper.ui.components.InfoRow
+import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.ReviewDialog
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -52,19 +51,22 @@ enum class DragAnchors {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 fun MainScreen(
     viewModel: MainViewModel,
-    imageLoader: coil3.ImageLoader
+    imageLoader: ImageLoader
 ) {
     val context = LocalContext.current
     val view = LocalView.current
+    val density = LocalDensity.current
 
     val uiState by viewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
     val currentPhoto =
-        try { uiState.photos[uiState.currentPhotoIndex] }
-        catch (_: IndexOutOfBoundsException) { null }
+        try {
+            uiState.photos[uiState.currentPhotoIndex]
+        } catch (_: IndexOutOfBoundsException) {
+            null
+        }
 
-    val density = LocalDensity.current
-    val blurState = remember { HazeState() } // For bottom bar
+    /* For anchored draggable (photo swiping left/right) */
     val decayAnimationSpec = rememberSplineBasedDecay<Float>()
     val anchoredDraggableState = remember {
         AnchoredDraggableState(
@@ -88,12 +90,14 @@ fun MainScreen(
                 when (position) {
                     DragAnchors.Left -> {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
                     }
+
                     DragAnchors.Center -> {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
                     }
+
                     DragAnchors.Right -> {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
@@ -112,196 +116,158 @@ fun MainScreen(
                         viewModel.nextPhoto()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
                     }
+
                     DragAnchors.Right -> {
                         viewModel.markPhoto(PhotoStatus.KEEP)
                         viewModel.nextPhoto()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
                     }
-                    else -> { /* Maybe add a markPhotoUnset() function if necessary? */ }
+
+                    else -> { /* Maybe add a markPhotoUnset() function if necessary? */
+                    }
                 }
             }
     }
 
-    if(uiState.showReviewDialog == true) {
+    if (uiState.showReviewDialog == true) {
         ReviewDialog(
             photosToDelete = viewModel.getPhotosToDelete(),
             onDismissRequest = { viewModel.dismissReviewDialog() },
             onCancellation = {
                 for (photo in viewModel.getPhotosToDelete()) {
                     viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(photo))
-                } },
+                }
+            },
             onUnsetPhoto = { viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
             onConfirmation = { CoroutineScope(Dispatchers.Main).launch { viewModel.deletePhotos() } },
             onDisableReviewDialog = { viewModel.disableReviewDialog() },
         )
     }
 
-    Scaffold { paddingValues ->
-        Box(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-        ) {
-            if (uiState.numUnset > 0) // First check if there are unset photos in the list
-            {
-                if (currentPhoto?.status == PhotoStatus.UNSET) // Then check if the current photo is unset
-                    AsyncImage(
-                        model = currentPhoto.uri,
-                        imageLoader = imageLoader,
-                        contentDescription = null,
-                        contentScale = ContentScale.FillWidth,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .haze(
-                                blurState,
-                                backgroundColor = MaterialTheme.colorScheme.background,
-                                tint = Color.Black.copy(alpha = .2f),
-                                blurRadius = 30.dp,
-                            )
-                            .anchoredDraggable(
-                                state = anchoredDraggableState,
-                                orientation = Orientation.Horizontal
-                            )
-                            .offset {
-                                IntOffset(
-                                    x = anchoredDraggableState.requireOffset().roundToInt(),
-                                    y = 0
-                                )
-                            }
-                        )
-                else
-                    viewModel.findUnsetPhoto()
-            } // if the current photo is not unset, find the next one in the list
-            else { // If there are no unset photos in the list, ask the user to delete the photos selected
-                if (numToDelete > 0)
-                    ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
-                else // If there aren't any photos to delete, ask the user if they want to swipe more photos
-                    Button(onClick = {
-                        checkPermissionsAndGetPhotos(
-                            context = context,
-                            onPermissionsGranted = { viewModel.getPhotos() }
-                        )
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    }) {
-                        Text("Fetch more photos")
-                    }
-            }
-            /* Statistics row */
-            Column(
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally,
+    BottomSheetScaffold(
+        content = { paddingValues ->
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
+                    .padding(paddingValues)
                     .fillMaxSize()
-                    .padding(dimensionResource(R.dimen.padding_medium))
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .wrapContentSize()
-                        .clickable(onClickLabel = "Click to change time frame") {
-                            CoroutineScope(Dispatchers.Main).launch {
-                                viewModel.cycleStatsTimeFrame()
-                            }
+                if (uiState.numUnset > 0) // First check if there are unset photos in the list
+                {
+                    if (currentPhoto?.status == PhotoStatus.UNSET) // Then check if the current photo is unset
+                        AsyncImage(
+                            model = currentPhoto.uri,
+                            imageLoader = imageLoader,
+                            contentDescription = null,
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .anchoredDraggable(
+                                    state = anchoredDraggableState,
+                                    orientation = Orientation.Horizontal
+                                )
+                                .offset {
+                                    IntOffset(
+                                        x = anchoredDraggableState.requireOffset().roundToInt(),
+                                        y = 0
+                                    )
+                                }
+                        )
+                    else
+                        viewModel.findUnsetPhoto()
+                } // if the current photo is not unset, find the next one in the list
+                else { // If there are no unset photos in the list, ask the user to delete the photos selected
+                    if (numToDelete > 0)
+                        ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
+                    else // If there aren't any photos to delete, ask the user if they want to swipe more photos
+                        Button(onClick = {
+                            checkPermissionsAndGetPhotos(
+                                context = context,
+                                onPermissionsGranted = { viewModel.getPhotos() }
+                            )
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        }) {
+                            Text("Fetch more photos")
                         }
-                        .padding(dimensionResource(R.dimen.padding_small))
-                        .clip(MaterialTheme.shapes.medium)
-                        .hazeChild(
-                        state = blurState,
-                        shape = MaterialTheme.shapes.small
-                    )
-                ) {
-                    val statsTextStyle = MaterialTheme.typography.bodyLarge
-                    Text(
-                        text = "Space saved this ",
-                        style = statsTextStyle,
-                        modifier = Modifier
-                            .padding(
-                                start = dimensionResource(R.dimen.padding_small),
-                                top = dimensionResource(R.dimen.padding_small),
-                                bottom = dimensionResource(R.dimen.padding_small)
-                            )
-                    )
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(16.dp)
-                    )
-                    Text(
-                        text = buildAnnotatedString {
-                            append(" ")
-                            pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
-                            append(uiState.currentStatsTimeFrame.name.lowercase())
-                            pop()
-                            append(": ${formatShortFileSize(context, uiState.spaceSavedInTimeFrame)}")
-                        },
-                        style = statsTextStyle,
-                        modifier = Modifier
-                            .padding(
-                                end = dimensionResource(R.dimen.padding_small),
-                                top = dimensionResource(R.dimen.padding_small),
-                                bottom = dimensionResource(R.dimen.padding_small)
-                            )
-                    )
                 }
-                /* Expandable action bar */
-                Box(
-                    contentAlignment = Alignment.BottomCenter,
-                    modifier = Modifier.fillMaxSize()
+                Column(
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxSize()
+                        .padding(dimensionResource(R.dimen.padding_medium))
                 ) {
-                    ActionBar(
-                        currentPhoto = currentPhoto,
-                        blurState = blurState,
-                        numToDelete = numToDelete,
-                        uiState,
-                        viewModel,
+                    /* Statistics row */
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxSize()
                             .wrapContentSize()
-                    )
+                            .clickable(onClickLabel = "Click to change time frame") {
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    viewModel.cycleStatsTimeFrame()
+                                }
+                            }
+                            .padding(dimensionResource(R.dimen.padding_small))
+                            .clip(MaterialTheme.shapes.medium)
+                    ) {
+                        val statsTextStyle = MaterialTheme.typography.bodyLarge
+                        Text(
+                            text = "Space saved this ",
+                            style = statsTextStyle,
+                            modifier = Modifier
+                                .padding(
+                                    start = dimensionResource(R.dimen.padding_small),
+                                    top = dimensionResource(R.dimen.padding_small),
+                                    bottom = dimensionResource(R.dimen.padding_small)
+                                )
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.shuffle),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(16.dp)
+                        )
+                        Text(
+                            text = buildAnnotatedString {
+                                append(" ")
+                                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
+                                append(uiState.currentStatsTimeFrame.name.lowercase())
+                                pop()
+                                append(": ${formatShortFileSize(context, uiState.spaceSavedInTimeFrame)}")
+                            },
+                            style = statsTextStyle,
+                            modifier = Modifier
+                                .padding(
+                                    end = dimensionResource(R.dimen.padding_small),
+                                    top = dimensionResource(R.dimen.padding_small),
+                                    bottom = dimensionResource(R.dimen.padding_small)
+                                )
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = uiState.showInfo && currentPhoto != null
+                    ) {
+                        /* TODO("Add background to info") */
+                        InfoRow(
+                            viewModel,
+                            currentPhoto,
+                            Modifier
+                                .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun ReviewDeletedButton(view: View, viewModel: MainViewModel, numToDelete: Int, reviewDialogEnabled: Boolean) {
-    ElevatedButton(
-        onClick = {
-            if(numToDelete > 0) {
-                if (reviewDialogEnabled)
-                    viewModel.showReviewDialog()
-                else
-                    CoroutineScope(Dispatchers.Main).launch {
-                        viewModel.deletePhotos()
-                    }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-            }
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
         },
-        modifier = Modifier.padding(
-            horizontal = dimensionResource(R.dimen.padding_small),
-            vertical = dimensionResource(R.dimen.padding_medium)
-        )
-//                                .height(92.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(R.drawable.check_bold),
-                contentDescription = null,
-                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+        sheetContent = {
+            ActionBar(
+                currentPhoto = currentPhoto,
+                numToDelete = numToDelete,
+                uiState,
+                viewModel,
             )
-            Text(
-                text = "Delete $numToDelete photos",
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
-            )
-        }
-    }
+        },
+        sheetPeekHeight = 144.dp
+    )
 }
