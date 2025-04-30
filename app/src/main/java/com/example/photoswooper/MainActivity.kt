@@ -17,6 +17,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
@@ -30,9 +33,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
 class MainActivity : AppCompatActivity() {
     private lateinit var mediaStatusDao: MediaStatusDao
-    lateinit var mainViewModel: MainViewModel
+    private lateinit var mainViewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
