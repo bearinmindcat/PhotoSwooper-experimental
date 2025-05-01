@@ -25,6 +25,7 @@ import com.example.photoswooper.utils.DataStoreInterface
 import io.github.koalaplot.core.ChartLayout
 import io.github.koalaplot.core.bar.*
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import io.github.koalaplot.core.xygraph.CategoryAxisModel
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.CoroutineScope
@@ -81,7 +82,7 @@ fun TabbedPreferencesAndStatsPage(modifier: Modifier = Modifier) {
             }
 
             TabIndex.SETTINGS.ordinal -> {
-                PreferencesCard()
+                PreferencesCard(Modifier.fillMaxSize())
             }
         }
     }
@@ -90,48 +91,101 @@ fun TabbedPreferencesAndStatsPage(modifier: Modifier = Modifier) {
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
 private fun StatsCard() {
-    ChartLayout(
-        modifier = Modifier,
-        title = { Text("Title") }
-    ) {
-        val YAxisRange = 0f..25f
-        val XAxisRange = 0.5f..8.5f
-        fun barChartEntries(): List<VerticalBarPlotEntry<Float, Float>> {
-            return buildList {
-                for (index in 1..100) {
-                    add(DefaultVerticalBarPlotEntry((index + 1).toFloat(), DefaultVerticalBarPosition(0f, index.toFloat())))
+    var currentTimeFrame by remember { mutableStateOf("week") }
+    val timeFrameList = listOf("day", "week", "month", "year", "all")
+    val daysOfTheWeek = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+    Column(verticalArrangement = Arrangement.SpaceEvenly) {
+        RowOfFilterChips(
+            chipsText = timeFrameList,
+            current = currentTimeFrame,
+            updateCurrent = { currentTimeFrame = it },
+            modifier = Modifier.weight(0.1f)
+        )
+        ChartLayout(
+            modifier = Modifier
+                .padding(dimensionResource(R.dimen.padding_small))
+                .weight(0.8f),
+        ) {
+            val YAxisRange = 0f..25f
+            val XAxisRange = 0.5f..8.5f
+            fun barChartEntries(): List<VerticalBarPlotEntry<String, Float>> {
+                return buildList {
+                    for (index in 1..7) {
+                        add(
+                            DefaultVerticalBarPlotEntry(
+                                daysOfTheWeek[index - 1],
+                                DefaultVerticalBarPosition(0f, index.toFloat())
+                            )
+                        )
+                    }
                 }
             }
-        }
 
-        XYGraph(
-            xAxisModel = FloatLinearAxisModel(
-                XAxisRange,
-            ),
-            yAxisModel = FloatLinearAxisModel(
-                YAxisRange,
-            ),
-        ) {
-            VerticalBarPlot(
-                data = barChartEntries(),
-                bar = { index ->
-                    DefaultVerticalBar(
-                        brush = SolidColor(Color.LightGray),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Surface(
-                            shadowElevation = 2.dp,
-                            shape = MaterialTheme.shapes.medium,
-                            color = Color.LightGray,
-                            modifier = Modifier.padding()
+            XYGraph(
+                xAxisModel = CategoryAxisModel(daysOfTheWeek),
+                yAxisModel = FloatLinearAxisModel(
+                    YAxisRange,
+                ),
+            ) {
+                VerticalBarPlot(
+                    data = barChartEntries(),
+                    bar = { index ->
+                        DefaultVerticalBar(
+                            brush = SolidColor(Color.LightGray),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Box(modifier = Modifier.padding()) {
-                                Text("hi")
+                            Surface(
+                                shadowElevation = 2.dp,
+                                shape = MaterialTheme.shapes.medium,
+                                color = Color.LightGray,
+                                modifier = Modifier.padding()
+                            ) {
+                                Box(modifier = Modifier.padding()) {
+                                    Text("hi")
+                                }
                             }
                         }
-                    }
-                },
-            )
+                    },
+                )
+            }
+        }
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(0.2f)
+                .padding(dimensionResource(R.dimen.padding_small))
+                .fillMaxWidth()
+        ) {
+            IconButton(onClick = { /*TODO()*/ }) {
+                Icon(
+                    painter = painterResource(R.drawable.caret_left),
+                    contentDescription = "view previous $currentTimeFrame",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            FilledTonalButton(
+                onClick = { /*TODO()*/ },
+                enabled = true /*TODO()*/
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(R.drawable.calendar),
+                        contentDescription = "Seek to current $currentTimeFrame",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .padding(end = dimensionResource(R.dimen.padding_xsmall))
+                    )
+                    Text("Today")
+                }
+            }
+            IconButton(onClick = { /*TODO()*/ }) {
+                Icon(
+                    painter = painterResource(R.drawable.caret_right),
+                    contentDescription = "view next $currentTimeFrame",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }
