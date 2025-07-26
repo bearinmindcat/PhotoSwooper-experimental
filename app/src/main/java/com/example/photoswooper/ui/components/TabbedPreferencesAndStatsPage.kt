@@ -1,5 +1,6 @@
 package com.example.photoswooper.ui.components
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,7 +21,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
+import com.example.photoswooper.data.uistates.StatsUiState
+import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
+import com.example.photoswooper.ui.view.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import io.github.koalaplot.core.ChartLayout
 import io.github.koalaplot.core.bar.*
@@ -39,7 +43,16 @@ private enum class TabIndex {
 }
 
 @Composable
-fun TabbedPreferencesAndStatsPage(modifier: Modifier = Modifier) {
+fun TabbedPreferencesAndStatsPage(
+    statsViewModel: StatsViewModel,
+    modifier: Modifier = Modifier
+) {
+    val uiState by statsViewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState.timeFrame, uiState.dateToFetchFromMillis) {
+        statsViewModel.updateStatsData()
+    }
+
     var tabIndex by remember { mutableStateOf(TabIndex.STATS.ordinal) }
     Column(modifier) {
         TabRow(
@@ -78,7 +91,8 @@ fun TabbedPreferencesAndStatsPage(modifier: Modifier = Modifier) {
         }
         when (tabIndex) {
             TabIndex.STATS.ordinal -> {
-                StatsCard()
+                if (uiState.latestData.isNotEmpty())
+                    StatsCard(uiState.latestData, statsViewModel, uiState)
             }
 
             TabIndex.SETTINGS.ordinal -> {
@@ -90,15 +104,14 @@ fun TabbedPreferencesAndStatsPage(modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-private fun StatsCard() {
-    var currentTimeFrame by remember { mutableStateOf("week") }
-    val timeFrameList = listOf("day", "week", "month", "year", "all")
-    val daysOfTheWeek = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: StatsUiState) {
+    Log.v("UI", "Loading StatsCard")
+    val currentTimeFrame = uiState.timeFrame
     Column(verticalArrangement = Arrangement.SpaceEvenly) {
         RowOfFilterChips(
-            chipsText = timeFrameList,
-            current = currentTimeFrame,
-            updateCurrent = { currentTimeFrame = it },
+            chipsText = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() },
+            current = currentTimeFrame.toString().lowercase(),
+            updateCurrent = { viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase())) },
             modifier = Modifier.weight(0.1f)
         )
         ChartLayout(
@@ -106,15 +119,21 @@ private fun StatsCard() {
                 .padding(dimensionResource(R.dimen.padding_small))
                 .weight(0.8f),
         ) {
-            val YAxisRange = 0f..25f
-            val XAxisRange = 0.5f..8.5f
+            Log.v("UI", "Loading chart")
+            val YAxisRange = 0f..25f // TODO("Get range from data")
+            val XAxisRange = viewModel.getXAxisRange()
+            val xAxisValues = viewModel.getNamedXAxisValues()?: XAxisRange.map { it.toString() }.toList()
             fun barChartEntries(): List<VerticalBarPlotEntry<String, Float>> {
+                Log.v("Stats", "Building bar chart entries")
                 return buildList {
-                    for (index in 1..7) {
+                    for (index in XAxisRange) {
                         add(
                             DefaultVerticalBarPlotEntry(
-                                daysOfTheWeek[index - 1],
-                                DefaultVerticalBarPosition(0f, index.toFloat())
+                                xAxisValues[index - 1],
+                                // TODO("Use a less janky solution as this doesnt always detect when data has not been updated, e.g. switching from day to year")
+                                try { DefaultVerticalBarPosition(0f, data.getValue(index).toFloat()) }
+                                catch (_: NoSuchElementException) { // If data has not been updated after change in time frame
+                                    DefaultVerticalBarPosition(0f, 0f)}
                             )
                         )
                     }
@@ -122,7 +141,7 @@ private fun StatsCard() {
             }
 
             XYGraph(
-                xAxisModel = CategoryAxisModel(daysOfTheWeek),
+                xAxisModel = CategoryAxisModel(xAxisValues),
                 yAxisModel = FloatLinearAxisModel(
                     YAxisRange,
                 ),
