@@ -6,7 +6,9 @@ enum class TimeFrame(val milliseconds: Long) {
     DAY(86400000),
     WEEK(604800000),
     MONTH(2629746000),
-    YEAR(31556952000)
+    YEAR(31556952000),
+//    ALL(Calendar.getInstance().timeInMillis) // this millisecond value is the number of miliseconds since the epoch
+// TODO("Add support for an 'all' time frame")
 }
 
 data class MainUiState(

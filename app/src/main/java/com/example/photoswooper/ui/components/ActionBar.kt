@@ -1,24 +1,32 @@
 package com.example.photoswooper.ui.components
 
 import android.os.Build
+import android.text.format.Formatter.formatShortFileSize
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.ui.view.MainViewModel
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalKoalaPlotApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +39,10 @@ fun ActionBar(
 ) {
     val view = LocalView.current
 
-    Column(modifier = modifier) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -102,7 +113,53 @@ fun ActionBar(
             }
         }
     }
-    TabbedPreferencesAndStatsPage(
+
+    /* Statistics row */
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
         modifier = Modifier
-    )
+            .clickable(onClickLabel = "Click to change time frame") {
+                CoroutineScope(Dispatchers.Main).launch {
+                    viewModel.cycleStatsTimeFrame()
+                }
+            }
+            .fillMaxWidth()
+            .padding(dimensionResource(R.dimen.padding_small))
+            .clip(MaterialTheme.shapes.medium)
+    ) {
+        val statsTextStyle = MaterialTheme.typography.bodyLarge
+        Text(
+            text = "Space saved this ",
+            style = statsTextStyle,
+            modifier = Modifier
+                .padding(
+                    start = dimensionResource(R.dimen.padding_small),
+                    top = dimensionResource(R.dimen.padding_small),
+                    bottom = dimensionResource(R.dimen.padding_small)
+                )
+        )
+        Icon(
+            painter = painterResource(R.drawable.shuffle),
+            contentDescription = null,
+            modifier = Modifier
+                .size(16.dp)
+        )
+        Text(
+            text = buildAnnotatedString {
+                append(" ")
+                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
+                append(uiState.currentStatsTimeFrame.name.lowercase())
+                pop()
+                append(": ${formatShortFileSize(LocalContext.current, uiState.spaceSavedInTimeFrame)}")
+            },
+            style = statsTextStyle,
+            modifier = Modifier
+                .padding(
+                    end = dimensionResource(R.dimen.padding_small),
+                    top = dimensionResource(R.dimen.padding_small),
+                    bottom = dimensionResource(R.dimen.padding_small)
+                )
+        )
+    }
 }
