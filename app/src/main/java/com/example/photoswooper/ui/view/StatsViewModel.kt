@@ -173,6 +173,44 @@ class StatsViewModel(
                 timeFrame = newTimeFrame
             )
         }
+        resetDate()
+    }
+
+    /* Move date to fetch stats data to one day/week/year in the past (amount depends on current time frame) */
+    fun previousDate() {
+        _uiState.update { currentState ->
+            val newDateToFetchFromMillis = currentState.dateToFetchFromMillis - currentState.timeFrame.milliseconds
+            currentState.copy(
+                dateToFetchFromMillis = newDateToFetchFromMillis,
+                currentDateShown = Calendar.getInstance().timeInMillis.floorDiv(10000)
+                        == newDateToFetchFromMillis.floorDiv(10000) // currentTime ≈ newTime
+            )
+        }
+    }
+
+    /* Move date to fetch stats data to one day/week/year in the future (amount depends on current time frame) */
+    fun nextDate(): Boolean {
+        val newDateToFetchFromMillis = uiState.value.dateToFetchFromMillis + uiState.value.timeFrame.milliseconds
+        if (newDateToFetchFromMillis < Calendar.getInstance().timeInMillis) { // If the new date is not in the future
+            _uiState.update { currentState ->
+                currentState.copy(
+                    dateToFetchFromMillis = newDateToFetchFromMillis,
+                    currentDateShown = Calendar.getInstance().timeInMillis.floorDiv(10000)
+                            == newDateToFetchFromMillis.floorDiv(10000) // currentTime ≈ newTime
+                )
+            }
+            return true
+        }
+        else return false
+    }
+    /* Move date to fetch stats data to the current date */
+    fun resetDate() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                dateToFetchFromMillis = Calendar.getInstance().timeInMillis,
+                currentDateShown = true
+            )
+        }
     }
 
 }

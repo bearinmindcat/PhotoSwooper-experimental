@@ -188,16 +188,26 @@ private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: S
                 .padding(dimensionResource(R.dimen.padding_small))
                 .fillMaxWidth()
         ) {
-            IconButton(onClick = { /*TODO()*/ }) {
+            /* Previous date button */
+            IconButton(onClick = {
+                viewModel.previousDate()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                    view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
+            }) {
                 Icon(
                     painter = painterResource(R.drawable.caret_left),
                     contentDescription = "view previous $currentTimeFrame",
                     modifier = Modifier.size(24.dp)
                 )
             }
+            /* Reset date button */
             FilledTonalButton(
-                onClick = { /*TODO()*/ },
-                enabled = true /*TODO()*/
+                onClick = {
+                    viewModel.resetDate()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                          },
+                enabled = !uiState.currentDateShown
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -210,7 +220,26 @@ private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: S
                     Text("Today")
                 }
             }
-            IconButton(onClick = { /*TODO()*/ }) {
+            /* Next date button */
+            IconButton(
+                /* TODO("remove Toast, only use enabling/disabling the button. Will need to check if the next date is in the future in UI, not viewModel function") */
+                onClick = {
+                    if (!viewModel.nextDate()) {
+                        Toast.makeText(
+                            context,
+                            "Cannot see into the future.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                    }
+                    else {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                            view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
+                    }
+                },
+                enabled = !uiState.currentDateShown
+            ) {
                 Icon(
                     painter = painterResource(R.drawable.caret_right),
                     contentDescription = "view next $currentTimeFrame",
