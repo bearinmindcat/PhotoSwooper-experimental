@@ -253,6 +253,17 @@ private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: S
 @Composable
 private fun PreferencesCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val view = LocalView.current
+
+    fun performSwitchHapticFeedback(toggledOn: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (toggledOn)
+                view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
+            else
+                view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+    }
 
     val dataStoreInterface = DataStoreInterface(context.dataStore)
 
@@ -261,6 +272,7 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
         numPhotosPerStackPref = dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
     }
     var numPhotosPerStack by remember { mutableStateOf(numPhotosPerStackPref) }
+    var displayedNumPhotosPerStack by remember { mutableStateOf(numPhotosPerStack?.toString()?: "30") }
 
     val permanentlyDeletePref: Boolean?
     runBlocking {
@@ -270,55 +282,64 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
 
     Card(modifier.verticalScroll(rememberScrollState())) {
         ListItem(
-            leadingContent = {
-                Icon(
-                    painter = painterResource(R.drawable.images),
-                    contentDescription = null // Described in adjacent text
-                )
-            },
             headlineContent = {
-                Text(
-                    text = stringResource(R.string.num_photos_per_stack)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.images),
+                        contentDescription = null, // Described in adjacent text
+                        modifier = Modifier.padding(end= dimensionResource(R.dimen.padding_medium))
+                    )
+                    Text(
+                        text = stringResource(R.string.num_photos_per_stack)
+                    )
+                }
             },
             supportingContent = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))
                 ) {
-                    /* FIXME("number shows nothing on first start. Should show 30 as default") */
-                    BasicTextField(
-                        value = (numPhotosPerStack ?: "").toString(),
-                        onValueChange = { // Update UI value & dataStore only if valid
-                            try {
-                                if (it == "")
-                                    numPhotosPerStack = null
-                                else if (it.toInt() in 1..100) {
-                                    numPhotosPerStack = it.toInt()
+                    TextField(
+                        value = displayedNumPhotosPerStack,
+                        onValueChange = { input -> // Update UI value & dataStore only if valid
+                            val inputAsInt = input.toIntOrNull()
+                            if (inputAsInt != null) {
+                                if (inputAsInt in 1..100) { // Separate if statements so user doesn't see error message when inputting 0
+                                    displayedNumPhotosPerStack = input
+                                    numPhotosPerStack = input.toInt()
                                     CoroutineScope(Dispatchers.IO).launch {
                                         dataStoreInterface.setIntSettingValue(
                                             setting = "num_photos_per_stack",
-                                            newValue = numPhotosPerStack ?: 0
+                                            newValue = numPhotosPerStack ?: 30
                                         )
                                     }
                                 }
-                            } catch (_: NumberFormatException) {
-                                Toast.makeText(
-                                    context,
-                                    "Not a number :(",
-                                    Toast.LENGTH_SHORT
-                                ).show()
                             }
+                            else if (input == "")
+                                    displayedNumPhotosPerStack = input
+                            else
+                                Toast.makeText(
+                                context,
+                                "Not a number :(",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         },
                         keyboardOptions = KeyboardOptions.Default.copy(
                             keyboardType = KeyboardType.Number
                         ),
                         modifier = Modifier
-                            .weight(0.1f)
+                            .weight(0.2f)
+                            .padding(horizontal = dimensionResource(R.dimen.padding_small))
                     )
                     Slider(
                         value = numPhotosPerStack?.toFloat() ?: 30f,
-                        onValueChange = { numPhotosPerStack = it.toInt() },
+                        onValueChange = {
+                            numPhotosPerStack = it.toInt()
+                            displayedNumPhotosPerStack = it.roundToInt().toString()
+                                        },
                         valueRange = 1f..100f,
                         onValueChangeFinished = {
                             CoroutineScope(Dispatchers.IO).launch {
@@ -328,7 +349,9 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                                 )
                             }
                         },
-                        modifier = Modifier.weight(0.5f)
+                        modifier = Modifier
+                            .weight(0.5f)
+                            .padding(horizontal = dimensionResource(R.dimen.padding_small))
                     )
                 }
             }
@@ -356,6 +379,7 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                                 newValue = displayedPermanentlyDelete ?: false
                             )
                         }
+                        performSwitchHapticFeedback(it)
                     }
                 )
             },
@@ -372,6 +396,7 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                         newValue = displayedPermanentlyDelete ?: false
                     )
                 }
+                performSwitchHapticFeedback(!(displayedPermanentlyDelete ?: false))
             }
         )
     }
