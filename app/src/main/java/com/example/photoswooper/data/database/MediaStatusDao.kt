@@ -12,8 +12,8 @@ interface MediaStatusDao {
     @Query("SELECT * FROM mediaStatus WHERE (status = :status) AND (dateModified BETWEEN :firstDate AND :secondDate)")
     suspend fun getDeletedBetweenDates(firstDate: Long, secondDate: Long, status: PhotoStatus = PhotoStatus.DELETE): List<MediaStatus>?
 
-    @Query("SELECT * FROM mediaStatus WHERE dateModified BETWEEN :firstDate AND :secondDate")
-    suspend fun getAllBetweenDates(firstDate: Long, secondDate: Long): List<MediaStatus>?
+    @Query("SELECT * FROM mediaStatus WHERE (status != :status) AND (dateModified BETWEEN :firstDate AND :secondDate)")
+    suspend fun getSwipedMediaBetweenDates(firstDate: Long, secondDate: Long, status: PhotoStatus = PhotoStatus.UNSET): List<MediaStatus>?
 
     @Query("SELECT * FROM mediaStatus WHERE fileHash = :hash LIMIT 1")
     suspend fun findByHash(hash: String): MediaStatus?

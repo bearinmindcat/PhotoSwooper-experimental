@@ -19,14 +19,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
-import com.example.photoswooper.R
 import com.example.photoswooper.checkPermissionsAndGetPhotos
-import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.ui.components.*
 import kotlinx.coroutines.CoroutineScope
@@ -44,14 +41,15 @@ enum class DragAnchors {
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 fun MainScreen(
-    viewModel: MainViewModel,
+    statsViewModel: StatsViewModel,
+    mainViewModel: MainViewModel,
     imageLoader: ImageLoader
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val density = LocalDensity.current
 
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by mainViewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
     val currentPhoto =
         try {
@@ -106,14 +104,14 @@ fun MainScreen(
             .collectLatest { position ->
                 when (position) {
                     DragAnchors.Left -> {
-                        viewModel.markPhoto(PhotoStatus.DELETE)
-                        viewModel.nextPhoto()
+                        mainViewModel.markPhoto(PhotoStatus.DELETE)
+                        mainViewModel.nextPhoto()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
                     }
 
                     DragAnchors.Right -> {
-                        viewModel.markPhoto(PhotoStatus.KEEP)
-                        viewModel.nextPhoto()
+                        mainViewModel.markPhoto(PhotoStatus.KEEP)
+                        mainViewModel.nextPhoto()
                         anchoredDraggableState.animateTo(DragAnchors.Center)
                     }
 
@@ -125,16 +123,16 @@ fun MainScreen(
 
     if (uiState.showReviewDialog == true) {
         ReviewDialog(
-            photosToDelete = viewModel.getPhotosToDelete(),
-            onDismissRequest = { viewModel.dismissReviewDialog() },
+            photosToDelete = mainViewModel.getPhotosToDelete(),
+            onDismissRequest = { mainViewModel.dismissReviewDialog() },
             onCancellation = {
-                for (photo in viewModel.getPhotosToDelete()) {
-                    viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(photo))
+                for (photo in mainViewModel.getPhotosToDelete()) {
+                    mainViewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(photo))
                 }
             },
-            onUnsetPhoto = { viewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
-            onConfirmation = { CoroutineScope(Dispatchers.Main).launch { viewModel.deletePhotos() } },
-            onDisableReviewDialog = { viewModel.disableReviewDialog() },
+            onUnsetPhoto = { mainViewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
+            onConfirmation = { CoroutineScope(Dispatchers.Main).launch { mainViewModel.deletePhotos() } },
+            onDisableReviewDialog = { mainViewModel.disableReviewDialog() },
         )
     }
 
@@ -168,16 +166,16 @@ fun MainScreen(
                                 }
                         )
                     else
-                        viewModel.findUnsetPhoto()
+                        mainViewModel.findUnsetPhoto()
                 } // if the current photo is not unset, find the next one in the list
                 else { // If there are no unset photos in the list, ask the user to delete the photos selected
                     if (numToDelete > 0)
-                        ReviewDeletedButton(view, viewModel, numToDelete, uiState.reviewDialogEnabled)
+                        ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
                     else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                         Button(onClick = {
                             checkPermissionsAndGetPhotos(
                                 context = context,
-                                onPermissionsGranted = { viewModel.getPhotos() }
+                                onPermissionsGranted = { mainViewModel.getPhotos() }
                             )
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -200,7 +198,7 @@ fun MainScreen(
                         exit = fadeOut()
                     ) {
                         InfoRow(
-                            viewModel,
+                            mainViewModel,
                             currentPhoto,
                             Modifier
                                 .padding(horizontal = dimensionResource(R.dimen.padding_medium))
@@ -218,10 +216,7 @@ fun MainScreen(
                 currentPhoto = currentPhoto,
                 numToDelete = numToDelete,
                 uiState,
-                viewModel,
-            )
-            val statsViewModel = StatsViewModel(
-                mediaStatusDao = MediaStatusDatabase.getDatabase(context.applicationContext).mediaStatusDao() // TODO("Could cause issues as not same dao variable as in MainActivity?")
+                mainViewModel,
             )
             TabbedPreferencesAndStatsPage(
                 modifier = Modifier,

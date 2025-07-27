@@ -28,6 +28,7 @@ import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.MainViewModel
+import com.example.photoswooper.ui.view.StatsViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -78,8 +79,9 @@ class MainActivity : AppCompatActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen(
-                        viewModel = mainViewModel,
-                        imageLoader = imageLoader
+                        mainViewModel = mainViewModel,
+                        imageLoader = imageLoader,
+                        statsViewModel = statsViewModel
                     )
                 }
             }
