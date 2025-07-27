@@ -1,11 +1,12 @@
 package com.example.photoswooper.ui.components
 
+import android.os.Build
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlin.math.roundToInt
 
 private enum class TabIndex {
     STATS, SETTINGS
@@ -58,11 +61,12 @@ fun TabbedPreferencesAndStatsPage(
         TabRow(
             selectedTabIndex = tabIndex,
             containerColor = Color(0f, 0f, 0f, 0f),
-            modifier = Modifier.padding(vertical = dimensionResource(R.dimen.padding_medium))
+            modifier = Modifier.padding(vertical = dimensionResource(R.dimen.padding_medium)),
         ) {
             Tab(
                 selected = (tabIndex == TabIndex.STATS.ordinal),
-                onClick = { tabIndex = TabIndex.STATS.ordinal }
+                onClick = { tabIndex = TabIndex.STATS.ordinal },
+                modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_small))
             ) {
                 Icon(
                     painter = painterResource(R.drawable.chart),
@@ -71,12 +75,12 @@ fun TabbedPreferencesAndStatsPage(
                 )
                 Text(
                     stringResource(R.string.statistics),
-//                    style = MaterialTheme.typography.headlineSmall
                 )
             }
             Tab(
                 selected = (tabIndex == TabIndex.SETTINGS.ordinal),
-                onClick = { tabIndex = TabIndex.SETTINGS.ordinal }
+                onClick = { tabIndex = TabIndex.SETTINGS.ordinal },
+                modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_small))
             ) {
                 Icon(
                     painter = painterResource(R.drawable.gear),
@@ -85,13 +89,12 @@ fun TabbedPreferencesAndStatsPage(
                 )
                 Text(
                     stringResource(R.string.settings),
-//                    style = MaterialTheme.typography.titleMedium
                 )
             }
         }
         when (tabIndex) {
             TabIndex.STATS.ordinal -> {
-                if (uiState.latestData.isNotEmpty())
+                if (uiState.latestData.isNotEmpty()) // If there is data to plot
                     StatsCard(uiState.latestData, statsViewModel, uiState)
             }
 
@@ -105,13 +108,24 @@ fun TabbedPreferencesAndStatsPage(
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
 private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: StatsUiState) {
-    Log.v("UI", "Loading StatsCard")
+    val context = LocalContext.current
+    val view = LocalView.current
     val currentTimeFrame = uiState.timeFrame
+
+    val maxYValue =
+        if (data.values.max() != 0)
+            data.values.max().toFloat().times(1.15f)
+        else
+            30f // Default max value if all other values are zero
+
+
     Column(verticalArrangement = Arrangement.SpaceEvenly) {
         RowOfFilterChips(
             chipsText = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() },
             current = currentTimeFrame.toString().lowercase(),
-            updateCurrent = { viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase())) },
+            updateCurrent = {
+                viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase()))
+                            },
             modifier = Modifier.weight(0.1f)
         )
         ChartLayout(
@@ -120,7 +134,7 @@ private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: S
                 .weight(0.8f),
         ) {
             Log.v("UI", "Loading chart")
-            val YAxisRange = 0f..25f // TODO("Get range from data")
+            val YAxisRange = 0f..maxYValue
             val XAxisRange = viewModel.getXAxisRange()
             val xAxisValues = viewModel.getNamedXAxisValues()?: XAxisRange.map { it.toString() }.toList()
             fun barChartEntries(): List<VerticalBarPlotEntry<String, Float>> {
@@ -130,10 +144,9 @@ private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: S
                         add(
                             DefaultVerticalBarPlotEntry(
                                 xAxisValues[index - 1],
-                                // TODO("Use a less janky solution as this doesnt always detect when data has not been updated, e.g. switching from day to year")
-                                try { DefaultVerticalBarPosition(0f, data.getValue(index).toFloat()) }
-                                catch (_: NoSuchElementException) { // If data has not been updated after change in time frame
-                                    DefaultVerticalBarPosition(0f, 0f)}
+                                if (uiState.latestData.size == viewModel.getXAxisRange().last) // If the data has been updated to the new time frame
+                                    DefaultVerticalBarPosition(0f, data.getValue(index).toFloat())
+                                else DefaultVerticalBarPosition(0f, 0f)
                             )
                         )
                     }
@@ -150,17 +163,16 @@ private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: S
                     data = barChartEntries(),
                     bar = { index ->
                         DefaultVerticalBar(
-                            brush = SolidColor(Color.LightGray),
+                            brush = SolidColor(MaterialTheme.colorScheme.primary),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Surface(
-                                shadowElevation = 2.dp,
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
                                 shape = MaterialTheme.shapes.medium,
-                                color = Color.LightGray,
-                                modifier = Modifier.padding()
+                                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
                             ) {
-                                Box(modifier = Modifier.padding()) {
-                                    Text("hi")
+                                Box(modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))) {
+                                    Text(barChartEntries()[index].y.yMax.toString())
                                 }
                             }
                         }

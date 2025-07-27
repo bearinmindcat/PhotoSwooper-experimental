@@ -21,24 +21,10 @@ class StatsViewModel(
 
     val daysOfTheWeek = listOf("Sun","Mon","Tue","Wed","Thu","Fri","Sat")
     val monthsOfTheYear = listOf("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
-    
-//    private fun getLengthOfMonth(
-//        year: Int = Calendar.getInstance().get(Calendar.YEAR),
-//        month: Int = Calendar.getInstance().get(Calendar.MONTH)
-//    ): Int {
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            return YearMonth.of(year, month).lengthOfMonth()
-//        } else {
-//            val calendar = Calendar.getInstance()
-//            calendar.set(Calendar.YEAR, year)
-//            calendar.set(Calendar.MONTH, month)
-//            return calendar.getActualMaximum(Calendar.DATE)
-//        }
-//    }
 
     fun getXAxisRange(): IntRange {
         return when (uiState.value.timeFrame) {
-            TimeFrame.DAY -> 1..24
+            TimeFrame.DAY -> (1..24)
             TimeFrame.WEEK -> 1..7
 //            TimeFrame.MONTH -> 1..getLengthOfMonth()
             else -> 1..12 // TimeFrame.YEAR
@@ -48,7 +34,10 @@ class StatsViewModel(
     fun getNamedXAxisValues(): List<String>? {
         val currentTimeFrame = uiState.value.timeFrame
         return when (currentTimeFrame) {
-            TimeFrame.DAY -> (0..23).map { it.toString() } // Original is 1..24
+            TimeFrame.DAY -> (0..23).map {
+                if (it.mod(3) == 0) it.toString()
+                else ""
+            } // Original is 1..24
             TimeFrame.WEEK -> daysOfTheWeek
 //            TimeFrame.MONTH -> (1..getLengthOfMonth()).map { it.toString() }
             else -> monthsOfTheYear
@@ -60,10 +49,40 @@ class StatsViewModel(
 
         val currentTimeFrame = uiState.value.timeFrame
         val intervalMilliseconds: Long
-        val calendarAtZero: Calendar // milliseconds until e.g. 0:00 for the day, or 1st day of month
+        val calendarAtZero: Calendar // Java Calendar class at e.g. 0:00 for the day, or 1st day of month
         val finalTimeMillis: Long // epoch milliseconds of the final time group to get data for
-        var currentTime: Int // e.g. day of the month, month of the year. This is decremented to find data for each hour/day/month
+        var currentXValue: Int // e.g. day of the month, month of the year. This is decremented to find data for each hour/day/month
         val calendar = Calendar.getInstance()
+
+        /* This function returns a Java calendar class at e.g. 0:00 for the day, or 1st day of month, depending on the arguement */
+        fun getCalendarAtZero(finalZeroedJavaTime: Int): Calendar {
+            val tempCalendar = Calendar.getInstance()
+            tempCalendar.timeInMillis = uiState.value.dateToFetchFromMillis
+
+
+            val selectedJavaTimeFrames = listOf( // These time frames, when all minimised (zeroed), is exactly 00:00 on the first day of the year
+                Calendar.DAY_OF_YEAR, // This is used to find the final day to fetch data for when the selected time frame is week
+                Calendar.DAY_OF_MONTH,
+                Calendar.DAY_OF_WEEK, // This is used to find the final day to fetch data for when the selected time frame is week
+                Calendar.HOUR_OF_DAY,
+                Calendar.MINUTE,
+                Calendar.SECOND,
+                Calendar.MILLISECOND
+            )
+            val finalZeroedJavaTimeIndex = selectedJavaTimeFrames.indexOf(finalZeroedJavaTime)
+
+            var timeFrameIndex = selectedJavaTimeFrames.lastIndex
+            var currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
+            while (finalZeroedJavaTimeIndex <= timeFrameIndex) {
+                currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
+                tempCalendar.set(
+                    currentJavaTimeFrame,
+                    tempCalendar.getMinimum(currentJavaTimeFrame)
+                )
+                timeFrameIndex --
+            }
+            return tempCalendar
+        }
 
         /* Obtain  values required to fetch data */
         when (currentTimeFrame) {
@@ -74,7 +93,7 @@ class StatsViewModel(
 
                 finalTimeMillis = getCalendarAtZero(Calendar.HOUR_OF_DAY).timeInMillis
 
-                currentTime = calendar.get(Calendar.HOUR_OF_DAY) + 1
+                currentXValue = calendar.get(Calendar.HOUR_OF_DAY) + 1
             }
 
             TimeFrame.WEEK -> {
@@ -84,24 +103,8 @@ class StatsViewModel(
 
                 finalTimeMillis = getCalendarAtZero(Calendar.DAY_OF_WEEK).timeInMillis
 
-                currentTime = calendar.get(Calendar.DAY_OF_WEEK)
+                currentXValue = calendar.get(Calendar.DAY_OF_WEEK)
             }
-
-//            TimeFrame.MONTH -> {
-//                val selectedDateString = uiState.value.finalDateInTimeFrame.toString()
-//                val year = selectedDateString.substring(30, 34).toInt()
-//                val month = monthsOfTheYear.indexOf(
-//                    selectedDateString.substring(
-//                        4,
-//                        7
-//                    )
-//                ) // Convert month word to integer e.g. Feb -> 2
-//                intervalMilliseconds = TimeFrame.DAY.milliseconds
-//                firstDateMilliseconds = getLengthOfMonth(
-//                    year,
-//                    month
-//                ) * TimeFrame.DAY.milliseconds // More accurate as each month will have a different  number of days
-//            }
 
             else -> { // TimeFrame.YEAR ->
                 intervalMilliseconds = TimeFrame.MONTH.milliseconds
@@ -110,7 +113,7 @@ class StatsViewModel(
 
                 finalTimeMillis = getCalendarAtZero(Calendar.DAY_OF_YEAR).timeInMillis
 
-                currentTime = calendar.get(Calendar.MONTH) + 1
+                currentXValue = calendar.get(Calendar.MONTH) + 1
             }
         }
         Log.v("Stats", "Time at zero: ${calendarAtZero.time}")
@@ -118,7 +121,7 @@ class StatsViewModel(
         /* Fetch & return data */
 
         suspend fun getSwipesFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Int =
-            mediaStatusDao.getAllBetweenDates(
+            mediaStatusDao.getSwipedMediaBetweenDates(
                 firstDateMillis,
                 secondDateMillis,
             )?.size ?: 0
@@ -134,12 +137,12 @@ class StatsViewModel(
         }
         Log.v("Stats", "data = ${statsData}")
 
-        Log.v("Stats", "setting data for time = $currentTime")
+        Log.v("Stats", "setting data for time = $currentXValue")
         statsData.set(
-            currentTime,
+            currentXValue,
             getSwipesFromDatabase(calendarAtZero.timeInMillis, uiState.value.dateToFetchFromMillis)
         )
-        currentTime --
+        currentXValue --
         var firstDateMillis = calendarAtZero.timeInMillis - intervalMilliseconds
         var secondDateMillis = calendarAtZero.timeInMillis
 
@@ -149,10 +152,10 @@ class StatsViewModel(
                 Log.v("Stats", "getting data for ${Instant.ofEpochSecond(firstDateMillis)} to ${Instant.ofEpochSecond(secondDateMillis)}")
             }
             statsData.set(
-                currentTime,
+                currentXValue,
                 getSwipesFromDatabase(firstDateMillis, secondDateMillis)
             )
-            currentTime --
+            currentXValue --
             firstDateMillis -= intervalMilliseconds
             secondDateMillis -= intervalMilliseconds
         }
@@ -162,34 +165,6 @@ class StatsViewModel(
                 latestData = statsData
             )
         }
-    }
-
-    private fun getCalendarAtZero(finalZeroedJavaTime: Int): Calendar {
-        val tempCalendar = Calendar.getInstance()
-
-
-        val selectedJavaTimeFrames = listOf( // These time frames, when all minimised (zeroed), is exactly 00:00 on the first day of the year
-            Calendar.DAY_OF_YEAR, // This is used to find the final day to fetch data for when the selected time frame is week
-            Calendar.DAY_OF_MONTH,
-            Calendar.DAY_OF_WEEK, // This is used to find the final day to fetch data for when the selected time frame is week
-            Calendar.HOUR_OF_DAY,
-            Calendar.MINUTE,
-            Calendar.SECOND,
-            Calendar.MILLISECOND
-        )
-        val finalZeroedJavaTimeIndex = selectedJavaTimeFrames.indexOf(finalZeroedJavaTime)
-
-        var timeFrameIndex = selectedJavaTimeFrames.lastIndex
-        var currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
-        while (finalZeroedJavaTimeIndex <= timeFrameIndex) {
-            currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
-            tempCalendar.set(
-                currentJavaTimeFrame,
-                tempCalendar.getMinimum(currentJavaTimeFrame)
-            )
-            timeFrameIndex --
-        }
-        return tempCalendar
     }
 
     fun updateTimeFrame(newTimeFrame: TimeFrame) {
