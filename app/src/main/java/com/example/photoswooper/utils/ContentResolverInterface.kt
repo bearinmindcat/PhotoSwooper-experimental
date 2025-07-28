@@ -13,9 +13,10 @@ import androidx.exifinterface.media.ExifInterface
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
-import com.example.photoswooper.data.photoLimit
+import com.example.photoswooper.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.util.*
@@ -25,10 +26,12 @@ class ContentResolverInterface(
     val context: Context
 ) {
     val contentResolver = context.contentResolver
+    val dataStoreInterface = DataStoreInterface(context.dataStore)
+
 
     @OptIn(ExperimentalStdlibApi::class) // For .toHexString()
     suspend fun getPhotos(
-        numPhotos: Int = photoLimit,
+        numPhotos: Int,
         onAddPhoto: (Photo) -> Unit
     ) {
         // TODO("Change so that MediaStore.Images changes to MediaStore.Videos for video types")
@@ -98,16 +101,18 @@ class ContentResolverInterface(
                     val findById = dao.findByMediaStoreId(fetchedId)
 
                     /* Define function to add photo to photos list & database (for later use) */
-                    suspend fun addPhoto() {
+                    fun addPhoto() {
                         val date =
                             if (fetchedDateTaken > 0)
                                 fetchedDateTaken
-                            else // if date taken is not found, use date added
+                            else if (fetchedDateAdded > 0)// if date taken is not found, use date added
                                 fetchedDateAdded
+                            else null
 
                         var latLong: DoubleArray = doubleArrayOf(0.0, 0.0)
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             val exifInterface = ExifInterface(file)
+                            @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
                             latLong = exifInterface.latLong // Location the photo was taken at
                             file?.close()
                         } else {
@@ -166,14 +171,22 @@ class ContentResolverInterface(
         }
 }
 
-    fun deletePhotos(uris: List<Uri>) {
+    suspend fun deletePhotos(uris: List<Uri>) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val permanentlyDelete = dataStoreInterface.getBooleanSettingValue("permanently_delete").first()
+
             val editPendingIntent =
-                MediaStore.createTrashRequest(
-                    contentResolver,
-                    uris,
-                    true
-                )
+                if (permanentlyDelete ?: false)
+                    MediaStore.createDeleteRequest(
+                        contentResolver,
+                        uris
+                    )
+                else
+                    MediaStore.createTrashRequest(
+                        contentResolver,
+                        uris,
+                        true // set IS_TRASHED to true
+                    )
 
             val activity: Activity = context as Activity
             // Launch a system prompt requesting user permission for the operation.

@@ -63,14 +63,15 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.haze.jetpack.compose) // For blurry bottom bar
     implementation(libs.androidx.exifinterface)
     implementation(libs.coil.compose) // For loading images
     implementation(libs.coil.gif) // For animated GIFs
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx) // for database
+    implementation(libs.koalaplot.core) // For plotting graphs for stats
+    implementation(libs.androidx.datastore.preferences)
     ksp(libs.androidx.room.compiler)
-
+    // TODO("Clean up unused libraries from android project template")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
