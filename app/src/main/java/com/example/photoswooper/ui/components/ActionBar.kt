@@ -59,7 +59,7 @@ fun ActionBar(
                     onClick = {
                         val undoResult = viewModel.undo()
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            if (undoResult == true)
+                            if (undoResult)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             else
                                 view.performHapticFeedback(HapticFeedbackConstants.REJECT)
@@ -121,7 +121,7 @@ fun ActionBar(
         modifier = Modifier
             .clickable(onClickLabel = "Click to change time frame") {
                 CoroutineScope(Dispatchers.Main).launch {
-                    viewModel.cycleStatsTimeFrame()
+                    viewModel.cycleStorageStatsTimeFrame()
                 }
             }
             .fillMaxWidth()
@@ -149,7 +149,7 @@ fun ActionBar(
             text = buildAnnotatedString {
                 append(" ")
                 pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
-                append(uiState.currentStatsTimeFrame.name.lowercase())
+                append(uiState.currentStorageStatsTimeFrame.name.lowercase())
                 pop()
                 append(": ${formatShortFileSize(LocalContext.current, uiState.spaceSavedInTimeFrame)}")
             },

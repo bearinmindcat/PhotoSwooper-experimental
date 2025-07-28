@@ -206,4 +206,8 @@ class ContentResolverInterface(
             }
         }
     }
+
+    fun getMediaType(uri: Uri): String? {
+        return contentResolver.getType(uri)
+    }
 }

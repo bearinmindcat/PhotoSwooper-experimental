@@ -30,6 +30,7 @@ import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.MainViewModel
 import com.example.photoswooper.ui.view.StatsViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
+import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,8 +60,19 @@ class MainActivity : AppCompatActivity() {
 
         val contentResolverInterface = ContentResolverInterface(mediaStatusDao, this)
         mainViewModel = MainViewModel(
-            context = this,
             contentResolverInterface = contentResolverInterface,
+            mediaStatusDao = mediaStatusDao,
+            dataStoreInterface = DataStoreInterface(this.dataStore),
+            makeToast = {
+                Toast.makeText(
+                    this,
+                    it,
+                    Toast.LENGTH_SHORT
+                    ).show()
+            },
+            startActivity = { this.startActivity(it) }
+        )
+        val statsViewModel = StatsViewModel(
             mediaStatusDao = mediaStatusDao
         )
 

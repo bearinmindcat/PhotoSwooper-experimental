@@ -19,6 +19,6 @@ data class MainUiState(
     val reviewDialogEnabled: Boolean = true, // Whether to show review dialog, or just delete photos
     val showInfo: Boolean = false,
 
-    val currentStatsTimeFrame: TimeFrame = TimeFrame.WEEK,
+    val currentStorageStatsTimeFrame: TimeFrame = TimeFrame.WEEK,
     val spaceSavedInTimeFrame: Long = 0
 )
