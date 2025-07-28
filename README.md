@@ -19,9 +19,10 @@ Well I made just the app: PhotoSwooper :D
 
 > Screenshots as of 2025-03-15
 
-<img src="img/infoDrawer.png" alt="Home screen" width="200"/>
-<img src="img/mainScreen.png" alt="Search screen" width="200"/>
-<img src="img/reviewDialog.png" alt="Library screen" width="200"/>
+<img src="img/info.png" alt="Home screen" width="200"/>
+<img src="img/statsScreen.png" alt="Library screen" width="200"/>
+<img src="img/settings.png" alt="Library screen" width="200"/>
+<img src="img/review.png" alt="Library screen" width="200"/>
 
 ## Issues
 
