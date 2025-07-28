@@ -371,6 +371,7 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             trailingContent = {
                 Switch(
                     checked = displayedPermanentlyDelete ?: false,
+                    enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
                     onCheckedChange = {
                         displayedPermanentlyDelete = it
                         CoroutineScope(Dispatchers.IO).launch {

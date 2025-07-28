@@ -3,6 +3,7 @@ package com.example.photoswooper
 import android.Manifest.permission.*
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
@@ -71,7 +72,12 @@ class MainActivity : AppCompatActivity() {
             }
             .build()
 
-        val contentResolverInterface = ContentResolverInterface(mediaStatusDao, this)
+        val contentResolverInterface = ContentResolverInterface(
+            dao = mediaStatusDao,
+            contentResolver = contentResolver,
+            dataStoreInterface = dataStoreInterface,
+            activity = this as Activity
+        )
         mainViewModel = MainViewModel(
             contentResolverInterface = contentResolverInterface,
             mediaStatusDao = mediaStatusDao,
@@ -153,6 +159,21 @@ class MainActivity : AppCompatActivity() {
         } else {
             CoroutineScope(Dispatchers.Main).launch { mainViewModel.getPhotos() }
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        when (requestCode) {
+            100 -> {
+                if (resultCode == RESULT_CANCELED) {
+                    CoroutineScope(Dispatchers.Main).launch {
+                        mainViewModel.onDeletePhotos(mainViewModel.getPhotosToDelete().map { it.uri })
+                    }
+                } else CoroutineScope(Dispatchers.Main).launch {
+                    mainViewModel.onDeletePhotos(listOf())
+                }
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 }
 

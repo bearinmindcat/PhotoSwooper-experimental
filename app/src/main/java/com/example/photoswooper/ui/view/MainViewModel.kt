@@ -1,6 +1,7 @@
 package com.example.photoswooper.ui.view
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.net.toUri
@@ -147,36 +148,62 @@ class MainViewModel(
         }
     }
 
-    suspend fun deletePhotos(photosToDelete: List<Photo> = getPhotosToDelete()) {
+    suspend fun deletePhotos() {
+        val photosToDelete = getPhotosToDelete()
         if(photosToDelete.isNotEmpty()) {
             CoroutineScope(Dispatchers.IO).launch {
-                contentResolverInterface.deletePhotos(photosToDelete.map { it.uri }) // Delete the photo in user's storage
+                contentResolverInterface.deletePhotos(
+                    photosToDelete.map { it.uri },
+                    onDelete = {
+                        CoroutineScope(Dispatchers.Main).launch { onDeletePhotos(photoUrisWithErrors = it) }
+                    }
+                ) // Delete the photo in user's storage
             }
 
-            /* Update database */
-            CoroutineScope(Dispatchers.IO).launch {
-                photosToDelete.forEach { photo ->
-                    mediaStatusDao.update(photo.getMediaStatusEntity())
-                }
-            }
 
+        }
+        /* If user cancels deletion of all photos */
+        else {
+            makeToast("No photos were deleted")
             dismissReviewDialog()
+        }
+    }
 
-            if (photosToDelete.isEmpty()) getPhotos() // TODO("Is this if statement needed?")
+    suspend fun onDeletePhotos(photoUrisWithErrors: List<Uri>) {
+        val photosMarkedAsDeleted = getPhotosToDelete()
+        if (photoUrisWithErrors.size < photosMarkedAsDeleted.size) { // If at least one photo was successfully deleted:
+            /* Update database */
+            photosMarkedAsDeleted.forEach { photo ->
+                if (photo.uri !in photoUrisWithErrors)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        mediaStatusDao.update(photo.getMediaStatusEntity())
+                    }
+            }
+            /* Update space saved in the current time frame */
+            _uiState.update { currentState ->
+                currentState.copy(
+                    spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
+                )
+            }
+            dismissReviewDialog()
+            makeToast("${photosMarkedAsDeleted.size - photoUrisWithErrors.size}/${photosMarkedAsDeleted.size} photos successfully deleted")
+            /* If the user doesn't cancel deletion for any of the photos, getPhotos(). Else, show those photos */
+            if (photosMarkedAsDeleted.isEmpty()) getPhotos()
             else _uiState.update { currentState ->
                 currentState.copy(
                     photos = currentState.photos.filter {
-                        !photosToDelete.contains(it)
+                        !photosMarkedAsDeleted.contains(it)
                     }.toMutableList(),
-                    currentPhotoIndex = currentState.currentPhotoIndex - photosToDelete.size,
+                    currentPhotoIndex = currentState.currentPhotoIndex - photosMarkedAsDeleted.size,
                     spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
                 )
             }
         }
         else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                makeToast("No photos were deleted")
-            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                makeToast("Deletion unsuccessful or cancelled")
+            else
+                makeToast("Deletion unsuccessful, please check permissions.")
         }
     }
 

@@ -58,7 +58,6 @@ fun ReviewDialog(
                         .padding(dimensionResource(R.dimen.padding_medium))
                 ) {
                     photosToDelete.forEach { photo ->
-                        var visible by remember { mutableStateOf(true) }
                         AnimatedVisibility(
                             visible = photo in photosToDelete,
                             enter = expandVertically(),
@@ -87,7 +86,6 @@ fun ReviewDialog(
                                         .clip(CircleShape)
                                         .clickable {
                                             onUnsetPhoto(photo)
-                                            visible = false
                                             if (photosToDelete.isEmpty()) {
                                                 onDismissRequest()
                                             }

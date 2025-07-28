@@ -1,8 +1,8 @@
 package com.example.photoswooper.utils
 
 import android.app.Activity
+import android.content.ContentResolver
 import android.content.ContentUris
-import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,7 +13,6 @@ import androidx.exifinterface.media.ExifInterface
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
-import com.example.photoswooper.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -23,10 +22,10 @@ import java.util.*
 
 class ContentResolverInterface(
     val dao: MediaStatusDao,
-    val context: Context
+    val contentResolver: ContentResolver,
+    val dataStoreInterface: DataStoreInterface, //
+    val activity: Activity // For delete/trash intent
 ) {
-    val contentResolver = context.contentResolver
-    val dataStoreInterface = DataStoreInterface(context.dataStore)
 
 
     @OptIn(ExperimentalStdlibApi::class) // For .toHexString()
@@ -171,7 +170,10 @@ class ContentResolverInterface(
         }
 }
 
-    suspend fun deletePhotos(uris: List<Uri>) {
+    suspend fun deletePhotos(
+        uris: List<Uri>,
+        onDelete: (List<Uri>) -> Unit
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val permanentlyDelete = dataStoreInterface.getBooleanSettingValue("permanently_delete").first()
 
@@ -188,22 +190,23 @@ class ContentResolverInterface(
                         true // set IS_TRASHED to true
                     )
 
-            val activity: Activity = context as Activity
             // Launch a system prompt requesting user permission for the operation.
             startIntentSenderForResult(activity, editPendingIntent.intentSender, 100, null, 0, 0, 0, Bundle.EMPTY)
-            // TODO("Check whether user actually deleted file before updating database")
+            // onDelete() is called in onActivityResult, defined in MainActivity.kt
         } else {
+            val urisWithErrors = mutableListOf<Uri>()
             uris.forEach { uri ->
-
                 val outputtedRows = contentResolver.delete(uri, null, null)
 
                 val path = uri.encodedPath
                 if (outputtedRows == 0) {
                     Log.e("deletePhotos", "Could not delete $path :(")
+                    urisWithErrors.add(uri)
                 } else {
                     Log.d("deletePhotos", "Deleted $path ^_^")
                 }
             }
+            onDelete(urisWithErrors)
         }
     }
 
