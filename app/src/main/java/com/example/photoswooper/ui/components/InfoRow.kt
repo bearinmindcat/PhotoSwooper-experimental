@@ -107,6 +107,11 @@ fun InfoRow(
                         )
                     }
                 )
+            }
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Info(
                     title = "Album",
                     icon = painterResource(R.drawable.books),
@@ -117,11 +122,6 @@ fun InfoRow(
                         )
                     }
                 )
-            }
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
                 Info(
                     title = "Resolution",
                     icon = painterResource(R.drawable.frame_corners),
