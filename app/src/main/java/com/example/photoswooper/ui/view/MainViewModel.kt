@@ -1,11 +1,9 @@
 package com.example.photoswooper.ui.view
 
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.util.Log
-import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.photoswooper.data.database.MediaStatusDao
@@ -14,7 +12,6 @@ import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.TimeFrame
-import com.example.photoswooper.dataStore
 import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
@@ -29,9 +26,10 @@ import java.util.*
 class MainViewModel(
     val contentResolverInterface: ContentResolverInterface,
     val mediaStatusDao: MediaStatusDao,
-    val context: Context
+    val startActivity: (Intent) -> Unit,
+    val dataStoreInterface: DataStoreInterface,
+    val makeToast: (String) -> Unit,
 ): ViewModel() {
-    private val dataStoreInterface = DataStoreInterface(context.dataStore)
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
 
@@ -60,12 +58,19 @@ class MainViewModel(
         )
         // Add the rest of the photos asynchronously (speedy)
         viewModelScope.launch {
-            contentResolverInterface.getPhotos(
-                onAddPhoto = {
-                    _uiState.value.photos.add(it)
-                },
-                numPhotos = (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first() ?: defaultPhotoLimit) - 2
-            )
+            run {
+                contentResolverInterface.getPhotos(
+                    onAddPhoto = {
+                        _uiState.value.photos.add(it)
+                    },
+                    numPhotos = (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
+                        ?: defaultPhotoLimit) - 2
+                )
+                if (uiState.value.photos.size <= (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
+                        ?: defaultPhotoLimit)
+                )
+                    makeToast("No more photos found, Last round!")
+            }
         }
 
         // Update UI state & prompt recomposition/update
@@ -137,11 +142,7 @@ class MainViewModel(
             return true
         }
         else {
-            Toast.makeText(
-                context,
-                "Nothing to undo!",
-                Toast.LENGTH_SHORT
-            ).show()
+            makeToast("Nothing to undo!")
             return false
         }
     }
@@ -174,11 +175,7 @@ class MainViewModel(
         }
         else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Toast.makeText(
-                    context,
-                    "No photos were deleted",
-                    Toast.LENGTH_SHORT
-                ).show()
+                makeToast("No photos were deleted")
             }
         }
     }
@@ -208,8 +205,8 @@ class MainViewModel(
 
     fun openLocationInMapsApp(photo: Photo?) {
         val uri: String? = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
-        context.startActivity(intent)
+        val intent = Intent(Intent.ACTION_VIEW, uri?.toUri())
+        startActivity(intent)
     }
 
     fun sharePhoto(photo: Photo? = _uiState.value.photos[uiState.value.currentPhotoIndex]) {
@@ -217,9 +214,9 @@ class MainViewModel(
             val shareIntent: Intent = Intent().apply {
                 action = Intent.ACTION_SEND
                 putExtra(Intent.EXTRA_STREAM, photo.uri)
-                type = context.contentResolver.getType(photo.uri)
+                type = contentResolverInterface.getMediaType(photo.uri)
             }
-            context.startActivity(Intent.createChooser(shareIntent, null))
+            startActivity(Intent.createChooser(shareIntent, null))
         }
     }
 
@@ -231,21 +228,21 @@ class MainViewModel(
         }
     }
 
-    suspend fun cycleStatsTimeFrame() {
-        val currentTimeFrame = _uiState.value.currentStatsTimeFrame
+    suspend fun cycleStorageStatsTimeFrame() {
+        val currentStorageTimeFrame = _uiState.value.currentStorageStatsTimeFrame
         val newTimeFrame =
-            if (currentTimeFrame != TimeFrame.entries.last())
-                TimeFrame.entries[currentTimeFrame.ordinal + 1]
+            if (currentStorageTimeFrame != TimeFrame.entries.last())
+                TimeFrame.entries[currentStorageTimeFrame.ordinal + 1]
             else
                 TimeFrame.entries.first()
         _uiState.update { currentState ->
             currentState.copy(
-                currentStatsTimeFrame =  newTimeFrame,
+                currentStorageStatsTimeFrame =  newTimeFrame,
                 spaceSavedInTimeFrame = getSpaceSavedInTimeFrame(newTimeFrame)
             )
         }
     }
-    suspend fun getSpaceSavedInTimeFrame(timeFrame: TimeFrame = _uiState.value.currentStatsTimeFrame): Long {
+    suspend fun getSpaceSavedInTimeFrame(timeFrame: TimeFrame = _uiState.value.currentStorageStatsTimeFrame): Long {
         val currentDate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Date().toInstant().toEpochMilli()
         } else {
