@@ -17,6 +17,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
@@ -25,14 +28,17 @@ import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.MainViewModel
+import com.example.photoswooper.ui.view.StatsViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
 class MainActivity : AppCompatActivity() {
     private lateinit var mediaStatusDao: MediaStatusDao
-    lateinit var mainViewModel: MainViewModel
+    private lateinit var mainViewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,8 +79,9 @@ class MainActivity : AppCompatActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen(
-                        viewModel = mainViewModel,
-                        imageLoader = imageLoader
+                        mainViewModel = mainViewModel,
+                        imageLoader = imageLoader,
+                        statsViewModel = statsViewModel
                     )
                 }
             }

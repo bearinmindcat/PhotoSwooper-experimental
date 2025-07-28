@@ -9,16 +9,19 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.photoswooper.data.database.MediaStatusDao
+import com.example.photoswooper.data.defaultPhotoLimit
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
-import com.example.photoswooper.data.photoLimit
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.TimeFrame
+import com.example.photoswooper.dataStore
 import com.example.photoswooper.utils.ContentResolverInterface
+import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.*
@@ -28,6 +31,7 @@ class MainViewModel(
     val mediaStatusDao: MediaStatusDao,
     val context: Context
 ): ViewModel() {
+    private val dataStoreInterface = DataStoreInterface(context.dataStore)
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
 
@@ -60,7 +64,7 @@ class MainViewModel(
                 onAddPhoto = {
                     _uiState.value.photos.add(it)
                 },
-                numPhotos = photoLimit - 2
+                numPhotos = (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first() ?: defaultPhotoLimit) - 2
             )
         }
 
@@ -68,7 +72,7 @@ class MainViewModel(
         _uiState.update { currentState ->
             currentState.copy(
                 currentPhotoIndex = 0,
-                numUnset = photoLimit,
+                numUnset = dataStoreInterface.getIntSettingValue("num_photos_per_stack").first() ?: defaultPhotoLimit
             )
         }
     }
@@ -113,7 +117,7 @@ class MainViewModel(
         }
     }
 
-    fun undo() {
+    fun undo(): Boolean {
         if(uiState.value.currentPhotoIndex > 0) { // First check if there is an action to undo
             // Decrement currentPhotoIndex
             _uiState.update { currentState ->
@@ -130,6 +134,7 @@ class MainViewModel(
                 val photo = _uiState.value.photos[uiState.value.currentPhotoIndex]
                 mediaStatusDao.update(photo.getMediaStatusEntity())
             }
+            return true
         }
         else {
             Toast.makeText(
@@ -137,6 +142,7 @@ class MainViewModel(
                 "Nothing to undo!",
                 Toast.LENGTH_SHORT
             ).show()
+            return false
         }
     }
 
@@ -247,6 +253,6 @@ class MainViewModel(
         }
         val firstDateInTimeFrame = currentDate - timeFrame.milliseconds
 
-        return mediaStatusDao.getSizeBetweenDates(firstDateInTimeFrame, currentDate)?.sum()?: 0
+        return mediaStatusDao.getDeletedBetweenDates(firstDateInTimeFrame, currentDate)?.sumOf { it.size } ?: 0
     }
 }

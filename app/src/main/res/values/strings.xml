@@ -4,4 +4,13 @@
     <string name="confirm">Confirm</string>
     <string name="cancel_delete">Cancel deletion</string>
     <string name="show_review_dialog_again">Don\'t show this screen again</string>
+    <string name="show_stats">Show statistics screen</string>
+    <string name="show_settings">Show settings screen</string>
+    <string name="statistics">Statistics</string>
+    <string name="settings">Settings</string>
+    <string name="num_photos_per_stack">Number of photos before reset</string>
+    <string name="permanently_delete">Permanently delete photos</string>
+    <string name="permanently_delete_desc">If disabled, your phone\'s trash will be used, typically deleting the photo
+        after 30 days
+    </string>
 </resources>
