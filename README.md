@@ -18,16 +18,17 @@ Well I made just the app: PhotoSwooper :D
 
 ## Features
 
-> Features last updated 2025-04-04
+> Features last updated 2025-07-28
 
 - [X] Undo button
 - [X] Info drawer
 - [X] Review photos to be deleted
-- [ ] Statistics page ([WIP](https://codeberg.org/Loowiz/PhotoSwooper/pulls/18))
+- [X] Statistics page
+- [x] Settings page
 
 ## Screenshots
 
-> Screenshots as of 2025-03-15
+> Screenshots as of 2025-07-28
 
 <img src="img/info.png" alt="Home screen" width="200"/>
 <img src="img/statsScreen.png" alt="Library screen" width="200"/>
