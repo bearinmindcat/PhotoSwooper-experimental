@@ -183,13 +183,10 @@ fun MainScreen(
                             Text("Fetch more photos")
                         }
                 }
-                Column(
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Box(
+                    contentAlignment = Alignment.BottomCenter,
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
                         .fillMaxSize()
-                        .padding(dimensionResource(R.dimen.padding_medium))
                 ) {
 
                     AnimatedVisibility(
@@ -201,11 +198,11 @@ fun MainScreen(
                             mainViewModel,
                             currentPhoto,
                             Modifier
-                                .padding(horizontal = dimensionResource(R.dimen.padding_medium))
                                 .background(
                                     MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
                                     MaterialTheme.shapes.medium
                                 )
+                                .widthIn(max = 380.dp)
                         )
                     }
                 }
@@ -223,6 +220,6 @@ fun MainScreen(
                 statsViewModel = statsViewModel
             )
         },
-        sheetPeekHeight = 144.dp
+        sheetPeekHeight = 156.dp
     )
 }
