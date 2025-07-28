@@ -33,6 +33,7 @@ import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -46,6 +47,18 @@ class MainActivity : AppCompatActivity() {
 
         val database = MediaStatusDatabase.getDatabase(applicationContext)
         mediaStatusDao = database.mediaStatusDao()
+
+        val dataStoreInterface = DataStoreInterface(dataStore)
+        /* If unset, set permanently delete photos preference depending on availability of feature */
+        CoroutineScope(Dispatchers.IO).launch {
+            val permanentlyDeletePref = dataStoreInterface.getBooleanSettingValue("permanently_delete").first()
+            if (permanentlyDeletePref == null)
+                dataStoreInterface.setBooleanSettingValue(
+                    setting = "permanently_delete",
+                    newValue = if (SDK_INT >= Build.VERSION_CODES.R) false
+                            else true
+                )
+        }
 
         /* Custom image loader for animated GIFs */
         val imageLoader = ImageLoader.Builder(this)
@@ -62,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         mainViewModel = MainViewModel(
             contentResolverInterface = contentResolverInterface,
             mediaStatusDao = mediaStatusDao,
-            dataStoreInterface = DataStoreInterface(this.dataStore),
+            dataStoreInterface = dataStoreInterface,
             makeToast = {
                 Toast.makeText(
                     this,
