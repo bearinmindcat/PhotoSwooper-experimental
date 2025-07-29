@@ -36,10 +36,9 @@ class StatsViewModel(
         return when (currentTimeFrame) {
             TimeFrame.DAY -> (0..23).map {
                 if (it.mod(3) == 0) it.toString()
-                else ""
+                else " ".repeat(it) // Repeat to make graph think each one is a different category
             } // Original is 1..24
             TimeFrame.WEEK -> daysOfTheWeek
-//            TimeFrame.MONTH -> (1..getLengthOfMonth()).map { it.toString() }
             else -> monthsOfTheYear
         }
     }
