@@ -28,12 +28,17 @@ data class Photo (
     var status: PhotoStatus
 ) {
     fun getFormattedDate(): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return LocalDateTime.ofInstant(Instant.ofEpochMilli(dateTaken?: 0), ZoneId.systemDefault()).toString().substringBefore("T")
+        if (dateTaken != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                return LocalDateTime.ofInstant(Instant.ofEpochMilli(dateTaken), ZoneId.systemDefault()).toString()
+                    .substringBefore("T")
+            } else {
+                // TODO("Format date for Android version < O")
+                return ""
+            }
         }
         else {
-            // TODO("Format date for Android version < O")
-            return "1970-01-20"
+            return ""
         }
     }
 

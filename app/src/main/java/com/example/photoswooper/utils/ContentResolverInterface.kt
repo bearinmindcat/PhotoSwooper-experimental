@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 import java.security.MessageDigest
 import java.util.*
 
@@ -45,12 +46,12 @@ class ContentResolverInterface(
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DATE_TAKEN,
-            MediaStore.Images.Media.DATE_ADDED,
             MediaStore.Images.Media.SIZE,
             MediaStore.Images.Media.ALBUM,
             MediaStore.Images.Media.DESCRIPTION,
             MediaStore.Images.Media.DISPLAY_NAME,
             MediaStore.Images.Media.RESOLUTION,
+            MediaStore.Images.Media.DATA,
         ) // The columns (metadata types) we want to retrieve from the MediaStore
 
         Log.i("MediaStore", "Querying MediaStore database")
@@ -64,19 +65,18 @@ class ContentResolverInterface(
 
             val idColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val dateTakenColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
-            val dateAddedColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
             val sizeColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
             val albumColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.ALBUM)
             val descriptionColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DESCRIPTION)
             val displayNameColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
             val resolutionColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RESOLUTION)
+            val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
 
             /* add these values to the list of tracks */
             Log.d("MediaStore", "Iterating over database output")
             while (cursor.moveToNext()) { // While there is another audio file to iterate over, iterate over to the next one and:
                 val fetchedId = cursor.getLong(idColumnIndex)
                 val fetchedDateTaken = cursor.getLong(dateTakenColumnIndex)
-                val fetchedDateAdded = cursor.getLong(dateAddedColumnIndex)
                 val fetchedSize = cursor.getLong(sizeColumnIndex)
                 val fetchedAlbum = cursor.getString(albumColumnIndex)
                 val fetchedDescription = cursor.getString(descriptionColumnIndex)
@@ -86,6 +86,8 @@ class ContentResolverInterface(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     fetchedId
                 )
+                val fetchedAbsoluteFilePath = cursor.getString(absoluteFilePathColumnIndex)
+
                 val file = contentResolver.openInputStream(fetchedUri)
                 val fileHash = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
@@ -101,35 +103,43 @@ class ContentResolverInterface(
 
                     /* Define function to add photo to photos list & database (for later use) */
                     fun addPhoto() {
+                        /* Decide which date to use */
+                        val lastModified = File(fetchedAbsoluteFilePath).lastModified()
                         val date =
                             if (fetchedDateTaken > 0)
                                 fetchedDateTaken
-                            else if (fetchedDateAdded > 0)// if date taken is not found, use date added
-                                fetchedDateAdded
+                            else if (lastModified > 0)// if date taken is not found, use date added
+                                lastModified
                             else null
 
-                        var latLong: DoubleArray = doubleArrayOf(0.0, 0.0)
+                        /* Find location of photo using EXIF */
+                        var latLong: DoubleArray? = doubleArrayOf(0.0, 0.0)
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            val exifInterface = ExifInterface(file)
-                            @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+                            val exifInterface = ExifInterface(fetchedAbsoluteFilePath)
                             latLong = exifInterface.latLong // Location the photo was taken at
                             file?.close()
                         } else {
                             // TODO("Find location of photo for Android < Q")
                         }
+
+                        /* Decide album to use */
+                        val album =
+                            fetchedAlbum ?: fetchedAbsoluteFilePath.substringBeforeLast("/").substringAfterLast("/")
+
                         val photoToAdd = Photo(
                             id = fetchedId,
                             uri = fetchedUri,
                             dateTaken = date,
                             size = fetchedSize,
                             location = latLong,
-                            album = fetchedAlbum,
+                            album = album,
                             description = fetchedDescription,
                             title = fetchedDisplayName,
                             resolution = fetchedResolution,
                             status = PhotoStatus.UNSET,
                             fileHash = fileHash
                         )
+
                         numPhotosAdded += 1
                         onAddPhoto(photoToAdd)
                         Log.d("MediaStore", "Added photo with id $fetchedId")
