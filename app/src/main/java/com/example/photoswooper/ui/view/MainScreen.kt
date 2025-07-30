@@ -9,10 +9,27 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -25,7 +42,11 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.checkPermissionsAndGetPhotos
 import com.example.photoswooper.data.models.PhotoStatus
-import com.example.photoswooper.ui.components.*
+import com.example.photoswooper.ui.components.ActionBar
+import com.example.photoswooper.ui.components.InfoRow
+import com.example.photoswooper.ui.components.ReviewDeletedButton
+import com.example.photoswooper.ui.components.ReviewDialog
+import com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -217,7 +238,8 @@ fun MainScreen(
             )
             TabbedPreferencesAndStatsPage(
                 modifier = Modifier,
-                statsViewModel = statsViewModel
+                statsViewModel = statsViewModel,
+                numPhotosUnset = uiState.numUnset
             )
         },
         sheetPeekHeight = 156.dp

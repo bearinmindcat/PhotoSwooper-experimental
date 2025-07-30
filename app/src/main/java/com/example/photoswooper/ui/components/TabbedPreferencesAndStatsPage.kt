@@ -48,11 +48,19 @@ private enum class TabIndex {
 @Composable
 fun TabbedPreferencesAndStatsPage(
     statsViewModel: StatsViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    numPhotosUnset: Int
 ) {
     val uiState by statsViewModel.uiState.collectAsState()
 
+    /* Update the stats when the time frame or date to fetch changes */
     LaunchedEffect(uiState.timeFrame, uiState.dateToFetchFromMillis) {
+        statsViewModel.updateStatsData()
+    }
+
+    /* Update the stats after 1.5 seconds of no swipes (roughly the time it takes to open stats page) */
+    LaunchedEffect(numPhotosUnset) {
+        delay(1500) // Only update every 10 seconds
         statsViewModel.updateStatsData()
     }
 
@@ -95,7 +103,7 @@ fun TabbedPreferencesAndStatsPage(
         when (tabIndex) {
             TabIndex.STATS.ordinal -> {
                 if (uiState.latestData.isNotEmpty()) // If there is data to plot
-                    StatsCard(uiState.latestData, statsViewModel, uiState)
+                    StatsCard(statsViewModel, uiState)
             }
 
             TabIndex.SETTINGS.ordinal -> {
@@ -107,10 +115,11 @@ fun TabbedPreferencesAndStatsPage(
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-private fun StatsCard(data: Map<Int, Int>, viewModel: StatsViewModel, uiState: StatsUiState) {
+private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
     val context = LocalContext.current
     val view = LocalView.current
     val currentTimeFrame = uiState.timeFrame
+    val data = uiState.latestData
 
     val maxYValue =
         if (data.values.max() != 0)

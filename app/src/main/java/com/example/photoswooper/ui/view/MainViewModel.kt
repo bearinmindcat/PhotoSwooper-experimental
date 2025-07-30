@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.*
+import java.util.Date
 
 class MainViewModel(
     val contentResolverInterface: ContentResolverInterface,
@@ -188,7 +188,8 @@ class MainViewModel(
             dismissReviewDialog()
             makeToast("${photosMarkedAsDeleted.size - photoUrisWithErrors.size}/${photosMarkedAsDeleted.size} photos successfully deleted")
             /* If the user doesn't cancel deletion for any of the photos, getPhotos(). Else, show those photos */
-            if (photosMarkedAsDeleted.isEmpty()) getPhotos()
+            if (photosMarkedAsDeleted.isEmpty())
+                CoroutineScope(Dispatchers.IO).launch { getPhotos() } // FIXME("Check permissions before getting photos (cannot use checkPermissionsAndGetPhotos() as no access to context)")
             else _uiState.update { currentState ->
                 currentState.copy(
                     photos = currentState.photos.filter {
