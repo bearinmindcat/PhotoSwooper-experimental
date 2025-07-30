@@ -6,7 +6,7 @@ import com.example.photoswooper.data.database.MediaStatus
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.*
+import java.util.Date
 
 enum class PhotoStatus() {
     UNSET,

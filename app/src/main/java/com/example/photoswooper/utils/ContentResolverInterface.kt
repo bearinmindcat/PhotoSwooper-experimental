@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import java.security.MessageDigest
-import java.util.*
+import java.util.Date
 
 class ContentResolverInterface(
     val dao: MediaStatusDao,
