@@ -113,13 +113,17 @@ class ContentResolverInterface(
                             else null
 
                         /* Find location of photo using EXIF */
-                        var latLong: DoubleArray? = doubleArrayOf(0.0, 0.0)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            val exifInterface = ExifInterface(fetchedAbsoluteFilePath)
-                            latLong = exifInterface.latLong // Location the photo was taken at
-                            file?.close()
-                        } else {
-                            // TODO("Find location of photo for Android < Q")
+                        var latLong: DoubleArray? = null
+                        val fileInputStream2 = contentResolver.openInputStream(fetchedUri)
+                        if (fileInputStream2 != null){
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                val exifInterface = ExifInterface(fileInputStream2)
+                                latLong = exifInterface.latLong // Location the photo was taken at
+                                fileInputStream2.close()
+                            } else {
+                                // TODO("Find location of photo for Android < Q")
+                                fileInputStream2.close()
+                            }
                         }
 
                         /* Decide album to use */

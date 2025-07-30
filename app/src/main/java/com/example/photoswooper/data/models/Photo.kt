@@ -42,6 +42,8 @@ data class Photo (
         }
     }
 
+    fun getFormattedLocation() = location?.joinToString(", ") { it.toString().substring(0, 8) } ?: ""
+
     fun getMediaStatusEntity(): MediaStatus {
         var currentDate: Long = 0
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)

@@ -103,7 +103,7 @@ fun InfoRow(
                     icon = painterResource(R.drawable.map),
                     value = {
                         Text(
-                            currentPhoto?.location?.toString() ?: "",
+                            currentPhoto?.getFormattedLocation()?: "",
                             style = bodyMediumWithShadow,
                             textDecoration = TextDecoration.Underline,
                             color = MaterialTheme.colorScheme.primary,

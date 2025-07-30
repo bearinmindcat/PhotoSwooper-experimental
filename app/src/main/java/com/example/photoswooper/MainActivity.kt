@@ -1,5 +1,6 @@
 package com.example.photoswooper
 
+import android.Manifest.permission.ACCESS_MEDIA_LOCATION
 import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.READ_MEDIA_IMAGES
 import android.Manifest.permission.READ_MEDIA_VIDEO
@@ -184,7 +185,7 @@ fun checkPermissionsAndGetPhotos(
     context: Context,
     onPermissionsGranted: suspend () -> Unit
 ) {
-    var permissionsToRequest = mutableListOf<String>()
+    val permissionsToRequest = mutableListOf<String>()
     /* Permissions to check depending on the android version */
     val readPermissions =
         if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -208,6 +209,10 @@ fun checkPermissionsAndGetPhotos(
 //        if (ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
 //            permissionsToRequest.add(WRITE_EXTERNAL_STORAGE)
     // TODO: might need to request legacy write perms for older devices?
+
+    if (SDK_INT >= Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(context, ACCESS_MEDIA_LOCATION) != PERMISSION_GRANTED) {
+        permissionsToRequest.add(ACCESS_MEDIA_LOCATION)
+    }
 
     if (permissionsToRequest.isNotEmpty())
         ActivityCompat.requestPermissions(
