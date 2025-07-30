@@ -5,12 +5,37 @@ import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,13 +54,18 @@ import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.view.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import io.github.koalaplot.core.ChartLayout
-import io.github.koalaplot.core.bar.*
+import io.github.koalaplot.core.bar.DefaultVerticalBar
+import io.github.koalaplot.core.bar.DefaultVerticalBarPlotEntry
+import io.github.koalaplot.core.bar.DefaultVerticalBarPosition
+import io.github.koalaplot.core.bar.VerticalBarPlot
+import io.github.koalaplot.core.bar.VerticalBarPlotEntry
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
-import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
+import io.github.koalaplot.core.xygraph.IntLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -122,13 +152,16 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
     val data = uiState.latestData
 
     val maxYValue =
-        if (data.values.max() != 0)
-            data.values.max().toFloat().times(1.15f)
+        if (data.max() != 0)
+            data.max().times(1.15f).roundToInt()
         else
-            30f // Default max value if all other values are zero
+            30 // Default max value if all other values are zero
 
 
-    Column(verticalArrangement = Arrangement.SpaceEvenly) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
+    ) {
         RowOfFilterChips(
             chipsText = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() },
             current = currentTimeFrame.toString().lowercase(),
@@ -143,19 +176,19 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                 .weight(0.8f),
         ) {
             Log.v("UI", "Loading chart")
-            val YAxisRange = 0f..maxYValue
+            val YAxisRange = 0..maxYValue
             val XAxisRange = viewModel.getXAxisRange()
             val xAxisValues = viewModel.getNamedXAxisValues()?: XAxisRange.map { it.toString() }.toList()
-            fun barChartEntries(): List<VerticalBarPlotEntry<String, Float>> {
+            fun barChartEntries(): List<VerticalBarPlotEntry<String, Int>> {
                 Log.v("Stats", "Building bar chart entries")
                 return buildList {
                     for (index in XAxisRange) {
                         add(
                             DefaultVerticalBarPlotEntry(
-                                xAxisValues[index - 1],
-                                if (uiState.latestData.size == viewModel.getXAxisRange().last) // If the data has been updated to the new time frame
-                                    DefaultVerticalBarPosition(0f, data.getValue(index).toFloat())
-                                else DefaultVerticalBarPosition(0f, 0f)
+                                xAxisValues[index],
+                                if (uiState.latestData.size == viewModel.getXAxisRange().last + 1) // If the data has been updated to the new time frame
+                                    DefaultVerticalBarPosition(0, data[index])
+                                else DefaultVerticalBarPosition(0, 0)
                             )
                         )
                     }
@@ -164,7 +197,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
 
             XYGraph(
                 xAxisModel = CategoryAxisModel(xAxisValues),
-                yAxisModel = FloatLinearAxisModel(
+                yAxisModel = IntLinearAxisModel(
                     YAxisRange,
                 ),
             ) {

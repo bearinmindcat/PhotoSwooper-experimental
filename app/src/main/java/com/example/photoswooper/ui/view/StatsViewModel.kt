@@ -15,8 +15,10 @@ import java.time.ZoneId
 import java.util.Calendar
 import kotlin.math.roundToLong
 
+/**
+ * The viewModel used by the StatsCard function in [com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage]
+ */
 class StatsViewModel(
-//    val contentResolverInterface: ContentResolverInterface,
     val mediaStatusDao: MediaStatusDao,
 ): ViewModel() {
     private val _uiState = MutableStateFlow(StatsUiState())
@@ -27,10 +29,9 @@ class StatsViewModel(
 
     fun getXAxisRange(): IntRange {
         return when (uiState.value.timeFrame) {
-            TimeFrame.DAY -> (1..24)
-            TimeFrame.WEEK -> 1..7
-//            TimeFrame.MONTH -> 1..getLengthOfMonth()
-            else -> 1..12 // TimeFrame.YEAR
+            TimeFrame.DAY -> (0..23)
+            TimeFrame.WEEK -> 0..6
+            else -> 0..11 // TimeFrame.YEAR
         }
     }
 
@@ -46,122 +47,92 @@ class StatsViewModel(
         }
     }
 
+    /**
+     * Updates the [uiState] with the latest statistics data
+     */
     suspend fun updateStatsData() { // TODO("Add options for number of: swipes, deletes OR size deleted")
-        Log.d("Stats", "Updating stats data")
+        Log.i("Stats", "Updating stats data")
 
         val currentTimeFrame = uiState.value.timeFrame
+        /** milliseconds to increment by to get next set of data */
         val intervalMilliseconds: Long
-        val calendarAtZero: Calendar // Java Calendar class at e.g. 0:00 for the day, or 1st day of month
-        val finalTimeMillis: Long // epoch milliseconds of the final time group to get data for
-        var currentXValue: Int // e.g. day of the month, month of the year. This is decremented to find data for each hour/day/month
-        val calendar = Calendar.getInstance()
-
-        /* This function returns a Java calendar class at e.g. 0:00 for the day, or 1st day of month, depending on the arguement */
-        fun getCalendarAtZero(finalZeroedJavaTime: Int): Calendar {
-            val tempCalendar = Calendar.getInstance()
-            tempCalendar.timeInMillis = uiState.value.dateToFetchFromMillis
 
 
-            val selectedJavaTimeFrames = listOf( // These time frames, when all minimised (zeroed), is exactly 00:00 on the first day of the year
-                Calendar.DAY_OF_YEAR, // This is used to find the final day to fetch data for when the selected time frame is week
-                Calendar.DAY_OF_MONTH,
-                Calendar.DAY_OF_WEEK, // This is used to find the final day to fetch data for when the selected time frame is week
-                Calendar.HOUR_OF_DAY,
-                Calendar.MINUTE,
-                Calendar.SECOND,
-                Calendar.MILLISECOND
-            )
-            val finalZeroedJavaTimeIndex = selectedJavaTimeFrames.indexOf(finalZeroedJavaTime)
-
-            var timeFrameIndex = selectedJavaTimeFrames.lastIndex
-            var currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
-            while (finalZeroedJavaTimeIndex <= timeFrameIndex) {
-                currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
-                tempCalendar.set(
-                    currentJavaTimeFrame,
-                    tempCalendar.getMinimum(currentJavaTimeFrame)
-                )
-                timeFrameIndex --
-            }
-            return tempCalendar
-        }
+        /** Calendar field to zero & max e.g. Calendar.HOUR_OF_DAY to get the start & end of each day for the week timeframe */
+        val fieldToZeroAndMaxOnIteration: Int
+        /** Calendar field to zero & max to find the start & end of the current time frame */
+        val fieldToZeroAndMaxForTimeFrame: Int
+        /** The current x-axis value for the data being fetched e.g. when fetching data for 2am, currentXValue would be 2.*/
+        var currentXValue: Int
 
         /* Obtain  values required to fetch data */
         when (currentTimeFrame) {
             TimeFrame.DAY -> {
                 intervalMilliseconds = 3600000 // Number of milliseconds in an hour
-
-                calendarAtZero = getCalendarAtZero(Calendar.MINUTE)
-
-                finalTimeMillis = getCalendarAtZero(Calendar.HOUR_OF_DAY).timeInMillis
-
-                currentXValue = calendar.get(Calendar.HOUR_OF_DAY) + 1
+                fieldToZeroAndMaxOnIteration = Calendar.MINUTE
+                fieldToZeroAndMaxForTimeFrame = Calendar.HOUR_OF_DAY
+                currentXValue = 0 // First hour of day
             }
 
             TimeFrame.WEEK -> {
                 intervalMilliseconds = TimeFrame.DAY.milliseconds
-
-                calendarAtZero = getCalendarAtZero(Calendar.HOUR_OF_DAY)
-
-                finalTimeMillis = getCalendarAtZero(Calendar.DAY_OF_WEEK).timeInMillis
-
-                currentXValue = calendar.get(Calendar.DAY_OF_WEEK)
+                fieldToZeroAndMaxOnIteration = Calendar.HOUR_OF_DAY
+                fieldToZeroAndMaxForTimeFrame = Calendar.DAY_OF_WEEK
+                currentXValue = 1 // First day of week
             }
 
             else -> { // TimeFrame.YEAR ->
                 intervalMilliseconds = TimeFrame.MONTH.milliseconds
-
-                calendarAtZero = getCalendarAtZero(Calendar.DAY_OF_MONTH)
-
-                finalTimeMillis = getCalendarAtZero(Calendar.DAY_OF_YEAR).timeInMillis
-
-                currentXValue = calendar.get(Calendar.MONTH) + 1
+                fieldToZeroAndMaxOnIteration = Calendar.DAY_OF_MONTH
+                fieldToZeroAndMaxForTimeFrame = Calendar.DAY_OF_YEAR
+                currentXValue = 0 // First month of year (classed as 0)
             }
         }
-        Log.v("Stats", "Time at zero: ${calendarAtZero.time}")
 
         /* Fetch & return data */
 
-        suspend fun getSwipesFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Int =
-            mediaStatusDao.getSwipedMediaBetweenDates(
-                firstDateMillis,
-                secondDateMillis,
-            )?.size ?: 0
+        suspend fun getNumberOfSwipesFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Int =
+            mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis,)?.size ?: 0
 
-        val statsData = mutableMapOf<Int, Int>()
-        val numGroups = getXAxisRange().last
+        val statsData = mutableListOf<Int>() // Initialise
 
-        for (dateIndex in 1..numGroups) {
-            statsData.put(
-                dateIndex,
-                0
+        var firstDateMillis = getCalendarAtZero(
+            finalZeroedJavaTime = fieldToZeroAndMaxForTimeFrame,
+            dateMillisToZero = uiState.value.dateToFetchFromMillis
+        ).timeInMillis
+        var secondDateMillis = getCalendarAtZero(
+            finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
+            dateMillisToZero = firstDateMillis + intervalMilliseconds.times(1.5f).roundToLong() // zeroed time of next date = max time of this date
+        ).timeInMillis
+        val finalTimeInMillis = getCalendarAtZero(
+            finalZeroedJavaTime = fieldToZeroAndMaxForTimeFrame,
+            dateMillisToZero = uiState.value.dateToFetchFromMillis + currentTimeFrame.milliseconds // zeroed time of next date = max time of this date
+        ).timeInMillis
+
+        Log.d("Stats", "firstDate = ${getFormattedDateFromEpoch(firstDateMillis, true)}," +
+                " finalTime = ${getFormattedDateFromEpoch(finalTimeInMillis, true)}")
+        while (secondDateMillis <= finalTimeInMillis) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                Log.v("Stats", "getting data for ${getFormattedDateFromEpoch(firstDateMillis, true)}" +
+                        " to ${getFormattedDateFromEpoch(secondDateMillis, true)}")
+            statsData.add(
+                getNumberOfSwipesFromDatabase(firstDateMillis, secondDateMillis)
             )
-        }
-        Log.v("Stats", "data = ${statsData}")
 
-        Log.v("Stats", "setting data for time = $currentXValue")
-        statsData.set(
-            currentXValue,
-            getSwipesFromDatabase(calendarAtZero.timeInMillis, uiState.value.dateToFetchFromMillis)
-        )
-        currentXValue --
-        var firstDateMillis = calendarAtZero.timeInMillis - intervalMilliseconds
-        var secondDateMillis = calendarAtZero.timeInMillis
+            /* Increment values */
+            currentXValue ++
 
-        Log.v("Stats", "firstDateMillis = $firstDateMillis, finalTimeMillis = $finalTimeMillis")
-        while (firstDateMillis >= finalTimeMillis) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                Log.v("Stats", "getting data for ${Instant.ofEpochSecond(firstDateMillis)} to ${Instant.ofEpochSecond(secondDateMillis)}")
-            }
-            statsData.set(
-                currentXValue,
-                getSwipesFromDatabase(firstDateMillis, secondDateMillis)
-            )
-            currentXValue --
-            firstDateMillis -= intervalMilliseconds
-            secondDateMillis -= intervalMilliseconds
+            firstDateMillis = getCalendarAtZero( // Must be zeroed each time as months have varying numbers of days/milliseconds.
+                dateMillisToZero = firstDateMillis + intervalMilliseconds.times(1.5f).roundToLong(),
+                finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
+            ).timeInMillis
+
+            secondDateMillis = getCalendarAtZero( // Must be zeroed each time as months have varying numbers of days/milliseconds.
+                dateMillisToZero = secondDateMillis + intervalMilliseconds.times(1.5f).roundToLong(),
+                finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
+            ).timeInMillis
         }
-        Log.v("Stats", "final stats data = ${statsData}")
+        Log.i("Stats", "final stats data = ${statsData}")
         _uiState.update { currentState ->
             currentState.copy(
                 latestData = statsData
@@ -207,42 +178,52 @@ class StatsViewModel(
                 timeFrame = newTimeFrame
             )
         }
-        resetDate()
     }
 
-    /* Move date to fetch stats data to one day/week/year in the past (amount depends on current time frame) */
+    /** Changes date to fetch data from to one day/week/year in the past (amount depends on current time frame),
+     * prompting stats update */
     fun previousDate() {
         _uiState.update { currentState ->
             val newDateToFetchFromMillis = currentState.dateToFetchFromMillis - currentState.timeFrame.milliseconds
             currentState.copy(
-                dateToFetchFromMillis = newDateToFetchFromMillis,
-                currentDateShown = Calendar.getInstance().timeInMillis.floorDiv(10000)
-                        == newDateToFetchFromMillis.floorDiv(10000) // currentTime ≈ newTime
+                dateToFetchFromMillis = newDateToFetchFromMillis
             )
         }
+        checkCurrentDateShown()
     }
 
-    /* Move date to fetch stats data to one day/week/year in the future (amount depends on current time frame) */
+    /** Changes date to fetch data from to one day/week/year in the future (amount depends on current time frame),
+     * prompting stats update */
     fun nextDate(): Boolean {
         val newDateToFetchFromMillis = uiState.value.dateToFetchFromMillis + uiState.value.timeFrame.milliseconds
         if (newDateToFetchFromMillis < Calendar.getInstance().timeInMillis) { // If the new date is not in the future
             _uiState.update { currentState ->
                 currentState.copy(
-                    dateToFetchFromMillis = newDateToFetchFromMillis,
-                    currentDateShown = Calendar.getInstance().timeInMillis.floorDiv(10000)
-                            == newDateToFetchFromMillis.floorDiv(10000) // currentTime ≈ newTime
+                    dateToFetchFromMillis = newDateToFetchFromMillis
                 )
             }
+            checkCurrentDateShown()
             return true
         }
         else return false
     }
     /* Move date to fetch stats data to the current date */
+    /** Changes date to fetch data from to current date,
+     * prompting stats update */
     fun resetDate() {
         _uiState.update { currentState ->
             currentState.copy(
                 dateToFetchFromMillis = Calendar.getInstance().timeInMillis,
                 currentDateShown = true
+            )
+        }
+    }
+
+    private fun checkCurrentDateShown() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                currentDateShown = Calendar.getInstance().timeInMillis.floorDiv(86000000)
+                        == currentState.dateToFetchFromMillis.floorDiv(86000000) // currentTime ≈ newTime
             )
         }
     }
@@ -305,6 +286,21 @@ class StatsViewModel(
                     return ""
                 }
             }
+        }
+    }
+
+    private fun getFormattedDateFromEpoch(epochMillis: Long, includeTime: Boolean = false): String {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val time = LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(epochMillis),
+                ZoneId.systemDefault()
+            )
+            return if (includeTime) time.toString()
+                else time.toString()
+                .substringBefore("T")
+        } else {
+            // TODO("Format date for Android version < O")
+            return ""
         }
     }
 
