@@ -189,12 +189,15 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                 )
             }
         }
+        Text(
+            text = viewModel.getDateTitle(),
+            style = MaterialTheme.typography.labelLarge,
+        )
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .weight(0.2f)
-                .padding(dimensionResource(R.dimen.padding_small))
                 .fillMaxWidth()
         ) {
             /* Previous date button */

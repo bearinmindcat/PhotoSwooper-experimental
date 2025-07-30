@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.time.Instant
-import java.util.*
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.util.Calendar
+import kotlin.math.roundToLong
 
 class StatsViewModel(
 //    val contentResolverInterface: ContentResolverInterface,
@@ -166,6 +169,38 @@ class StatsViewModel(
         }
     }
 
+    /** Returns a Java calendar class at e.g. 0:00 for the day, or 1st day of month, depending on the arguement */
+    fun getCalendarAtZero(
+        finalZeroedJavaTime: Int,
+        dateMillisToZero: Long = uiState.value.dateToFetchFromMillis,
+    ): Calendar {
+        val calendarToZero = Calendar.getInstance()
+        calendarToZero.timeInMillis = dateMillisToZero
+
+        val selectedJavaTimeFrames = listOf( // These time frames, when all minimised (zeroed), is exactly 00:00 on the first day of the year
+            Calendar.DAY_OF_YEAR, // This is used to find the final day to fetch data for when the selected time frame is week
+            Calendar.DAY_OF_MONTH,
+            Calendar.DAY_OF_WEEK, // This is used to find the final day to fetch data for when the selected time frame is week
+            Calendar.HOUR_OF_DAY,
+            Calendar.MINUTE,
+            Calendar.SECOND,
+            Calendar.MILLISECOND
+        )
+        val finalZeroedJavaTimeIndex = selectedJavaTimeFrames.indexOf(finalZeroedJavaTime)
+
+        var timeFrameIndex = selectedJavaTimeFrames.lastIndex
+        var currentJavaTimeFrame: Int
+        while (finalZeroedJavaTimeIndex <= timeFrameIndex) {
+            currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
+            calendarToZero.set(
+                currentJavaTimeFrame,
+                calendarToZero.getMinimum(currentJavaTimeFrame)
+            )
+            timeFrameIndex --
+        }
+        return calendarToZero
+    }
+
     fun updateTimeFrame(newTimeFrame: TimeFrame) {
         _uiState.update { currentState ->
             currentState.copy(
@@ -209,6 +244,67 @@ class StatsViewModel(
                 dateToFetchFromMillis = Calendar.getInstance().timeInMillis,
                 currentDateShown = true
             )
+        }
+    }
+
+    /** Returns a human-readable string indicating the date that statistics are showing */
+    fun getDateTitle(): String {
+        val dateToFetchFromMillis = uiState.value.dateToFetchFromMillis
+        val currentTimeFrame = uiState.value.timeFrame
+        when (currentTimeFrame) {
+            TimeFrame.DAY -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val date =
+                        LocalDateTime.ofInstant(
+                            Instant.ofEpochMilli(dateToFetchFromMillis),
+                            ZoneId.systemDefault()
+                        )
+                    return "${date.dayOfMonth} ${monthsOfTheYear[date.monthValue - 1]} ${date.year}"
+                } else {
+                    // TODO("Format date for Android version < O")
+                    return ""
+                }
+            }
+            TimeFrame.WEEK -> {
+                val startOfWeekMillis = getCalendarAtZero(Calendar.DAY_OF_WEEK).timeInMillis
+                val endOfWeekMillis = getCalendarAtZero(
+                    Calendar.DAY_OF_WEEK,
+                    dateMillisToZero = dateToFetchFromMillis + currentTimeFrame.milliseconds
+                ).timeInMillis - TimeFrame.DAY.milliseconds
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val startOfWeekDate =
+                        LocalDateTime.ofInstant(
+                            Instant.ofEpochMilli(startOfWeekMillis),
+                            ZoneId.systemDefault()
+                        )
+                    val endOfWeekDate =  LocalDateTime.ofInstant(
+                        Instant.ofEpochMilli(endOfWeekMillis),
+                        ZoneId.systemDefault()
+                    )
+                    /* Add years/months if spanning over multiple years/months */
+                    return if (startOfWeekDate.month == endOfWeekDate.month)
+                        "${startOfWeekDate.dayOfMonth} - ${endOfWeekDate.dayOfMonth} ${monthsOfTheYear[endOfWeekDate.monthValue - 1]} ${endOfWeekDate.year}"
+                    else if (startOfWeekDate.year == endOfWeekDate.year)
+                        "${startOfWeekDate.dayOfMonth} ${monthsOfTheYear[startOfWeekDate.monthValue - 1]} - ${endOfWeekDate.dayOfMonth} ${monthsOfTheYear[endOfWeekDate.monthValue - 1]} ${endOfWeekDate.year}"
+                    else
+                        "${startOfWeekDate.dayOfMonth} ${monthsOfTheYear[startOfWeekDate.monthValue - 1]} ${startOfWeekDate.year} - ${endOfWeekDate.dayOfMonth} ${monthsOfTheYear[endOfWeekDate.monthValue - 1]} ${endOfWeekDate.year}"
+
+                } else {
+                    // TODO("Format date for Android version < O")
+                    return ""
+                }
+            }
+            else -> { // TimeFrame.YEAR ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    return LocalDateTime.ofInstant(
+                            Instant.ofEpochMilli(dateToFetchFromMillis),
+                            ZoneId.systemDefault()
+                        ).year.toString()
+                } else {
+                    // TODO("Format date for Android version < O")
+                    return ""
+                }
+            }
         }
     }
 
