@@ -32,6 +32,8 @@ import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.ui.view.MainViewModel
 
+private const val nullValue = "-"
+
 @Composable
 fun InfoRow(
     viewModel: MainViewModel,
@@ -62,7 +64,7 @@ fun InfoRow(
                     )
             )
             val bodyMediumWithShadow = MaterialTheme.typography.bodyMedium.copy(
-                shadow = Shadow(blurRadius = 2f)
+                shadow = Shadow(blurRadius = 0.5f)
             )
             if (currentPhoto?.description != null)
                 Text(
@@ -83,7 +85,7 @@ fun InfoRow(
                     icon = painterResource(R.drawable.calendar),
                     value = {
                         Text(
-                            currentPhoto?.getFormattedDate() ?: "",
+                            currentPhoto?.getFormattedDate() ?: nullValue,
                             style = bodyMediumWithShadow
                         )
                     }
@@ -103,9 +105,11 @@ fun InfoRow(
                     icon = painterResource(R.drawable.map),
                     value = {
                         Text(
-                            currentPhoto?.getFormattedLocation()?: "",
+                            currentPhoto?.getFormattedLocation()?: nullValue,
                             style = bodyMediumWithShadow,
-                            textDecoration = TextDecoration.Underline,
+                            textDecoration =
+                                if (currentPhoto?.getFormattedLocation() != null) TextDecoration.Underline
+                                else TextDecoration.None,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable {
                                 viewModel.openLocationInMapsApp(currentPhoto)
@@ -123,7 +127,7 @@ fun InfoRow(
                     icon = painterResource(R.drawable.books),
                     value = {
                         Text(
-                            currentPhoto?.album ?: "",
+                            currentPhoto?.album ?: nullValue,
                             style = bodyMediumWithShadow
                         )
                     }
@@ -133,7 +137,7 @@ fun InfoRow(
                     icon = painterResource(R.drawable.frame_corners),
                     value = {
                         Text(
-                            currentPhoto?.resolution ?: "",
+                            currentPhoto?.resolution ?: nullValue,
                             style = bodyMediumWithShadow
                         )
                     }
