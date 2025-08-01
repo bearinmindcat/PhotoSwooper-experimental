@@ -32,8 +32,6 @@ import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.ui.view.MainViewModel
 
-private const val nullValue = "-"
-
 @Composable
 fun InfoRow(
     viewModel: MainViewModel,
@@ -42,6 +40,7 @@ fun InfoRow(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
+    val nullValue = "-"
 
     Box(
         modifier = modifier
@@ -54,7 +53,8 @@ fun InfoRow(
         ) {
             Text(
                 text = currentPhoto?.title ?: "Title",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
+                textDecoration = TextDecoration.Underline,
                 modifier = Modifier
                     .padding(
                         start = dimensionResource(R.dimen.padding_medium),
@@ -88,7 +88,8 @@ fun InfoRow(
                             currentPhoto?.getFormattedDate() ?: nullValue,
                             style = bodyMediumWithShadow
                         )
-                    }
+                    },
+                    modifier = Modifier.weight(1f)
                 )
                 Info(
                     title = "Size",
@@ -98,7 +99,8 @@ fun InfoRow(
                             formatShortFileSize(context, currentPhoto?.size ?: 0),
                             style = bodyMediumWithShadow
                         )
-                    }
+                    },
+                    modifier = Modifier.weight(1f)
                 )
                 Info(
                     title = "Location",
@@ -115,7 +117,8 @@ fun InfoRow(
                                 viewModel.openLocationInMapsApp(currentPhoto)
                             }
                         )
-                    }
+                    },
+                    modifier = Modifier.weight(1.5f)
                 )
             }
             Row(
@@ -128,9 +131,12 @@ fun InfoRow(
                     value = {
                         Text(
                             currentPhoto?.album ?: nullValue,
-                            style = bodyMediumWithShadow
+                            style = bodyMediumWithShadow,
+                            maxLines = 1,
+                            overflow = TextOverflow.MiddleEllipsis,
                         )
-                    }
+                    },
+                    modifier = Modifier.weight(1.5f)
                 )
                 Info(
                     title = "Resolution",
@@ -140,7 +146,8 @@ fun InfoRow(
                             currentPhoto?.resolution ?: nullValue,
                             style = bodyMediumWithShadow
                         )
-                    }
+                    },
+                    modifier = Modifier.weight(1.5f)
                 )
                 OutlinedIconButton(
                     onClick = {
@@ -165,10 +172,11 @@ fun Info(
     title: String,
     icon: Painter,
     value: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+        modifier = modifier.padding(dimensionResource(R.dimen.padding_small))
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
