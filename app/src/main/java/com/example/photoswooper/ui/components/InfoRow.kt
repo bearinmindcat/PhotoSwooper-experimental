@@ -63,16 +63,13 @@ fun InfoRow(
                         bottom = dimensionResource(R.dimen.padding_small)
                     )
             )
-            val bodyMediumWithShadow = MaterialTheme.typography.bodyMedium.copy(
-                shadow = Shadow(blurRadius = 0.5f)
-            )
             if (currentPhoto?.description != null)
                 Text(
                     text = currentPhoto.description,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
-                    style = bodyMediumWithShadow,
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
                         .padding(horizontal = dimensionResource(R.dimen.padding_medium))
                 )
@@ -86,7 +83,7 @@ fun InfoRow(
                     value = {
                         Text(
                             currentPhoto?.getFormattedDate() ?: nullValue,
-                            style = bodyMediumWithShadow
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     },
                     modifier = Modifier.weight(1f)
@@ -97,7 +94,7 @@ fun InfoRow(
                     value = {
                         Text(
                             formatShortFileSize(context, currentPhoto?.size ?: 0),
-                            style = bodyMediumWithShadow
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     },
                     modifier = Modifier.weight(1f)
@@ -108,7 +105,7 @@ fun InfoRow(
                     value = {
                         Text(
                             currentPhoto?.getFormattedLocation()?: nullValue,
-                            style = bodyMediumWithShadow,
+                            style = MaterialTheme.typography.bodyMedium,
                             textDecoration =
                                 if (currentPhoto?.getFormattedLocation() != null) TextDecoration.Underline
                                 else TextDecoration.None,
@@ -131,7 +128,7 @@ fun InfoRow(
                     value = {
                         Text(
                             currentPhoto?.album ?: nullValue,
-                            style = bodyMediumWithShadow,
+                            style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.MiddleEllipsis,
                         )
@@ -144,7 +141,7 @@ fun InfoRow(
                     value = {
                         Text(
                             currentPhoto?.resolution ?: nullValue,
-                            style = bodyMediumWithShadow
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     },
                     modifier = Modifier.weight(1.5f)
