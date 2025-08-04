@@ -31,9 +31,15 @@ class ContentResolverInterface(
     private val activity: Activity, // For delete/trash intent
 ) {
 
-
+    /**
+     * Get new photos from the MediaStore and each  into [onAddPhoto] (this is usually a function to add them to [com.example.photoswooper.data.uistates.MainUiState]
+     *
+     * @param photosAdded Photos already added to [com.example.photoswooper.data.uistates.MainUiState] to compare new ones to
+     * @param numPhotos The number of photos to be passed into [onAddPhoto]
+     */
     @OptIn(ExperimentalStdlibApi::class) // For .toHexString()
     suspend fun getPhotos(
+        photosAdded: MutableSet<Photo> = mutableSetOf<Photo>(),
         numPhotos: Int,
         onAddPhoto: (Photo) -> Unit
     ) {
@@ -113,9 +119,7 @@ class ContentResolverInterface(
                     }
                 fileInputStream?.close()
 
-                if (numPhotosAdded <= numPhotos) {
-                    val findPhotoByHash = dao.findByHash(fileHash)
-                    val findById = dao.findByMediaStoreId(fetchedId)
+                if (photosAdded.size <= numPhotos) {
 
                     /** Add photo to the UI's photo list & database */
                     fun addPhoto() {
@@ -155,7 +159,7 @@ class ContentResolverInterface(
                             fileHash = fileHash
                         )
 
-                        numPhotosAdded += 1
+                        photosAdded.add(photoToAdd)
                         onAddPhoto(photoToAdd)
                         Log.d("MediaStore", "Added photo with id $fetchedId")
                         CoroutineScope(Dispatchers.IO).launch {
@@ -165,10 +169,11 @@ class ContentResolverInterface(
 
                     val findPhotoByHash = dao.findByHash(fileHash)
                     val findById = dao.findByMediaStoreId(fetchedId)
+                    val findPhotoInSession = photosAdded.find { it.id == fetchedId }
 
                     when {
                         /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
-                        (findById != null && findById.status != PhotoStatus.UNSET) -> { file?.close() }
+                        ((findPhotoInSession != null || (findById?.status ?: PhotoStatus.UNSET) != PhotoStatus.UNSET)) -> {  }
                         /* Photo is in the database but its MediaStore ID has changed.
                         * This will therefore 1. update the MediaStore ID. 2. if the status is UNSET, add the photo */
                         (findPhotoByHash != null) -> {
