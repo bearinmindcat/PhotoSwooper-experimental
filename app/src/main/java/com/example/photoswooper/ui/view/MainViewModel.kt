@@ -248,7 +248,10 @@ class MainViewModel(
     fun openLocationInMapsApp(photo: Photo?) {
         val uri: String? = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
         val intent = Intent(Intent.ACTION_VIEW, uri?.toUri())
-        startActivity(intent)
+        try { startActivity(intent) }
+        catch (_: android.content.ActivityNotFoundException) {
+            makeToast("No suitable app found")
+        }
     }
 
     fun sharePhoto(photo: Photo? = _uiState.value.photos[uiState.value.currentPhotoIndex]) {
