@@ -5,13 +5,16 @@ import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.READ_MEDIA_IMAGES
 import android.Manifest.permission.READ_MEDIA_VIDEO
 import android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
+import android.text.format.DateUtils
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -96,7 +99,22 @@ class MainActivity : AppCompatActivity() {
             startActivity = { this.startActivity(it) }
         )
         val statsViewModel = StatsViewModel(
-            mediaStatusDao = mediaStatusDao
+            mediaStatusDao = mediaStatusDao,
+            formatDateTime = { epochMillis, flags ->
+                DateUtils.formatDateTime(
+                    this,
+                    epochMillis,
+                    flags
+                    )
+            },
+            formatDateTimeRange = {startMillis, endMillis, flags ->
+                DateUtils.formatDateRange(
+                    this,
+                    startMillis,
+                    endMillis,
+                    flags
+                )
+            }
         )
 
         CoroutineScope(Dispatchers.Main).launch {
@@ -121,7 +139,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
     }
 
     /* Handle permission request result */
@@ -133,51 +150,79 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         val permissionMap: Map<String, Int> = permissions.associateWith { grantResults[permissions.indexOf(it)] }
 
-        /* Define permissions for read access of all photos/videos */
+        /** Permissions that should be granted for read access to all storage */
         val fullReadPermissions = if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
         else
             arrayOf(READ_EXTERNAL_STORAGE)
 
+        /* Write access is only needed for lower android versions (< 11) which don't support MediaStore trash/delete requests */
+        val writeAccess = if (SDK_INT < Build.VERSION_CODES.Q)
+            permissionMap[WRITE_EXTERNAL_STORAGE] == PERMISSION_GRANTED
+            else true
+
+
         val fullReadAccess = permissionMap.filter {
             fullReadPermissions.contains(it.key)
-        }.values.contains(PackageManager.PERMISSION_DENIED)
+        }.values.contains(PERMISSION_GRANTED)
 
         val limitedReadAccess = if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-            permissionMap[READ_MEDIA_VISUAL_USER_SELECTED] == PackageManager.PERMISSION_GRANTED
+            permissionMap[READ_MEDIA_VISUAL_USER_SELECTED] == PERMISSION_GRANTED
         else
             false
 
-        Log.v("Permissions", "Permissions granted = ${limitedReadAccess && fullReadAccess}")
+        Log.v("Permissions", "permissionsMap = $permissionMap")
+        val readAccess = limitedReadAccess || fullReadAccess
 
-        /* If permissions denied, show Toast. Else, get photos from storage */
-        if (
-            !limitedReadAccess
-            && !fullReadAccess
-        ) {
-            Toast.makeText(
-                this, // context
-                "Cannot read photos & videos without these permissions",
-                Toast.LENGTH_LONG
-            ).show()
+        Log.i("Permissions", "Permissions granted = ${limitedReadAccess && fullReadAccess}")
+
+        /* If permissions denied, notify user. Else, get photos from storage */
+        if (!readAccess || !writeAccess) {
+            if (!readAccess) {
+                Toast.makeText(
+                    this, // context
+                    "Cannot read photos & videos without read permissions",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            if (!writeAccess) {
+                Toast.makeText(
+                    this, // context
+                    "Cannot delete photos & videos without write permissions",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         } else {
             CoroutineScope(Dispatchers.Main).launch { mainViewModel.getPhotos() }
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
         when (requestCode) {
-            100 -> {
-                if (resultCode == RESULT_CANCELED) {
-                    CoroutineScope(Dispatchers.Main).launch {
-                        mainViewModel.onDeletePhotos(mainViewModel.getPhotosToDelete().map { it.uri })
+            in 100..102 -> { // Delete/trash a file
+                if (resultCode != RESULT_CANCELED) {
+                        if (SDK_INT >= Build.VERSION_CODES.R)
+                            CoroutineScope(Dispatchers.Main).launch {
+                                mainViewModel.onDeletePhotos(mainViewModel.getPhotosToDelete().map { it.uri })
+                            }
+                        else
+                            CoroutineScope(Dispatchers.Main).launch {
+                                mainViewModel.deletePhotos() // Delete the rest of the photos if on lower android versions
+                            }
                     }
-                } else CoroutineScope(Dispatchers.Main).launch {
-                    mainViewModel.onDeletePhotos(listOf())
-                }
+                else
+                    if (SDK_INT >= Build.VERSION_CODES.R)
+                        CoroutineScope(Dispatchers.Main).launch {
+                            mainViewModel.onDeletePhotos(listOf(), true)
+                        }
+                    else
+                        CoroutineScope(Dispatchers.Main).launch {
+                            mainViewModel.onDeletePhotos(listOf(), true)
+                        }
             }
         }
-        super.onActivityResult(requestCode, resultCode, data)
     }
 }
 
@@ -190,7 +235,6 @@ fun checkPermissionsAndGetPhotos(
     val readPermissions =
         if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
             arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED)
-        // TODO: might need to set readPermissions to nothing in this case so that the user doesn't get prompted to reselect allowed photos
         else if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
         else
@@ -205,10 +249,9 @@ fun checkPermissionsAndGetPhotos(
 
     // TODO("Add button in app to reselect photos, rather than prompting reselection on each app launch")
 
-    // Check write permissions
-//        if (ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-//            permissionsToRequest.add(WRITE_EXTERNAL_STORAGE)
-    // TODO: might need to request legacy write perms for older devices?
+    /* Check write permissions if android version doesn't support MediaStore delete/trash requests */
+    if (SDK_INT < Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(context, WRITE_EXTERNAL_STORAGE) != PERMISSION_GRANTED)
+        permissionsToRequest.add(WRITE_EXTERNAL_STORAGE)
 
     if (SDK_INT >= Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(context, ACCESS_MEDIA_LOCATION) != PERMISSION_GRANTED) {
         permissionsToRequest.add(ACCESS_MEDIA_LOCATION)

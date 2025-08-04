@@ -25,11 +25,11 @@ import kotlinx.coroutines.launch
 import java.util.Date
 
 class MainViewModel(
-    val contentResolverInterface: ContentResolverInterface,
-    val mediaStatusDao: MediaStatusDao,
-    val startActivity: (Intent) -> Unit,
-    val dataStoreInterface: DataStoreInterface,
-    val makeToast: (String) -> Unit,
+    private val contentResolverInterface: ContentResolverInterface,
+    private val mediaStatusDao: MediaStatusDao,
+    private val startActivity: (Intent) -> Unit,
+    private val dataStoreInterface: DataStoreInterface,
+    private val makeToast: (String) -> Unit,
 ): ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
@@ -65,7 +65,8 @@ class MainViewModel(
                         _uiState.value.photos.add(it)
                     },
                     numPhotos = (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
-                        ?: defaultPhotoLimit) - 2
+                        ?: defaultPhotoLimit) - 2,
+                    photosAdded = uiState.value.photos.toMutableSet()
                 )
                 if (uiState.value.photos.size <= (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
                         ?: defaultPhotoLimit)
@@ -113,6 +114,7 @@ class MainViewModel(
                 numUnset = currentState.numUnset - 1
             )
         }
+        Log.v("MainViewModel","Seeking to next photo, new index = ${uiState.value.currentPhotoIndex}/${uiState.value.photos.size - 1}")
     }
 
     fun findUnsetPhoto() {
@@ -148,14 +150,14 @@ class MainViewModel(
         }
     }
 
-    suspend fun deletePhotos() {
+    fun deletePhotos() {
         val photosToDelete = getPhotosToDelete()
         if(photosToDelete.isNotEmpty()) {
             CoroutineScope(Dispatchers.IO).launch {
                 contentResolverInterface.deletePhotos(
                     photosToDelete.map { it.uri },
                     onDelete = {
-                        CoroutineScope(Dispatchers.Main).launch { onDeletePhotos(photoUrisWithErrors = it) }
+                        CoroutineScope(Dispatchers.Main).launch { onDeletePhotos(it) }
                     }
                 ) // Delete the photo in user's storage
             }
@@ -169,15 +171,31 @@ class MainViewModel(
         }
     }
 
-    suspend fun onDeletePhotos(photoUrisWithErrors: List<Uri>) {
-        val photosMarkedAsDeleted = getPhotosToDelete()
-        if (photoUrisWithErrors.size < photosMarkedAsDeleted.size) { // If at least one photo was successfully deleted:
-            /* Update database */
-            photosMarkedAsDeleted.forEach { photo ->
-                if (photo.uri !in photoUrisWithErrors)
+    suspend fun onDeletePhotos(deletedPhotoUris: List<Uri>, deletionCancelled: Boolean = false) {
+        /* If at least one photo was successfully deleted and android version != 10 */
+        if (deletedPhotoUris.size > 0) {
+            if (Build.VERSION.SDK_INT != Build.VERSION_CODES.Q) { // Prevents spam of Toasts to user
+                makeToast("${deletedPhotoUris.size}/${getPhotosToDelete().size} photos successfully deleted")
+            } else if (deletedPhotoUris.size == getPhotosToDelete().size)
+                    makeToast("All selected photos deleted")
+            /* Update database & hide photo in UI*/
+            deletedPhotoUris.forEach { deletedPhotoUri ->
+                val deletedPhoto = uiState.value.photos.find { it.uri == deletedPhotoUri }
+                if (deletedPhoto != null) {
                     CoroutineScope(Dispatchers.IO).launch {
-                        mediaStatusDao.update(photo.getMediaStatusEntity())
+                        mediaStatusDao.update(deletedPhoto.getMediaStatusEntity())
                     }
+                    _uiState.update { currentState ->
+                        val newPhotos = currentState.photos
+                        newPhotos.set(
+                            uiState.value.photos.indexOf(deletedPhoto),
+                            deletedPhoto.copy(status = PhotoStatus.KEEP) // Hides the photo/video
+                        )
+                        return@update currentState.copy(
+                            photos = newPhotos
+                        )
+                    }
+                }
             }
             /* Update space saved in the current time frame */
             _uiState.update { currentState ->
@@ -185,24 +203,20 @@ class MainViewModel(
                     spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
                 )
             }
-            dismissReviewDialog()
-            makeToast("${photosMarkedAsDeleted.size - photoUrisWithErrors.size}/${photosMarkedAsDeleted.size} photos successfully deleted")
-            /* If the user doesn't cancel deletion for any of the photos, getPhotos(). Else, show those photos */
-            if (photosMarkedAsDeleted.isEmpty())
-                CoroutineScope(Dispatchers.IO).launch { getPhotos() } // FIXME("Check permissions before getting photos (cannot use checkPermissionsAndGetPhotos() as no access to context)")
-            else _uiState.update { currentState ->
-                currentState.copy(
-                    photos = currentState.photos.filter {
-                        !photosMarkedAsDeleted.contains(it)
-                    }.toMutableList(),
-                    currentPhotoIndex = currentState.currentPhotoIndex - photosMarkedAsDeleted.size,
-                    spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
-                )
+
+            if (getPhotosToDelete().isEmpty()) {
+                dismissReviewDialog()
+                if (uiState.value.numUnset <= 0)
+                    CoroutineScope(Dispatchers.IO).launch { getPhotos() } // FIXME("Check permissions before getting photos (cannot use checkPermissionsAndGetPhotos() as no access to context)")
             }
         }
         else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                makeToast("Deletion unsuccessful or cancelled")
+            if (deletionCancelled) {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q)
+                    makeToast("Please click 'Allow' on each popup to delete the selected photos")
+                else
+                    makeToast("Deletion cancelled")
+            }
             else
                 makeToast("Deletion unsuccessful, please check permissions.")
         }
@@ -274,8 +288,9 @@ class MainViewModel(
         val currentDate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Date().toInstant().toEpochMilli()
         } else {
-            TODO("Get current date in epoch milli for Android version < O")
+            System.currentTimeMillis()
         }
+
         val firstDateInTimeFrame = currentDate - timeFrame.milliseconds
 
         return mediaStatusDao.getDeletedBetweenDates(firstDateInTimeFrame, currentDate)?.sumOf { it.size } ?: 0

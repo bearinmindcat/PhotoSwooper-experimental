@@ -1,6 +1,7 @@
 package com.example.photoswooper.utils
 
 import android.app.Activity
+import android.app.RecoverableSecurityException
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.net.Uri
@@ -17,15 +18,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.DataInputStream
 import java.io.File
 import java.security.MessageDigest
 import java.util.Date
 
+
 class ContentResolverInterface(
-    val dao: MediaStatusDao,
-    val contentResolver: ContentResolver,
-    val dataStoreInterface: DataStoreInterface, //
-    val activity: Activity // For delete/trash intent
+    private val dao: MediaStatusDao,
+    private val contentResolver: ContentResolver,
+    private val dataStoreInterface: DataStoreInterface, //
+    private val activity: Activity, // For delete/trash intent
 ) {
 
 
@@ -36,28 +39,32 @@ class ContentResolverInterface(
     ) {
         // TODO("Change so that MediaStore.Images changes to MediaStore.Videos for video types")
         // TODO("Automatically add unset photos from app database before fetching from MediaStore")
-        var numPhotosAdded = 0
 
         val mediaStoreUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
         } else {
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
-        val projection = arrayOf(
+        val projection = mutableListOf(
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DATE_TAKEN,
             MediaStore.Images.Media.SIZE,
-            MediaStore.Images.Media.ALBUM,
             MediaStore.Images.Media.DESCRIPTION,
             MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.RESOLUTION,
             MediaStore.Images.Media.DATA,
         ) // The columns (metadata types) we want to retrieve from the MediaStore
+
+        /* Add extra columns supported by recent android versions */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            projection.addAll(listOf(
+                MediaStore.Images.Media.ALBUM,
+                MediaStore.Images.Media.RESOLUTION,
+            ))
 
         Log.i("MediaStore", "Querying MediaStore database")
         contentResolver.query(
             mediaStoreUri,
-            projection, // The columns (metadata types) we want to retrieve from the MediaStore
+            projection.toTypedArray(), // The columns (metadata types) we want to retrieve from the MediaStore
             null, // selection parameter
             null, // (selectionArgs parameter) Fetch *all* image files
             "RANDOM()", // sortOrder parameter
@@ -66,10 +73,12 @@ class ContentResolverInterface(
             val idColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val dateTakenColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
             val sizeColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
-            val albumColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.ALBUM)
+            val albumColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(MediaStore.Images.Media.ALBUM)
+                else 0 // 0 value not used
+            val resolutionColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RESOLUTION)
+                else 0 // 0 value not used
             val descriptionColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DESCRIPTION)
             val displayNameColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-            val resolutionColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RESOLUTION)
             val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
 
             /* add these values to the list of tracks */
@@ -78,30 +87,37 @@ class ContentResolverInterface(
                 val fetchedId = cursor.getLong(idColumnIndex)
                 val fetchedDateTaken = cursor.getLong(dateTakenColumnIndex)
                 val fetchedSize = cursor.getLong(sizeColumnIndex)
-                val fetchedAlbum = cursor.getString(albumColumnIndex)
+                val fetchedAlbum = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getString(albumColumnIndex) else null
+                val fetchedResolution = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getString(resolutionColumnIndex) else null
                 val fetchedDescription = cursor.getString(descriptionColumnIndex)
                 val fetchedDisplayName = cursor.getString(displayNameColumnIndex)
-                val fetchedResolution = cursor.getString(resolutionColumnIndex)
                 val fetchedUri = ContentUris.withAppendedId(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     fetchedId
                 )
                 val fetchedAbsoluteFilePath = cursor.getString(absoluteFilePathColumnIndex)
 
-                val file = contentResolver.openInputStream(fetchedUri)
+                val fileInputStream = contentResolver.openInputStream(fetchedUri)
+                val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
                 val fileHash = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
-                    val hash: ByteArray = digest.digest(file?.readAllBytes()?: ByteArray(0))
+                    val hash: ByteArray = digest.digest(fileInputStream?.readAllBytes()?: ByteArray(0))
                     hash.toHexString()
-                } else {
-                    TODO("VERSION.SDK_INT < TIRAMISU")
                 }
+                    else {
+                        /* Based on https://stackoverflow.com/a/59049461 */
+                        val fileData = ByteArray(fileInputStream?.available()?: 0)
+                        val dataInputStream = DataInputStream(fileInputStream)
+                        dataInputStream.readFully(fileData)
+                        val hash: ByteArray = digest.digest(fileData)
+                        hash.toHexString()
+                    }
+                fileInputStream?.close()
 
                 if (numPhotosAdded <= numPhotos) {
                     val findPhotoByHash = dao.findByHash(fileHash)
                     val findById = dao.findByMediaStoreId(fetchedId)
 
-                    /* Define function to add photo to photos list & database (for later use) */
+                    /** Add photo to the UI's photo list & database */
                     fun addPhoto() {
                         /* Decide which date to use */
                         val lastModified = File(fetchedAbsoluteFilePath).lastModified()
@@ -116,14 +132,9 @@ class ContentResolverInterface(
                         var latLong: DoubleArray? = null
                         val fileInputStream2 = contentResolver.openInputStream(fetchedUri)
                         if (fileInputStream2 != null){
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                val exifInterface = ExifInterface(fileInputStream2)
-                                latLong = exifInterface.latLong // Location the photo was taken at
-                                fileInputStream2.close()
-                            } else {
-                                // TODO("Find location of photo for Android < Q")
-                                fileInputStream2.close()
-                            }
+                            val exifInterface = ExifInterface(fileInputStream2)
+                            latLong = exifInterface.latLong // Location the photo was taken at
+                            fileInputStream2.close()
                         }
 
                         /* Decide album to use */
@@ -151,6 +162,9 @@ class ContentResolverInterface(
                             dao.insert(photoToAdd.getMediaStatusEntity()) // Add to database
                         }
                     }
+
+                    val findPhotoByHash = dao.findByHash(fileHash)
+                    val findById = dao.findByMediaStoreId(fetchedId)
 
                     when {
                         /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
@@ -208,19 +222,54 @@ class ContentResolverInterface(
             startIntentSenderForResult(activity, editPendingIntent.intentSender, 100, null, 0, 0, 0, Bundle.EMPTY)
             // onDelete() is called in onActivityResult, defined in MainActivity.kt
         } else {
-            val urisWithErrors = mutableListOf<Uri>()
+            val deletedMediaUris = mutableListOf<Uri>()
             uris.forEach { uri ->
-                val outputtedRows = contentResolver.delete(uri, null, null)
+                var outputtedRows: Int
 
-                val path = uri.encodedPath
-                if (outputtedRows == 0) {
-                    Log.e("deletePhotos", "Could not delete $path :(")
-                    urisWithErrors.add(uri)
-                } else {
-                    Log.d("deletePhotos", "Deleted $path ^_^")
+                try {
+                    outputtedRows = contentResolver.delete(
+                        uri, null, null
+                    )
+                } catch (securityException: SecurityException) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val recoverableSecurityException =
+                            securityException as? RecoverableSecurityException ?: throw RuntimeException(
+                                securityException.message,
+                                securityException
+                            )
+
+                        val intentSender = recoverableSecurityException.userAction.actionIntent.intentSender
+                        intentSender.let {
+                            startIntentSenderForResult(
+                                activity,
+                                intentSender,
+                                102,
+                                null,
+                                0,
+                                0,
+                                0,
+                                null
+                            )
+                        }
+                    } else {
+                        throw RuntimeException(securityException.message, securityException)
+                    }
+                    outputtedRows = 0
                 }
+
+                /* If deletion fails, exit. onActivityResult will run this function again when required permissions are granted */
+                if (outputtedRows == 0) {
+                    Log.e("deletePhotos", "Could not delete $uri :(")
+                    return
+                } else {
+                    Log.d("deletePhotos", "Deleted $uri ^_^")
+                    deletedMediaUris.add(uri)
+                    if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
+                        onDelete(listOf(uri))
+                }
+
             }
-            onDelete(urisWithErrors)
+            onDelete(deletedMediaUris)
         }
     }
 

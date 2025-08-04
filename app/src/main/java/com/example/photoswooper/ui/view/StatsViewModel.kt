@@ -1,6 +1,6 @@
 package com.example.photoswooper.ui.view
 
-import android.os.Build
+import android.text.format.DateUtils
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.photoswooper.data.database.MediaStatusDao
@@ -9,9 +9,6 @@ import com.example.photoswooper.data.uistates.TimeFrame
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
 import java.util.Calendar
 import kotlin.math.roundToLong
 
@@ -20,6 +17,8 @@ import kotlin.math.roundToLong
  */
 class StatsViewModel(
     val mediaStatusDao: MediaStatusDao,
+    val formatDateTime: (millis: Long, flags: Int) -> String,
+    val formatDateTimeRange: (startMillis: Long, endMillis: Long, flags: Int) -> String
 ): ViewModel() {
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState = _uiState.asStateFlow()
@@ -109,12 +108,13 @@ class StatsViewModel(
             dateMillisToZero = uiState.value.dateToFetchFromMillis + currentTimeFrame.milliseconds // zeroed time of next date = max time of this date
         ).timeInMillis
 
-        Log.d("Stats", "firstDate = ${getFormattedDateFromEpoch(firstDateMillis, true)}," +
-                " finalTime = ${getFormattedDateFromEpoch(finalTimeInMillis, true)}")
+        Log.d("Stats", "firstDate = ${formatDateTime(firstDateMillis, 0)} at ${formatDateTime(firstDateMillis,
+            DateUtils.FORMAT_SHOW_TIME)}," +
+                " finalTime = ${formatDateTime(finalTimeInMillis, 0)} at ${formatDateTime(finalTimeInMillis, DateUtils.FORMAT_SHOW_TIME)}")
         while (secondDateMillis <= finalTimeInMillis) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                Log.v("Stats", "getting data for ${getFormattedDateFromEpoch(firstDateMillis, true)}" +
-                        " to ${getFormattedDateFromEpoch(secondDateMillis, true)}")
+            Log.v("Stats", "getting data for ${formatDateTime(firstDateMillis, 0)} at ${formatDateTime(firstDateMillis,
+                DateUtils.FORMAT_SHOW_TIME)} to ${formatDateTime(secondDateMillis, 0)} at ${formatDateTime(secondDateMillis,
+                DateUtils.FORMAT_SHOW_TIME)}")
             statsData.add(
                 getNumberOfSwipesFromDatabase(firstDateMillis, secondDateMillis)
             )
@@ -234,17 +234,8 @@ class StatsViewModel(
         val currentTimeFrame = uiState.value.timeFrame
         when (currentTimeFrame) {
             TimeFrame.DAY -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val date =
-                        LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(dateToFetchFromMillis),
-                            ZoneId.systemDefault()
-                        )
-                    return "${date.dayOfMonth} ${monthsOfTheYear[date.monthValue - 1]} ${date.year}"
-                } else {
-                    // TODO("Format date for Android version < O")
-                    return ""
-                }
+                return formatDateTime(dateToFetchFromMillis, DateUtils.FORMAT_SHOW_WEEKDAY) + ", " +
+                            formatDateTime(dateToFetchFromMillis, DateUtils.FORMAT_SHOW_DATE)
             }
             TimeFrame.WEEK -> {
                 val startOfWeekMillis = getCalendarAtZero(Calendar.DAY_OF_WEEK).timeInMillis
@@ -252,55 +243,18 @@ class StatsViewModel(
                     Calendar.DAY_OF_WEEK,
                     dateMillisToZero = dateToFetchFromMillis + currentTimeFrame.milliseconds
                 ).timeInMillis - TimeFrame.DAY.milliseconds
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val startOfWeekDate =
-                        LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(startOfWeekMillis),
-                            ZoneId.systemDefault()
-                        )
-                    val endOfWeekDate =  LocalDateTime.ofInstant(
-                        Instant.ofEpochMilli(endOfWeekMillis),
-                        ZoneId.systemDefault()
-                    )
-                    /* Add years/months if spanning over multiple years/months */
-                    return if (startOfWeekDate.month == endOfWeekDate.month)
-                        "${startOfWeekDate.dayOfMonth} - ${endOfWeekDate.dayOfMonth} ${monthsOfTheYear[endOfWeekDate.monthValue - 1]} ${endOfWeekDate.year}"
-                    else if (startOfWeekDate.year == endOfWeekDate.year)
-                        "${startOfWeekDate.dayOfMonth} ${monthsOfTheYear[startOfWeekDate.monthValue - 1]} - ${endOfWeekDate.dayOfMonth} ${monthsOfTheYear[endOfWeekDate.monthValue - 1]} ${endOfWeekDate.year}"
-                    else
-                        "${startOfWeekDate.dayOfMonth} ${monthsOfTheYear[startOfWeekDate.monthValue - 1]} ${startOfWeekDate.year} - ${endOfWeekDate.dayOfMonth} ${monthsOfTheYear[endOfWeekDate.monthValue - 1]} ${endOfWeekDate.year}"
 
-                } else {
-                    // TODO("Format date for Android version < O")
-                    return ""
-                }
+                return formatDateTimeRange(
+                    startOfWeekMillis,
+                    endOfWeekMillis,
+                    0
+                )
             }
             else -> { // TimeFrame.YEAR ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    return LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(dateToFetchFromMillis),
-                            ZoneId.systemDefault()
-                        ).year.toString()
-                } else {
-                    // TODO("Format date for Android version < O")
-                    return ""
-                }
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = dateToFetchFromMillis
+                return calendar.get(Calendar.YEAR).toString()
             }
-        }
-    }
-
-    private fun getFormattedDateFromEpoch(epochMillis: Long, includeTime: Boolean = false): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val time = LocalDateTime.ofInstant(
-                Instant.ofEpochMilli(epochMillis),
-                ZoneId.systemDefault()
-            )
-            return if (includeTime) time.toString()
-                else time.toString()
-                .substringBefore("T")
-        } else {
-            // TODO("Format date for Android version < O")
-            return ""
         }
     }
 
