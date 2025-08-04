@@ -55,7 +55,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.ui.util.android)
@@ -71,7 +70,6 @@ dependencies {
     implementation(libs.koalaplot.core) // For plotting graphs for stats
     implementation(libs.androidx.datastore.preferences)
     ksp(libs.androidx.room.compiler)
-    // TODO("Clean up unused libraries from android project template")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

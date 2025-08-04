@@ -16,7 +16,6 @@ espressoCore = "3.7.0"
 appcompat = "1.7.1"
 lifecycleViewmodelKtx = "2.9.2"
 material = "1.12.0"
-constraintlayout = "2.2.1"
 room = "2.7.2"
 uiUtilAndroid = "1.8.3"
 ksp = "2.0.21-1.0.27"
@@ -45,7 +44,6 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
