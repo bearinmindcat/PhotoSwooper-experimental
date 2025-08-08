@@ -54,7 +54,6 @@ fun InfoRow(
             Text(
                 text = currentPhoto?.title ?: "Title",
                 style = MaterialTheme.typography.titleMedium,
-                textDecoration = TextDecoration.Underline,
                 modifier = Modifier
                     .padding(
                         start = dimensionResource(R.dimen.padding_medium),

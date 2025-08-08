@@ -49,7 +49,13 @@ class MainViewModel(
     }
 
     /* Get new photos and add them to the UI state */
-    suspend fun getPhotos() {
+    suspend fun getNewPhotos() {
+        // Delete old photos from uiState
+        _uiState.update { currentState ->
+            currentState.copy(
+                photos = mutableListOf()
+            )
+        }
         // Add the first two photos
         contentResolverInterface.getPhotos(
             onAddPhoto = {
@@ -57,30 +63,42 @@ class MainViewModel(
             },
             numPhotos = 2
         )
-        // Add the rest of the photos asynchronously (speedy)
-        viewModelScope.launch {
-            run {
+        if (uiState.value.photos.size == 0) { // Check if zero unswiped photos could be found
+            viewModelScope.launch {
+                makeToast("You have swiped on all of your photos, congrats!")
+            }
+        }
+        else {
+            // Update UI state & prompt recomposition/update
+            _uiState.update { currentState ->
+                currentState.copy(
+                    currentPhotoIndex = 0,
+                    numUnset = dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
+                        ?: defaultPhotoLimit
+                )
+            }
+            // Add the rest of the photos asynchronously (speedy)
+            viewModelScope.launch {
                 contentResolverInterface.getPhotos(
                     onAddPhoto = {
                         _uiState.value.photos.add(it)
                     },
                     numPhotos = (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
-                        ?: defaultPhotoLimit) - 2,
+                        ?: defaultPhotoLimit),
                     photosAdded = uiState.value.photos.toMutableSet()
                 )
-                if (uiState.value.photos.size <= (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
+                if (uiState.value.photos.size != (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
                         ?: defaultPhotoLimit)
-                )
+                ) {
                     makeToast("No more photos found, Last round!")
+                    // Update UI state with the actual number of photos found
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            numUnset = currentState.photos.filter { it.status == PhotoStatus.UNSET }.size
+                        )
+                    }
+                }
             }
-        }
-
-        // Update UI state & prompt recomposition/update
-        _uiState.update { currentState ->
-            currentState.copy(
-                currentPhotoIndex = 0,
-                numUnset = dataStoreInterface.getIntSettingValue("num_photos_per_stack").first() ?: defaultPhotoLimit
-            )
         }
     }
 
@@ -115,14 +133,20 @@ class MainViewModel(
             )
         }
         Log.v("MainViewModel","Seeking to next photo, new index = ${uiState.value.currentPhotoIndex}/${uiState.value.photos.size - 1}")
+        Log.v("MainViewModel","Photos left to swipe on = ${uiState.value.numUnset}")
     }
 
-    fun findUnsetPhoto() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                currentPhotoIndex = currentState.photos.indexOfFirst { it.status == PhotoStatus.UNSET }
-            )
+    fun seekToUnsetPhotoOrFalse(): Boolean {
+        val unsetPhotoIndex = uiState.value.photos.indexOfFirst { it.status == PhotoStatus.UNSET }
+        if (unsetPhotoIndex != -1) {
+            _uiState.update { currentState ->
+                currentState.copy(
+                    currentPhotoIndex = unsetPhotoIndex
+                )
+            }
+            return true
         }
+        else return false
     }
 
     fun undo(): Boolean {
@@ -207,7 +231,7 @@ class MainViewModel(
             if (getPhotosToDelete().isEmpty()) {
                 dismissReviewDialog()
                 if (uiState.value.numUnset <= 0)
-                    CoroutineScope(Dispatchers.IO).launch { getPhotos() } // FIXME("Check permissions before getting photos (cannot use checkPermissionsAndGetPhotos() as no access to context)")
+                    CoroutineScope(Dispatchers.IO).launch { getNewPhotos() } // FIXME("Check permissions before getting photos (cannot use checkPermissionsAndGetPhotos() as no access to context)")
             }
         }
         else {

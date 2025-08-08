@@ -119,7 +119,7 @@ class ContentResolverInterface(
                     }
                 fileInputStream?.close()
 
-                if (photosAdded.size <= numPhotos) {
+                if (photosAdded.size < numPhotos) {
 
                     /** Add photo to the UI's photo list & database */
                     fun addPhoto() {

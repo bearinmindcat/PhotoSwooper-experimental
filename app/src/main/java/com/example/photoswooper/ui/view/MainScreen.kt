@@ -1,14 +1,15 @@
 package com.example.photoswooper.ui.view
 
+import android.content.res.Resources
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastRoundToInt
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.checkPermissionsAndGetPhotos
@@ -80,19 +82,15 @@ fun MainScreen(
         }
 
     /* For anchored draggable (photo swiping left/right) */
-    val decayAnimationSpec = rememberSplineBasedDecay<Float>()
+
     val anchoredDraggableState = remember {
         AnchoredDraggableState(
             initialValue = DragAnchors.Center,
-            positionalThreshold = { distance: Float -> distance * 0.5f },
-            velocityThreshold = { with(density) { 100.dp.toPx() } },
             anchors = DraggableAnchors {
-                DragAnchors.Left at with(density) { -200.dp.toPx() }
+                DragAnchors.Left at (-Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
                 DragAnchors.Center at 0f
-                DragAnchors.Right at with(density) { 200.dp.toPx() }
+                DragAnchors.Right at (Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
             },
-            snapAnimationSpec = tween(),
-            decayAnimationSpec = decayAnimationSpec
         )
     }
 
@@ -165,38 +163,37 @@ fun MainScreen(
                     .padding(paddingValues)
                     .fillMaxSize()
             ) {
-                if (uiState.numUnset > 0) // First check if there are unset photos in the list
-                {
-                    if (currentPhoto?.status == PhotoStatus.UNSET) // Then check if the current photo is unset
-                        AsyncImage(
-                            model = currentPhoto.uri,
-                            imageLoader = imageLoader,
-                            contentDescription = null,
-                            contentScale = ContentScale.FillWidth,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .anchoredDraggable(
-                                    state = anchoredDraggableState,
-                                    orientation = Orientation.Horizontal
+                if (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) // Then check if the current photo is unset
+                    AsyncImage(
+                        model = currentPhoto.uri,
+                        imageLoader = imageLoader,
+                        contentDescription = null,
+                        contentScale = ContentScale.FillWidth,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .anchoredDraggable(
+                                state = anchoredDraggableState,
+                                orientation = Orientation.Horizontal,
+                                flingBehavior = AnchoredDraggableDefaults.flingBehavior(
+                                    anchoredDraggableState,
+                                    animationSpec = tween(anchoredDraggableState.lastVelocity.times(100000).fastRoundToInt()),
                                 )
-                                .offset {
-                                    IntOffset(
-                                        x = anchoredDraggableState.requireOffset().roundToInt(),
-                                        y = 0
-                                    )
-                                }
-                        )
-                    else
-                        mainViewModel.findUnsetPhoto()
-                } // if the current photo is not unset, find the next one in the list
-                else { // If there are no unset photos in the list, ask the user to delete the photos selected
+                            )
+                            .offset {
+                                IntOffset(
+                                    x = anchoredDraggableState.requireOffset().roundToInt(),
+                                    y = 0
+                                )
+                            }
+                    )
+                else if (!mainViewModel.seekToUnsetPhotoOrFalse()) { // If there are no unset photos in the list, ask the user to delete the photos selected
                     if (numToDelete > 0)
                         ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
                     else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                         Button(onClick = {
                             checkPermissionsAndGetPhotos(
                                 context = context,
-                                onPermissionsGranted = { mainViewModel.getPhotos() }
+                                onPermissionsGranted = { mainViewModel.getNewPhotos() }
                             )
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

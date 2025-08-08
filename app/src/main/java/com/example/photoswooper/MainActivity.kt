@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Main).launch {
             checkPermissionsAndGetPhotos(
                 context = this@MainActivity,
-                onPermissionsGranted = { mainViewModel.getPhotos() }
+                onPermissionsGranted = { mainViewModel.getNewPhotos() }
             )
         }
 
@@ -193,7 +193,7 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
         } else {
-            CoroutineScope(Dispatchers.Main).launch { mainViewModel.getPhotos() }
+            CoroutineScope(Dispatchers.Main).launch { mainViewModel.getNewPhotos() }
         }
     }
 
