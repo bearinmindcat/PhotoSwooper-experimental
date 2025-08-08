@@ -1,0 +1,8 @@
+Quick fix for weird behaviour/messages when fetching new photos
+
+The previous update caused the app to:
+
+    Think the user has reached the end of their photos every time
+    Not show the "Fetch more photos" button
+
+This should fix those issues

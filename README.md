@@ -16,6 +16,8 @@ Have you ever had too many photos and would just love to swipe them like dating 
 
 Well I made just the app: PhotoSwooper :D
 
+Hope you enjoy!
+
 ## Features
 
 > Features last updated 2025-07-28
@@ -30,10 +32,10 @@ Well I made just the app: PhotoSwooper :D
 
 > Screenshots as of 2025-07-28
 
-<img src="img/info.png" alt="Home screen" width="200"/>
-<img src="img/statsScreen.png" alt="Library screen" width="200"/>
-<img src="img/settings.png" alt="Library screen" width="200"/>
-<img src="img/review.png" alt="Library screen" width="200"/>
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/info.png" alt="Home screen" width="200"/>
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/stats.png" alt="Library screen" width="200"/>
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/settings.png" alt="Library screen" width="200"/>
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/review.png" alt="Library screen" width="200"/>
 
 ## Issues
 
