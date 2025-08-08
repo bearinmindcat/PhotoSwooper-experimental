@@ -1,0 +1,1 @@
+<p><i>PhotoSwooper</i> is a dating app for ur photos.</p><p>Have you ever had too many photos and would just love to swipe them like dating profiles? Well I made just the app: PhotoSwooper :D</p><p><br><b>Features:</b></p><ul><li>Undo button</li><li>Info drawer</li><li>Review photos to be deleted</li><li>Statistics page</li></ul>
