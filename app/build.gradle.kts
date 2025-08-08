@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.photoswooper"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "2025.8.1"
+        versionCode = 8
+        versionName = "2025.8.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -58,7 +58,6 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.ui.util.android)
-    implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(platform(libs.androidx.compose.bom))
