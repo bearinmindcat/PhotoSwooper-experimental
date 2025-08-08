@@ -320,6 +320,6 @@ class MainViewModel(
 
         val firstDateInTimeFrame = currentDate - timeFrame.milliseconds
 
-        return mediaStatusDao.getDeletedBetweenDates(firstDateInTimeFrame, currentDate)?.sumOf { it.size } ?: 0
+        return mediaStatusDao.getDeletedBetweenDates(firstDateInTimeFrame, currentDate).sumOf { it.size }
     }
 }

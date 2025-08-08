@@ -91,7 +91,7 @@ class StatsViewModel(
         /* Fetch & return data */
 
         suspend fun getNumberOfSwipesFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Int =
-            mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis,)?.size ?: 0
+            mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis,).size
 
         val statsData = mutableListOf<Int>() // Initialise
 
