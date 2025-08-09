@@ -4,20 +4,15 @@ import android.content.res.Resources
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.BottomSheetScaffold
@@ -33,15 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastRoundToInt
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import com.example.photoswooper.checkPermissionsAndGetPhotos
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.ui.components.ActionBar
@@ -49,11 +40,11 @@ import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.ReviewDialog
 import com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage
+import com.example.photoswooper.ui.components.ZoomableAsyncImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 enum class DragAnchors {
     Left,
@@ -163,29 +154,9 @@ fun MainScreen(
                     .padding(paddingValues)
                     .fillMaxSize()
             ) {
-                if (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) // Then check if the current photo is unset
-                    AsyncImage(
-                        model = currentPhoto.uri,
-                        imageLoader = imageLoader,
-                        contentDescription = null,
-                        contentScale = ContentScale.FillWidth,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .anchoredDraggable(
-                                state = anchoredDraggableState,
-                                orientation = Orientation.Horizontal,
-                                flingBehavior = AnchoredDraggableDefaults.flingBehavior(
-                                    anchoredDraggableState,
-                                    animationSpec = tween(anchoredDraggableState.lastVelocity.times(100000).fastRoundToInt()),
-                                )
-                            )
-                            .offset {
-                                IntOffset(
-                                    x = anchoredDraggableState.requireOffset().roundToInt(),
-                                    y = 0
-                                )
-                            }
-                    )
+                if (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) { // Then check if the current photo is unset
+                    ZoomableAsyncImage(currentPhoto, imageLoader, anchoredDraggableState)
+                }
                 else if (!mainViewModel.seekToUnsetPhotoOrFalse()) { // If there are no unset photos in the list, ask the user to delete the photos selected
                     if (numToDelete > 0)
                         ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)

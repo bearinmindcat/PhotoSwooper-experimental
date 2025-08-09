@@ -121,7 +121,7 @@ class ContentResolverInterface(
 
                 if (photosAdded.size < numPhotos) {
 
-                    /** Add photo to the UI's photo list & database */
+                    /** Add photo to the UI's photo list and database */
                     fun addPhoto() {
                         /* Decide which date to use */
                         val lastModified = File(fetchedAbsoluteFilePath).lastModified()
