@@ -9,7 +9,6 @@ import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
@@ -233,19 +232,21 @@ fun checkPermissionsAndGetPhotos(
     val permissionsToRequest = mutableListOf<String>()
     /* Permissions to check depending on the android version */
     val readPermissions =
-        if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-            arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED)
-        else if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
         else
             arrayOf(READ_EXTERNAL_STORAGE)
 
     /* Set readPermissionGranted to false if any of the permissions are denied */
     readPermissions.forEach { readPermission ->
-        if (ContextCompat.checkSelfPermission(context, readPermission) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(context, readPermission) != PERMISSION_GRANTED) {
             permissionsToRequest.add(readPermission)
         }
     }
+
+    /* Add READ_MEDIA_VISUAL_USER_SELECTED permission if android version supports it */
+    if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+        permissionsToRequest.add(READ_MEDIA_VISUAL_USER_SELECTED)
 
     // TODO("Add button in app to reselect photos, rather than prompting reselection on each app launch")
 
