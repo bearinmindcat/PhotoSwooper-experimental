@@ -53,7 +53,8 @@ class MainViewModel(
         // Delete old photos from uiState
         _uiState.update { currentState ->
             currentState.copy(
-                photos = mutableListOf()
+                photos = mutableListOf(),
+                isLoading = true
             )
         }
         // Add the first two photos
@@ -65,7 +66,11 @@ class MainViewModel(
         )
         if (uiState.value.photos.size == 0) { // Check if zero unswiped photos could be found
             viewModelScope.launch {
-                makeToast("You have swiped on all of your photos, congrats!")
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isLoading = false
+                    )
+                }
             }
         }
         else {
@@ -74,7 +79,8 @@ class MainViewModel(
                 currentState.copy(
                     currentPhotoIndex = 0,
                     numUnset = dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
-                        ?: defaultPhotoLimit
+                        ?: defaultPhotoLimit,
+                    isLoading = false
                 )
             }
             // Add the rest of the photos asynchronously (speedy)
