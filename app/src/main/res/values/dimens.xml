@@ -7,4 +7,7 @@
     <dimen name="padding_large">32dp</dimen>
     <dimen name="padding_xlarge">64dp</dimen>
     <!-- Sizes -->
+    <dimen name="xsmall_icon">16dp</dimen>
+    <dimen name="small_icon">24dp</dimen>
+    <dimen name="medium_icon">32dp</dimen>
 </resources>

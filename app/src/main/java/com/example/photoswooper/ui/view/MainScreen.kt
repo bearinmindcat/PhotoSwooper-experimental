@@ -53,8 +53,8 @@ import com.example.photoswooper.ui.components.ActionBar
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.ReviewDialog
+import com.example.photoswooper.ui.components.SwipeableAsyncImageWithIndicatorIcons
 import com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage
-import com.example.photoswooper.ui.components.ZoomableAsyncImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -169,87 +169,90 @@ fun MainScreen(
                     .fillMaxSize()
             ) {
                 AnimatedContent(
-                    targetState = uiState.isLoading,
+                    targetState = uiState.isLoading
                 ) {
-                if (it)
-                    CircularProgressIndicator(
-                        modifier = Modifier.width(64.dp),
-                        color = MaterialTheme.colorScheme.secondary,
-                        trackColor = MaterialTheme.colorScheme.secondaryContainer,
-                    )
-                else if (uiState.photos.isEmpty()) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.check_bold),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier
-                                .size(64.dp)
-                                .padding(bottom = dimensionResource(R.dimen.padding_medium))
+                    when {
+                        /* When loading new photos */
+                        (it) -> CircularProgressIndicator(
+                            modifier = Modifier.width(64.dp),
+                            color = MaterialTheme.colorScheme.secondary,
+                            trackColor = MaterialTheme.colorScheme.secondaryContainer,
                         )
-                        Text(
-                            "You have swiped on all of your photos, congrats! :D \uD83C\uDF89",
-                            style = MaterialTheme.typography.titleLarge,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
-                        )
-                        if (ContextCompat.checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PERMISSION_GRANTED)
-                            Button(onClick = {
-                                checkPermissionsAndGetPhotos(
-                                    context = context,
-                                    onPermissionsGranted = { mainViewModel.getNewPhotos() }
-                                )
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            }) {
-                                Text("Select more photos")
-                            }
-                    }
-                }
-                else if (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) { // Then check if the current photo is unset
-                    ZoomableAsyncImage(currentPhoto, imageLoader, anchoredDraggableState)
-                }
-                else if (!mainViewModel.seekToUnsetPhotoOrFalse()) { // If there are no unset photos in the list, ask the user to delete the photos selected
-                    if (numToDelete > 0)
-                        ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
-                    else // If there aren't any photos to delete, ask the user if they want to swipe more photos
-                        Button(onClick = {
-                            checkPermissionsAndGetPhotos(
-                                context = context,
-                                onPermissionsGranted = { mainViewModel.getNewPhotos() }
-                            )
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        }) {
-                            Text("Fetch more photos")
-                        }
-                }
-                }
-                Box(
-                    contentAlignment = Alignment.BottomCenter,
-                    modifier = Modifier
-                        .fillMaxSize()
-                ) {
 
-                    AnimatedVisibility(
-                        visible = uiState.showInfo && currentPhoto != null,
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        InfoRow(
-                            mainViewModel,
-                            currentPhoto,
-                            Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
-                                    MaterialTheme.shapes.medium
+                        (uiState.photos.isEmpty()) -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.check_bold),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .padding(bottom = dimensionResource(R.dimen.padding_medium))
                                 )
-                                .widthIn(max = 380.dp)
-                        )
+                                Text(
+                                    "You have swiped on all of your photos, congrats! :D \uD83C\uDF89",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
+                                )
+                                if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        READ_MEDIA_VISUAL_USER_SELECTED
+                                    ) == PERMISSION_GRANTED
+                                )
+                                    Button(onClick = {
+                                        checkPermissionsAndGetPhotos(
+                                            context = context,
+                                            onPermissionsGranted = { mainViewModel.getNewPhotos() }
+                                        )
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    }) {
+                                        Text("Select more photos")
+                                    }
+                            }
+                        }
+
+                        (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) -> { // Then check if the current photo is unset
+                            SwipeableAsyncImageWithIndicatorIcons(currentPhoto, imageLoader, anchoredDraggableState)
+                        }
+
+                        (!mainViewModel.seekToUnsetPhotoOrFalse()) -> { // If there are no unset photos in the list, ask the user to delete the photos selected
+                            if (numToDelete > 0)
+                                ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
+                            else // If there aren't any photos to delete, ask the user if they want to swipe more photos
+                                Button(onClick = {
+                                    checkPermissionsAndGetPhotos(
+                                        context = context,
+                                        onPermissionsGranted = { mainViewModel.getNewPhotos() }
+                                    )
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                }) {
+                                    Text("Fetch more photos")
+                                }
+                        }
                     }
+                }
+                AnimatedVisibility(
+                    visible = uiState.showInfo && currentPhoto != null,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    InfoRow(
+                        mainViewModel,
+                        currentPhoto,
+                        Modifier
+                            .background(
+                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                                MaterialTheme.shapes.medium
+                            )
+                            .widthIn(max = 380.dp)
+                    )
                 }
             }
         },
