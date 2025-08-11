@@ -3,12 +3,15 @@ package com.example.photoswooper.ui.view
 import android.text.format.DateUtils
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.photoswooper.data.database.MediaStatusDao
+import com.example.photoswooper.data.uistates.StatsData
 import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.data.uistates.TimeFrame
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import kotlin.math.roundToLong
 
@@ -49,7 +52,7 @@ class StatsViewModel(
     /**
      * Updates the [uiState] with the latest statistics data
      */
-    suspend fun updateStatsData() { // TODO("Add options for number of: swipes, deletes OR size deleted")
+    suspend fun updateStatsData() {
         Log.i("Stats", "Updating stats data")
 
         val currentTimeFrame = uiState.value.timeFrame
@@ -90,10 +93,16 @@ class StatsViewModel(
 
         /* Fetch & return data */
 
-        suspend fun getNumberOfSwipesFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Int =
-            mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis,).size
+        suspend fun getDataFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Float {
+            return when (uiState.value.dataType) {
+                StatsData.SWIPE_COUNT -> mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis,).size.toFloat()
+                StatsData.DELETED_COUNT -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis,).size.toFloat()
+                StatsData.SPACE_SAVED -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis)
+                    .sumOf { it.size }.toInt().div(1000000f) // div 1000000 to convert to MB TODO("May need to adjust depending on max  value")
+            }
+        }
 
-        val statsData = mutableListOf<Int>() // Initialise
+        val statsData = mutableListOf<Float>() // Initialise
 
         var firstDateMillis = getCalendarAtZero(
             finalZeroedJavaTime = fieldToZeroAndMaxForTimeFrame,
@@ -116,7 +125,7 @@ class StatsViewModel(
                 DateUtils.FORMAT_SHOW_TIME)} to ${formatDateTime(secondDateMillis, 0)} at ${formatDateTime(secondDateMillis,
                 DateUtils.FORMAT_SHOW_TIME)}")
             statsData.add(
-                getNumberOfSwipesFromDatabase(firstDateMillis, secondDateMillis)
+                getDataFromDatabase(firstDateMillis, secondDateMillis)
             )
 
             /* Increment values */
@@ -255,6 +264,17 @@ class StatsViewModel(
                 calendar.timeInMillis = dateToFetchFromMillis
                 return calendar.get(Calendar.YEAR).toString()
             }
+        }
+    }
+
+    fun updateDataType(newDataType: StatsData) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                dataType = newDataType
+            )
+        }
+        viewModelScope.launch {
+            updateStatsData()
         }
     }
 

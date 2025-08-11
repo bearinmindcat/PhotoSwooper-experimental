@@ -1,12 +1,13 @@
 package com.example.photoswooper.data.uistates
 
+import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 
-enum class TimeFrame(val milliseconds: Long) {
-    DAY(86400000),
-    WEEK(604800000),
-    MONTH(2629746000),
-    YEAR(31556952000),
+enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
+    DAY(86400000, R.drawable.calendar_dot),
+    WEEK(604800000, R.drawable.calendar_dots),
+    MONTH(2629746000, R.drawable.calendar_dots),
+    YEAR(31556952000, R.drawable.calendar),
 //    ALL(Calendar.getInstance().timeInMillis) // this millisecond value is the number of miliseconds since the epoch
 // TODO("Add support for an 'all' time frame")
 }

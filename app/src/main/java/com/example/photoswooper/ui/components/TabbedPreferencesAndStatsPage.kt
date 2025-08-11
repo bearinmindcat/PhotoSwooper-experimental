@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
+import com.example.photoswooper.data.uistates.StatsData
 import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
@@ -61,7 +63,7 @@ import io.github.koalaplot.core.bar.VerticalBarPlot
 import io.github.koalaplot.core.bar.VerticalBarPlotEntry
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
-import io.github.koalaplot.core.xygraph.IntLinearAxisModel
+import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +71,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.math.RoundingMode
 import kotlin.math.roundToInt
 
 private enum class TabIndex {
@@ -143,43 +146,71 @@ fun TabbedPreferencesAndStatsPage(
     }
 }
 
-@OptIn(ExperimentalKoalaPlotApi::class)
+@OptIn(ExperimentalKoalaPlotApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
     val context = LocalContext.current
     val view = LocalView.current
+
     val currentTimeFrame = uiState.timeFrame
+    val currentDataType = uiState.dataType
     val data = uiState.latestData
-
-    val maxYValue =
-        if (data.max() != 0)
-            data.max().times(1.15f).roundToInt()
-        else
-            30 // Default max value if all other values are zero
-
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        RowOfFilterChips(
-            chipsText = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() },
-            current = currentTimeFrame.toString().lowercase(),
-            updateCurrent = {
-                viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase()))
-                            },
-            modifier = Modifier.weight(0.1f)
-        )
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier
+                .weight(0.1f)
+                .fillMaxWidth()
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Data",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                DropdownFilterChip(
+                    leadingIconPainter = painterResource(currentDataType.iconDrawableId),
+                    currentSelection = currentDataType.toString().lowercase() + " " + currentDataType.extraInfo,
+                    expandContentDescription = "Select data type for y-axis",
+                    menuItems = StatsData.entries.map { it.toString().lowercase() + " " + it.extraInfo }.toTypedArray(),
+                    menuItemIcons = StatsData.entries.map { painterResource(it.iconDrawableId) }.toTypedArray(),
+                    onSelectionChange = { viewModel.updateDataType(StatsData.valueOf(it.substringBefore(" ").uppercase())) }
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Time frame",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                DropdownFilterChip(
+                    leadingIconPainter = painterResource(currentTimeFrame.iconDrawableId),
+                    currentSelection = currentTimeFrame.toString().lowercase(),
+                    expandContentDescription = "Select time frame for x-axis",
+                    menuItems = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() }.toTypedArray(),
+                    menuItemIcons = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { painterResource(it.iconDrawableId) }.toTypedArray(),
+                    onSelectionChange = { viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase())) }
+                )
+            }
+        }
+
         ChartLayout(
             modifier = Modifier
                 .padding(dimensionResource(R.dimen.padding_small))
                 .weight(0.8f),
         ) {
             Log.v("UI", "Loading chart")
-            val YAxisRange = 0..maxYValue
+            val maxYValue =
+                if (data.max() != 0f)
+                    data.max().times(1.15f)
+                else
+                    30f // Default max value if all other values are zero
+            val YAxisRange = 0f..maxYValue
             val XAxisRange = viewModel.getXAxisRange()
             val xAxisValues = viewModel.getNamedXAxisValues()?: XAxisRange.map { it.toString() }.toList()
-            fun barChartEntries(): List<VerticalBarPlotEntry<String, Int>> {
+            fun barChartEntries(): List<VerticalBarPlotEntry<String, Float>> {
                 Log.v("Stats", "Building bar chart entries")
                 return buildList {
                     for (index in XAxisRange) {
@@ -187,8 +218,8 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                             DefaultVerticalBarPlotEntry(
                                 xAxisValues[index],
                                 if (uiState.latestData.size == viewModel.getXAxisRange().last + 1) // If the data has been updated to the new time frame
-                                    DefaultVerticalBarPosition(0, data[index])
-                                else DefaultVerticalBarPosition(0, 0)
+                                    DefaultVerticalBarPosition(0f, data[index])
+                                else DefaultVerticalBarPosition(0f, 0f)
                             )
                         )
                     }
@@ -197,7 +228,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
 
             XYGraph(
                 xAxisModel = CategoryAxisModel(xAxisValues),
-                yAxisModel = IntLinearAxisModel(
+                yAxisModel = FloatLinearAxisModel(
                     YAxisRange,
                 ),
             ) {

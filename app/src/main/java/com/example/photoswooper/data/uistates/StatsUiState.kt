@@ -1,7 +1,14 @@
 package com.example.photoswooper.data.uistates
 
+import com.example.photoswooper.R
 import java.util.Calendar
 
+/** Enum class of the types of data that can be shown in the stats graph */
+enum class StatsData(val extraInfo: String = "", val iconDrawableId: Int) {
+    SWIPE_COUNT(iconDrawableId = R.drawable.images),
+    DELETED_COUNT(iconDrawableId = R.drawable.trash),
+    SPACE_SAVED(extraInfo = "(MB)", iconDrawableId = R.drawable.hard_drives),
+}
 /**
  * The uiState used by the StatsCard function in [com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage]
  *
@@ -13,6 +20,7 @@ import java.util.Calendar
 data class StatsUiState (
     val dateToFetchFromMillis: Long = Calendar.getInstance().timeInMillis,
     val timeFrame: TimeFrame = TimeFrame.WEEK,
-    val latestData: List<Int> = listOf(),
+    val dataType: StatsData = StatsData.SWIPE_COUNT,
+    val latestData: List<Float> = listOf(),
     val currentDateShown: Boolean = true
 )
