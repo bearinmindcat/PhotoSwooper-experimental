@@ -3,7 +3,11 @@
     <style name="Base.Theme.PhotoSwooper" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+
+        <!-- Status bar color. -->
+        <item name="android:windowLightStatusBar" >true</item>
     </style>
 
     <style name="Theme.PhotoSwooper" parent="Base.Theme.PhotoSwooper"/>
+
 </resources>
