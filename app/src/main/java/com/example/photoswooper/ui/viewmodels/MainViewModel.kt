@@ -330,4 +330,12 @@ class MainViewModel(
 
         return mediaStatusDao.getDeletedBetweenDates(firstDateInTimeFrame, currentDate).sumOf { it.size }
     }
+
+    fun toggleIsLoading(newState: Boolean = !uiState.value.isLoading) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                isLoading = newState
+            )
+        }
+    }
 }

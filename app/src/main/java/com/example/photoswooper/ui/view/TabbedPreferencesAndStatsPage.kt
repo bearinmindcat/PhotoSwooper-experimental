@@ -93,7 +93,21 @@ fun TabbedPreferencesAndStatsPage(
     modifier: Modifier = Modifier,
     numPhotosUnset: Int
 ) {
+    val context = LocalContext.current
+    val reduceAnimations = DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+
     val uiState by statsViewModel.uiState.collectAsState()
+
+    var tabIndex by remember { mutableIntStateOf(TabIndex.STATS.ordinal) }
+    var tabIndicatorWidth by remember { mutableStateOf(24.dp) }
+    val animatedTabIndicatorWidth = animateDpAsState(
+        tabIndicatorWidth,
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioLowBouncy,
+        ),
+    )
 
     /* Update the stats when the time frame or date to fetch changes */
     LaunchedEffect(uiState.timeFrame, uiState.dateToFetchFromMillis) {
@@ -106,11 +120,26 @@ fun TabbedPreferencesAndStatsPage(
         statsViewModel.updateStatsData()
     }
 
-    var tabIndex by remember { mutableStateOf(TabIndex.STATS.ordinal) }
+    /* Expand, then shrink the tab indicator while it is moving for a smooth animation */
+    LaunchedEffect(tabIndex) {
+        delay(10)
+        tabIndicatorWidth = 64.dp
+        delay(125)
+        tabIndicatorWidth = 24.dp
+    }
+
     Column(modifier) {
         TabRow(
             selectedTabIndex = tabIndex,
             containerColor = Color(0f, 0f, 0f, 0f),
+            indicator = { tabPositions ->
+                val currentTabPosition = tabPositions[tabIndex]
+                TabRowDefaults.PrimaryIndicator(
+                    width = animatedTabIndicatorWidth.value,
+                    modifier = Modifier
+                        .tabIndicatorOffset(currentTabPosition)
+                )
+            },
             modifier = Modifier.padding(vertical = dimensionResource(R.dimen.padding_medium)),
         ) {
             Tab(
@@ -142,14 +171,41 @@ fun TabbedPreferencesAndStatsPage(
                 )
             }
         }
-        when (tabIndex) {
-            TabIndex.STATS.ordinal -> {
-                if (uiState.latestData.isNotEmpty()) // If there is data to plot
-                    StatsCard(statsViewModel, uiState)
-            }
+        AnimatedContent(
+            tabIndex,
+            transitionSpec = {
+                if (reduceAnimations.value == true) fadeIn().togetherWith(fadeOut())
+                else
+                    slideIntoContainer(
+                        towards =
+                            if (tabIndex == TabIndex.STATS.ordinal) AnimatedContentTransitionScope.SlideDirection.End
+                            else AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                        ),
+                    ).togetherWith(
+                        slideOutOfContainer(
+                            towards =
+                                if (tabIndex == TabIndex.STATS.ordinal) AnimatedContentTransitionScope.SlideDirection.End
+                                else AnimatedContentTransitionScope.SlideDirection.Start,
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                            )
+                        )
+                    )
+            },
+        ) {
+            when (it) {
+                TabIndex.STATS.ordinal -> {
+                    if (uiState.latestData.isNotEmpty()) // If there is data to plot
+                        StatsCard(statsViewModel, uiState)
+                }
 
-            TabIndex.SETTINGS.ordinal -> {
-                PreferencesCard(Modifier.fillMaxSize())
+                TabIndex.SETTINGS.ordinal -> {
+                    PreferencesCard(Modifier.fillMaxSize())
+                }
             }
         }
     }

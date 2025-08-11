@@ -1,16 +1,21 @@
 package com.example.photoswooper.ui.view
 
+import android.Manifest.permission.READ_MEDIA_IMAGES
 import android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+import android.content.pm.PackageManager.PERMISSION_DENIED
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.content.res.Resources
 import android.os.Build
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
@@ -50,17 +55,21 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.checkSelfPermission
 import coil3.ImageLoader
 import com.example.photoswooper.R
 import com.example.photoswooper.checkPermissionsAndGetPhotos
 import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.ActionBar
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.ReviewDialog
 import com.example.photoswooper.ui.components.SwipeableAsyncImageWithIndicatorIcons
-import com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage
+import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.ui.viewmodels.StatsViewModel
+import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -121,7 +130,7 @@ fun MainScreen(
                     }
 
                     DragAnchors.Center -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && anchoredDraggableState.settledValue == DragAnchors.Center)
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
                     }
 
@@ -141,22 +150,31 @@ fun MainScreen(
                     DragAnchors.Left -> {
                         mainViewModel.markPhoto(PhotoStatus.DELETE)
                         mainViewModel.nextPhoto()
-                        anchoredDraggableState.animateTo(DragAnchors.Center)
+                        anchoredDraggableState.animateTo(
+                            DragAnchors.Center,
+                            animationSpec = spring(stiffness = 0f)
+                        )
                     }
-
                     DragAnchors.Right -> {
                         mainViewModel.markPhoto(PhotoStatus.KEEP)
                         mainViewModel.nextPhoto()
-                        anchoredDraggableState.animateTo(DragAnchors.Center)
+                        anchoredDraggableState.animateTo(
+                            DragAnchors.Center,
+                            animationSpec = spring(stiffness = 0f)
+                        )
                     }
 
                     else -> { /* Maybe add a markPhotoUnset() function if necessary? */
+                        anchoredDraggableState.animateTo(
+                            DragAnchors.Center,
+                            animationSpec = spring(stiffness = 0f)
+                        )
                     }
                 }
             }
     }
 
-    if (uiState.showReviewDialog == true) {
+    if (uiState.showReviewDialog) {
         ReviewDialog(
             photosToDelete = mainViewModel.getPhotosToDelete(),
             onDismissRequest = { mainViewModel.dismissReviewDialog() },
@@ -179,62 +197,57 @@ fun MainScreen(
                     .padding(paddingValues)
                     .fillMaxSize()
             ) {
-                AnimatedContent(
-                    targetState = uiState.isLoading
-                ) {
-                    when {
-                        /* When loading new photos */
-                        (it) -> CircularProgressIndicator(
-                            modifier = Modifier.width(64.dp),
-                            color = MaterialTheme.colorScheme.secondary,
-                            trackColor = MaterialTheme.colorScheme.secondaryContainer,
+                when {
+                    /* When loading new photos */
+                    (uiState.isLoading) -> {
+                        if (reduceAnimations.value == true) Text(
+                            text = "Loading...",
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = TextAlign.Center,
                         )
+                        else
+                            CircularProgressIndicator(
+                                modifier = Modifier.width(64.dp),
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceContainer,
+                                )
+                    }
 
-                        (uiState.photos.isEmpty()) -> {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
+                    (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) -> {
+                        SwipeableAsyncImageWithIndicatorIcons(
+                            currentPhoto,
+                            mainViewModel,
+                            imageLoader,
+                            anchoredDraggableState,
+                        )
+                    }
+
+                    (uiState.photos.isEmpty()) -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .padding(bottom = dimensionResource(R.dimen.padding_medium))
+                            )
+                            Text(
+                                "You have swiped on all of your photos, congrats! :D \uD83C\uDF89",
+                                style = MaterialTheme.typography.titleLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
+                            )
+                            if (checkSelfPermission(// TODO("Always show button, just change text to 'scan again' on older devices")
+                                    context,
+                                    READ_MEDIA_VISUAL_USER_SELECTED
+                                ) == PERMISSION_GRANTED
+                                && checkSelfPermission(context, READ_MEDIA_IMAGES) == PERMISSION_DENIED
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.check),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .padding(bottom = dimensionResource(R.dimen.padding_medium))
-                                )
-                                Text(
-                                    "You have swiped on all of your photos, congrats! :D \uD83C\uDF89",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
-                                )
-                                if (ContextCompat.checkSelfPermission(
-                                        context,
-                                        READ_MEDIA_VISUAL_USER_SELECTED
-                                    ) == PERMISSION_GRANTED
-                                )
-                                    Button(onClick = {
-                                        checkPermissionsAndGetPhotos(
-                                            context = context,
-                                            onPermissionsGranted = { mainViewModel.getNewPhotos() }
-                                        )
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    }) {
-                                        Text("Select more photos")
-                                    }
-                            }
-                        }
-
-                        (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) -> { // Then check if the current photo is unset
-                            SwipeableAsyncImageWithIndicatorIcons(currentPhoto, imageLoader, anchoredDraggableState)
-                        }
-
-                        (!mainViewModel.seekToUnsetPhotoOrFalse()) -> { // If there are no unset photos in the list, ask the user to delete the photos selected
-                            if (numToDelete > 0)
-                                ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
-                            else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                                 Button(onClick = {
                                     checkPermissionsAndGetPhotos(
                                         context = context,
@@ -243,15 +256,48 @@ fun MainScreen(
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 }) {
-                                    Text("Fetch more photos")
+                                    Text("Select more photos")
                                 }
+                            }
                         }
+                    }
+
+                    (!mainViewModel.seekToUnsetPhotoOrFalse()) -> { // If there are no unset photos in the list, ask the user to delete the photos selected
+                        if (numToDelete > 0)
+                            ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
+                        else // If there aren't any photos to delete, ask the user if they want to swipe more photos
+                            Button(onClick = {
+                                checkPermissionsAndGetPhotos(
+                                    context = context,
+                                    onPermissionsGranted = { mainViewModel.getNewPhotos() }
+                                )
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            }) {
+                                Text("Fetch more photos")
+                            }
                     }
                 }
                 AnimatedVisibility(
                     visible = uiState.showInfo && currentPhoto != null,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
+                    enter =
+                        if (reduceAnimations.value == true) fadeIn()
+                        else slideInVertically(
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                            ),
+                            initialOffsetY = { it }
+                        ),
+                    exit =
+                        if (reduceAnimations.value == true) fadeOut()
+                        else slideOutVertically(
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                            ),
+                            targetOffsetY = { it }
+                        ),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     InfoRow(

@@ -1,8 +1,10 @@
 package com.example.photoswooper.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandIn
+import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -83,8 +85,18 @@ fun ReviewDialog(
                     photosToDelete.forEach { photo ->
                         AnimatedVisibility(
                             visible = photo in photosToDelete,
-                            enter = expandVertically(),
-                            exit = shrinkVertically()
+                            enter = expandIn(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                )
+                            ),
+                            exit = shrinkOut(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    )
+                            )
                         ) {
                             Box(
                                 Modifier
@@ -162,8 +174,7 @@ fun ReviewDialog(
                     TextButton(
                         onClick = {
                             onConfirmation()
-                            if(disableReviewDialog == true)
-                                onDisableReviewDialog()
+                            if(disableReviewDialog) onDisableReviewDialog()
                         },
                         modifier = Modifier.padding(8.dp),
                     ) {

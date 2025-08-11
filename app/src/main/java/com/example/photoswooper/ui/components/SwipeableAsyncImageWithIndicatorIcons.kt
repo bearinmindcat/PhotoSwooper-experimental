@@ -4,6 +4,7 @@ import android.content.res.Resources
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -30,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,22 +40,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastRoundToInt
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
+import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.view.DragAnchors
+import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -61,15 +68,24 @@ import kotlin.math.roundToInt
 /**
  * Composable function containing a swipeable & zoomable image, with icons behind it showing what each swipe does
  *
- * @param image The [Photo] to be displayed.
+ * @param photo The [Photo] to be displayed.
  * @param anchoredDraggableState The [AnchoredDraggableState] object for handling swipe gestures.
  */
 @Composable
 fun SwipeableAsyncImageWithIndicatorIcons(
-    image: Photo,
+    photo: Photo,
+    viewModel: MainViewModel,
     imageLoader: ImageLoader,
-    anchoredDraggableState: AnchoredDraggableState<DragAnchors>
+    anchoredDraggableState: AnchoredDraggableState<DragAnchors>,
 ) {
+    val context = LocalContext.current
+    val reduceAnimations = DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+
+    val animatedScaleEntry = remember { Animatable(0f) }
+    var previousPhoto by remember { mutableStateOf(viewModel.uiState.value.photos.last().copy(id = 1234567890)) }
+    var showPhoto by remember { mutableStateOf(false) }
+
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     val swipingEnabled = scale == 1f
@@ -80,6 +96,28 @@ fun SwipeableAsyncImageWithIndicatorIcons(
     val animatableOffsetX = animateFloatAsState(targetValue = offset.x)
     val animatableOffsetY = animateFloatAsState(targetValue = offset.y)
     val animatableScale = animateFloatAsState(targetValue = scale)
+
+
+    /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
+    LaunchedEffect(showPhoto, photo) {
+        if (photo == previousPhoto) {
+            showPhoto = false
+            animatedScaleEntry.snapTo(0f)// Shrink to 0, ready for expand animation
+        }
+        else if (showPhoto) { // If photo is ready to be displayed
+            animatedScaleEntry.snapTo(0f)
+            delay(100)
+            if (reduceAnimations.value == true) animatedScaleEntry.snapTo(1f)
+            else animatedScaleEntry.animateTo(
+                1f,
+                spring(
+                    stiffness = Spring.StiffnessMediumLow,
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                )
+            )
+            previousPhoto = photo
+        }
+    }
 
     LaunchedEffect(scale) {
         if (swipingEnabled) offset = Offset.Zero
@@ -112,9 +150,10 @@ fun SwipeableAsyncImageWithIndicatorIcons(
             )
         }
         AsyncImage(
-            model = image.uri,
+            model = photo.uri,
             imageLoader = imageLoader,
             contentDescription = null,
+            onSuccess = { showPhoto = true },
             contentScale = ContentScale.FillWidth,
             modifier = Modifier
                 .fillMaxSize()
@@ -130,7 +169,7 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                                 scale = 2f
                                 offset = it.copy(
                                     x = -it.x - Resources.getSystem().displayMetrics.widthPixels.toFloat() / 25,
-                                    y = -it.y + (image.resolution?.substringAfterLast("×")?.toFloat()
+                                    y = -it.y + (photo.resolution?.substringAfterLast("×")?.toFloat()
                                         ?: 0f) / 25,
                                 )
                             }
@@ -146,9 +185,7 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                                 orientation = Orientation.Horizontal,
                                 flingBehavior = AnchoredDraggableDefaults.flingBehavior(
                                     anchoredDraggableState,
-                                    animationSpec = tween(
-                                        anchoredDraggableState.lastVelocity.times(100000).fastRoundToInt()
-                                    ),
+                                    animationSpec = tween(100),
                                 )
                             )
                             .offset {
@@ -157,6 +194,7 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                                     y = 0
                                 )
                             }
+                            .scale(animatedScaleEntry.value)
                     } else {
                         Modifier
                             // Detect zoom & pan using transformable
@@ -217,12 +255,14 @@ private fun IndicatorIconRow(currentAnchor: DragAnchors, displayKeepHint: Boolea
                 visible = displayKeepHint,
                 enter = expandVertically(
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioLowBouncy,
                     ),
                 ),
                 exit = shrinkVertically(
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioLowBouncy,
                     ),
                 ),
                 label = "keepHint"
@@ -257,12 +297,14 @@ private fun IndicatorIconRow(currentAnchor: DragAnchors, displayKeepHint: Boolea
                 visible = displayDeleteHint,
                 enter = expandVertically(
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioLowBouncy,
                     ),
                 ),
                 exit = shrinkVertically(
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                        dampingRatio = Spring.DampingRatioLowBouncy,
                     ),
                 ),
                 label = "deleteHint"
