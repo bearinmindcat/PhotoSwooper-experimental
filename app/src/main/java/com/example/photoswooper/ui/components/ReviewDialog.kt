@@ -18,10 +18,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -51,6 +52,13 @@ fun ReviewDialog(
     onDisableReviewDialog: () -> Unit,
 ) {
     var disableReviewDialog by remember { mutableStateOf(false) } // Whether to show this review dialog next time
+    // TODO("Make disable review dialog persistent")
+
+    LaunchedEffect(photosToDelete) {
+        if (photosToDelete.isEmpty()) {
+            onDismissRequest()
+        }
+    }
 
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
@@ -89,23 +97,25 @@ fun ReviewDialog(
                                     contentScale = ContentScale.FillHeight,
                                     alignment = Alignment.Center,
                                 )
-                                Icon(
-                                    painter = painterResource(R.drawable.x),
-                                    contentDescription = "Cancel deletion of this photo",
-                                    tint = Color.LightGray,
+                                IconButton(
+                                    onClick = { onUnsetPhoto(photo) },
                                     modifier = Modifier
                                         .background(
                                             shape = CircleShape,
-                                            color = Color.Transparent.copy(alpha = 0.5f)
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
                                         )
                                         .clip(CircleShape)
-                                        .clickable {
-                                            onUnsetPhoto(photo)
-                                            if (photosToDelete.isEmpty()) {
-                                                onDismissRequest()
-                                            }
-                                        }
-                                )
+                                        .size(dimensionResource(R.dimen.medium_icon))
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.x),
+                                        contentDescription = "Cancel deletion of this photo",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier
+                                            .padding(dimensionResource(R.dimen.padding_xsmall))
+
+                                    )
+                                }
                             }
                         }
                     }
