@@ -82,6 +82,8 @@ fun MainScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val density = LocalDensity.current
+    val reduceAnimations = DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
 
     val uiState by mainViewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }

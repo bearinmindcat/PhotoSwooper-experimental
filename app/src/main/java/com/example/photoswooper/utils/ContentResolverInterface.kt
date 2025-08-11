@@ -14,6 +14,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.uistates.BooleanPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -39,7 +40,7 @@ class ContentResolverInterface(
      */
     @OptIn(ExperimentalStdlibApi::class) // For .toHexString()
     suspend fun getPhotos(
-        photosAdded: MutableSet<Photo> = mutableSetOf<Photo>(),
+        photosAdded: MutableSet<Photo> = mutableSetOf(),
         numPhotos: Int,
         onAddPhoto: (Photo) -> Unit
     ) {
@@ -208,10 +209,10 @@ class ContentResolverInterface(
         onDelete: (List<Uri>) -> Unit
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val permanentlyDelete = dataStoreInterface.getBooleanSettingValue("permanently_delete").first()
+            val permanentlyDelete = dataStoreInterface.getBooleanSettingValue(BooleanPreference.permanently_delete.toString()).first()
 
             val editPendingIntent =
-                if (permanentlyDelete ?: false)
+                if (permanentlyDelete ?: BooleanPreference.permanently_delete.default)
                     MediaStore.createDeleteRequest(
                         contentResolver,
                         uris

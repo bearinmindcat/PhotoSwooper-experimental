@@ -10,7 +10,11 @@
     <string name="settings">Settings</string>
     <string name="num_photos_per_stack">Number of photos before reset</string>
     <string name="permanently_delete">Permanently delete photos</string>
-    <string name="permanently_delete_desc">If disabled, your phone\'s trash will be used, typically deleting the photo
-        after 30 days
-    </string>
+    <string name="permanently_delete_desc">If disabled, your phone\'s trash will be used, typically deleting the photo</string>
+    <string name="system_font">System default font</string>
+    <string name="system_font_desc">Use your system\'s default font, instead of PhotoSwooper\'s chosen font</string>
+    <string name="dynamic_theme">Dynamic theme\/colour</string>
+    <string name="dynamic_theme_desc">Use colours, typically chosen from your wallpaper, in PhotoSwooper</string>
+    <string name="reduce_animations_desc">Reduce the use of animations in PhotoSwooper, such as photos zooming in and bouncing when entering the screen</string>
+    <string name="reduce_animations">Reduce animations</string>
 </resources>

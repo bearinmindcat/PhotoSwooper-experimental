@@ -22,6 +22,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -33,15 +35,14 @@ import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
-import com.example.photoswooper.ui.theme.PhotoSwooperTheme
+import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.ui.view.MainScreen
-import com.example.photoswooper.ui.view.MainViewModel
-import com.example.photoswooper.ui.view.StatsViewModel
+import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -58,16 +59,6 @@ class MainActivity : AppCompatActivity() {
         mediaStatusDao = database.mediaStatusDao()
 
         val dataStoreInterface = DataStoreInterface(dataStore)
-        /* If unset, set permanently delete photos preference depending on availability of feature */
-        CoroutineScope(Dispatchers.IO).launch {
-            val permanentlyDeletePref = dataStoreInterface.getBooleanSettingValue("permanently_delete").first()
-            if (permanentlyDeletePref == null)
-                dataStoreInterface.setBooleanSettingValue(
-                    setting = "permanently_delete",
-                    newValue = if (SDK_INT >= Build.VERSION_CODES.R) false
-                            else true
-                )
-        }
 
         /* Custom image loader for animated GIFs */
         val imageLoader = ImageLoader.Builder(this)
@@ -126,7 +117,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContent {
-            PhotoSwooperTheme {
+            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.system_font.toString()).collectAsState(null)
+            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.dynamic_theme.toString()).collectAsState(null)
+            PhotoSwooperTheme(
+                customFont = systemFont?.not() ?: !BooleanPreference.system_font.default,
+                dynamicColor = dynamicTheme?: BooleanPreference.dynamic_theme.default
+            ) {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier
@@ -176,7 +172,7 @@ class MainActivity : AppCompatActivity() {
         Log.v("Permissions", "permissionsMap = $permissionMap")
         val readAccess = limitedReadAccess || fullReadAccess
 
-        Log.i("Permissions", "Permissions granted = ${limitedReadAccess && fullReadAccess}")
+        Log.i("Permissions", "Permissions granted = ${readAccess && writeAccess}")
 
         /* If permissions denied, notify user. Else, get photos from storage */
         if (!readAccess || !writeAccess) {

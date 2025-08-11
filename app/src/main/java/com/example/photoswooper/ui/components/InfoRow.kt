@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
-import com.example.photoswooper.ui.view.MainViewModel
+import com.example.photoswooper.ui.viewmodels.MainViewModel
 
 @Composable
 fun InfoRow(

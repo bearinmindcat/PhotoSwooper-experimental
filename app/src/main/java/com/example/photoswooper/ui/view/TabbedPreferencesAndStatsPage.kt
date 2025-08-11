@@ -1,9 +1,17 @@
-package com.example.photoswooper.ui.components
+package com.example.photoswooper.ui.view
 
 import android.os.Build
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,12 +36,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,11 +60,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
+import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.StatsData
 import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
-import com.example.photoswooper.ui.view.StatsViewModel
+import com.example.photoswooper.ui.components.DropdownFilterChip
+import com.example.photoswooper.ui.viewmodels.PrefsViewModel
+import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import io.github.koalaplot.core.ChartLayout
 import io.github.koalaplot.core.bar.DefaultVerticalBar
@@ -65,12 +79,7 @@ import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.math.RoundingMode
 import kotlin.math.roundToInt
 
@@ -342,6 +351,9 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val view = LocalView.current
 
+    val viewModel = PrefsViewModel(dataStoreInterface = DataStoreInterface(context.dataStore))
+    val uiState by viewModel.uiState.collectAsState()
+
     fun performSwitchHapticFeedback(toggledOn: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             if (toggledOn)
@@ -352,22 +364,8 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
 
-    val dataStoreInterface = DataStoreInterface(context.dataStore)
-
-    val numPhotosPerStackPref: Int?
-    runBlocking(Dispatchers.IO) {
-        numPhotosPerStackPref = dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
-    }
-    var numPhotosPerStack by remember { mutableStateOf(numPhotosPerStackPref) }
-    var displayedNumPhotosPerStack by remember { mutableStateOf(numPhotosPerStack?.toString()?: "30") }
-
-    val permanentlyDeletePref: Boolean?
-    runBlocking {
-        permanentlyDeletePref = dataStoreInterface.getBooleanSettingValue("permanently_delete").first()
-    }
-    var displayedPermanentlyDelete by remember { mutableStateOf(permanentlyDeletePref) }
-
     Card(modifier.verticalScroll(rememberScrollState())) {
+        /* Photos per stack preference */
         ListItem(
             headlineContent = {
                 Row(
@@ -390,29 +388,14 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))
                 ) {
                     TextField(
-                        value = displayedNumPhotosPerStack,
+                        value = uiState.numPhotosPerStackTextInput,
                         onValueChange = { input -> // Update UI value & dataStore only if valid
-                            val inputAsInt = input.toIntOrNull()
-                            if (inputAsInt != null) {
-                                if (inputAsInt in 1..100) { // Separate if statements so user doesn't see error message when inputting 0
-                                    displayedNumPhotosPerStack = input
-                                    numPhotosPerStack = input.toInt()
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        dataStoreInterface.setIntSettingValue(
-                                            setting = "num_photos_per_stack",
-                                            newValue = numPhotosPerStack ?: 30
-                                        )
-                                    }
-                                }
-                            }
-                            else if (input == "")
-                                    displayedNumPhotosPerStack = input
-                            else
+                            if(!viewModel.validatePhotosPerStackInputAndUpdate(input))
                                 Toast.makeText(
-                                context,
-                                "Not a number :(",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                                    context,
+                                    "Not a number :(",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                         },
                         keyboardOptions = KeyboardOptions.Default.copy(
                             keyboardType = KeyboardType.Number
@@ -422,19 +405,13 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                             .padding(horizontal = dimensionResource(R.dimen.padding_small))
                     )
                     Slider(
-                        value = numPhotosPerStack?.toFloat() ?: 30f,
+                        value = uiState.numPhotosPerStackTextInput.toFloatOrNull() ?: 30f,
                         onValueChange = {
-                            numPhotosPerStack = it.toInt()
-                            displayedNumPhotosPerStack = it.roundToInt().toString()
+                            viewModel.updatePhotosPerStackInput(it.roundToInt().toString())
                                         },
                         valueRange = 1f..100f,
                         onValueChangeFinished = {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                dataStoreInterface.setIntSettingValue(
-                                    setting = "num_photos_per_stack",
-                                    newValue = numPhotosPerStack ?: 30
-                                )
-                            }
+                            viewModel.updatePhotosPerStackPreference(uiState.numPhotosPerStackTextInput.toInt())
                         },
                         modifier = Modifier
                             .weight(0.5f)
@@ -443,6 +420,7 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                 }
             }
         )
+        /* Permanently delete preference */
         ListItem(
             leadingContent = {
                 Icon(
@@ -457,16 +435,10 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             },
             trailingContent = {
                 Switch(
-                    checked = displayedPermanentlyDelete ?: false,
+                    checked = uiState.permanentlyDelete,
                     enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
                     onCheckedChange = {
-                        displayedPermanentlyDelete = it
-                        CoroutineScope(Dispatchers.IO).launch {
-                            dataStoreInterface.setBooleanSettingValue(
-                                setting = "permanently_delete",
-                                newValue = displayedPermanentlyDelete ?: false
-                            )
-                        }
+                        viewModel.togglePermanentlyDelete()
                         performSwitchHapticFeedback(it)
                     }
                 )
@@ -477,14 +449,105 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                 )
             },
             modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                displayedPermanentlyDelete = !(displayedPermanentlyDelete ?: false)
-                CoroutineScope(Dispatchers.IO).launch {
-                    dataStoreInterface.setBooleanSettingValue(
-                        setting = "permanently_delete",
-                        newValue = displayedPermanentlyDelete ?: false
-                    )
-                }
-                performSwitchHapticFeedback(!(displayedPermanentlyDelete ?: false))
+                viewModel.togglePermanentlyDelete()
+                performSwitchHapticFeedback(uiState.permanentlyDelete)
+            }
+        )
+        /* System font preference */
+        ListItem(
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.text_aa),
+                    contentDescription = null // Described in adjacent text
+                )
+            },
+            headlineContent = {
+                Text(
+                    stringResource(R.string.system_font)
+                )
+            },
+            trailingContent = {
+                Switch(
+                    checked = uiState.systemFont,
+                    onCheckedChange = {
+                        viewModel.toggleSystemFont()
+                        performSwitchHapticFeedback(it)
+                    }
+                )
+            },
+            supportingContent = {
+                Text(
+                    stringResource(R.string.system_font_desc)
+                )
+            },
+            modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
+                viewModel.toggleSystemFont()
+                performSwitchHapticFeedback(uiState.systemFont)
+            }
+        )
+        /* Dynamic theme preference */
+        ListItem(
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.palette),
+                    contentDescription = null // Described in adjacent text
+                )
+            },
+            headlineContent = {
+                Text(
+                    stringResource(R.string.dynamic_theme)
+                )
+            },
+            trailingContent = {
+                Switch(
+                    checked = uiState.dynamicTheme,
+                    enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                    onCheckedChange = {
+                        viewModel.toggleDynamicTheme()
+                        performSwitchHapticFeedback(it)
+                    }
+                )
+            },
+            supportingContent = {
+                Text(
+                    stringResource(R.string.dynamic_theme_desc)
+                )
+            },
+            modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
+                viewModel.toggleDynamicTheme()
+                performSwitchHapticFeedback(uiState.dynamicTheme)
+            }
+        )
+        /* Reduce animations preference */
+        ListItem(
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.film_strip),
+                    contentDescription = null // Described in adjacent text
+                )
+            },
+            headlineContent = {
+                Text(
+                    stringResource(R.string.reduce_animations)
+                )
+            },
+            trailingContent = {
+                Switch(
+                    checked = uiState.reduceAnimations,
+                    onCheckedChange = {
+                        viewModel.toggleReduceAnimations()
+                        performSwitchHapticFeedback(it)
+                    }
+                )
+            },
+            supportingContent = {
+                Text(
+                    stringResource(R.string.reduce_animations_desc)
+                )
+            },
+            modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
+                viewModel.toggleReduceAnimations()
+                performSwitchHapticFeedback(uiState.reduceAnimations)
             }
         )
     }

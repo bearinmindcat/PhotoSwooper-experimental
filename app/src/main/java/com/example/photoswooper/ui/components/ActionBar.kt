@@ -3,6 +3,10 @@ package com.example.photoswooper.ui.components
 import android.os.Build
 import android.text.format.Formatter.formatShortFileSize
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,9 +22,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
@@ -30,11 +41,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
+import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.MainUiState
-import com.example.photoswooper.ui.view.MainViewModel
+import com.example.photoswooper.dataStore
+import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.utils.DataStoreInterface
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalKoalaPlotApi::class, ExperimentalMaterial3Api::class)
@@ -47,7 +62,41 @@ fun ActionBar(
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
+    val reduceAnimations = DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+    val extraSmallIconSize = dimensionResource(R.dimen.xsmall_icon)
+    val expandedIconSize = extraSmallIconSize * 1.25f
 
+    var shuffleIconSize by remember { mutableStateOf(extraSmallIconSize) }
+    val animatedShuffleIconSize = animateDpAsState(
+        targetValue = shuffleIconSize,
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioLowBouncy,
+        )
+    )
+    var shuffleIconRotation by remember { mutableStateOf(0f) }
+    val animatedShuffleIconRotation = animateFloatAsState(
+        targetValue =  shuffleIconRotation,
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioLowBouncy,
+        )
+    )
+
+    /* Bouncy effect when the time frame is changed */
+    LaunchedEffect(uiState.currentStorageStatsTimeFrame) {
+        if (reduceAnimations.value == false) {
+            shuffleIconSize = expandedIconSize
+            shuffleIconRotation = 10f
+            delay(200)
+            shuffleIconRotation = -10f
+            shuffleIconSize = extraSmallIconSize
+            delay(200)
+            shuffleIconRotation = 0f
+        }
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -63,7 +112,7 @@ fun ActionBar(
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                /* Undo button */
+                /* Undo button TODO("Add rotation animation when clicked")*/
                 FilledIconButton(
                     onClick = {
                         val undoResult = viewModel.undo()
@@ -151,7 +200,8 @@ fun ActionBar(
                 painter = painterResource(R.drawable.shuffle),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(dimensionResource(R.dimen.xsmall_icon))
+                    .size(animatedShuffleIconSize.value)
+                    .rotate(animatedShuffleIconRotation.value)
             )
             Text(
                 text = buildAnnotatedString {

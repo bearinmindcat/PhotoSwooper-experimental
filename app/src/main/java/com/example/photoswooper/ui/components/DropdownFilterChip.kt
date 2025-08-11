@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,12 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
+import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.dataStore
+import com.example.photoswooper.utils.DataStoreInterface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,15 +49,18 @@ fun DropdownFilterChip(
 ) {
     fun getDisplayedString(menuItem: String): String = menuItem.replace("_", " ").replaceFirstChar { it.uppercase() }
 
+    val context = LocalContext.current
     val density = LocalDensity.current
     var expanded by remember { mutableStateOf(false) }
     var filterChipWidth: Dp by remember { mutableStateOf(0.dp) }
+    val reduceAnimations = DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
 
     val caretRotation = animateFloatAsState(
         if (expanded) 180f else 0f,
         animationSpec = spring(
-            stiffness = Spring.StiffnessLow,
-            dampingRatio = Spring.DampingRatioMediumBouncy
+            stiffness = if (reduceAnimations.value == true) 0f else Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioLowBouncy,
         ),
         label = "filterChipCaretRotation",
     )

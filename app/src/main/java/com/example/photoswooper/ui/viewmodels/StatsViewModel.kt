@@ -1,4 +1,4 @@
-package com.example.photoswooper.ui.view
+package com.example.photoswooper.ui.viewmodels
 
 import android.text.format.DateUtils
 import android.util.Log
@@ -16,7 +16,7 @@ import java.util.Calendar
 import kotlin.math.roundToLong
 
 /**
- * The viewModel used by the StatsCard function in [com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage]
+ * The viewModel used by the `StatsCard` function in [com.example.photoswooper.ui.view.TabbedPreferencesAndStatsPage]
  */
 class StatsViewModel(
     val mediaStatusDao: MediaStatusDao,

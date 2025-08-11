@@ -10,7 +10,7 @@ enum class StatsData(val extraInfo: String = "", val iconDrawableId: Int) {
     SPACE_SAVED(extraInfo = "(MB)", iconDrawableId = R.drawable.hard_drives),
 }
 /**
- * The uiState used by the StatsCard function in [com.example.photoswooper.ui.components.TabbedPreferencesAndStatsPage]
+ * The uiState used by the StatsCard function in [com.example.photoswooper.ui.view.TabbedPreferencesAndStatsPage]
  *
  * @property dateToFetchFromMillis The date chosen by the user to fetch data for. Data will be fetched for the whole
  * [timeFrame] e.g. If the [dateToFetchFromMillis] is a tuesday, all data for monday-sunday will be fetched

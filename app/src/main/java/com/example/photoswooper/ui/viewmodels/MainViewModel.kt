@@ -1,5 +1,6 @@
-package com.example.photoswooper.ui.view
+package com.example.photoswooper.ui.viewmodels
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -8,9 +9,9 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.photoswooper.data.database.MediaStatusDao
-import com.example.photoswooper.data.defaultPhotoLimit
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.utils.ContentResolverInterface
@@ -64,7 +65,7 @@ class MainViewModel(
             },
             numPhotos = 2
         )
-        if (uiState.value.photos.size == 0) { // Check if zero unswiped photos could be found
+        if (uiState.value.photos.isEmpty()) { // Check if zero unswiped photos could be found
             viewModelScope.launch {
                 _uiState.update { currentState ->
                     currentState.copy(
@@ -78,9 +79,9 @@ class MainViewModel(
             _uiState.update { currentState ->
                 currentState.copy(
                     currentPhotoIndex = 0,
-                    numUnset = dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
-                        ?: defaultPhotoLimit,
-                    isLoading = false
+                    numUnset = dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
+                        ?: IntPreference.num_photos_per_stack.default,
+                    isLoading = false,
                 )
             }
             // Add the rest of the photos asynchronously (speedy)
@@ -89,12 +90,12 @@ class MainViewModel(
                     onAddPhoto = {
                         _uiState.value.photos.add(it)
                     },
-                    numPhotos = (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
-                        ?: defaultPhotoLimit),
+                    numPhotos = (dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
+                        ?: IntPreference.num_photos_per_stack.default),
                     photosAdded = uiState.value.photos.toMutableSet()
                 )
-                if (uiState.value.photos.size != (dataStoreInterface.getIntSettingValue("num_photos_per_stack").first()
-                        ?: defaultPhotoLimit)
+                if (uiState.value.photos.size != (dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
+                        ?: IntPreference.num_photos_per_stack.default)
                 ) {
                     makeToast("No more photos found, Last round!")
                     // Update UI state with the actual number of photos found
@@ -125,7 +126,7 @@ class MainViewModel(
             _uiState.update { currentState ->
                 currentState.copy(
                     currentPhotoIndex = currentState.photos.indexOfFirst { it.status == PhotoStatus.UNSET },
-                    numUnset = currentState.numUnset + 1
+                    numUnset = currentState.numUnset + 1,
                 )
             }
     }
@@ -135,7 +136,7 @@ class MainViewModel(
         _uiState.update { currentState ->
             currentState.copy(
                 currentPhotoIndex = currentState.currentPhotoIndex + 1,
-                numUnset = currentState.numUnset - 1
+                numUnset = currentState.numUnset - 1,
             )
         }
         Log.v("MainViewModel","Seeking to next photo, new index = ${uiState.value.currentPhotoIndex}/${uiState.value.photos.size - 1}")
@@ -157,19 +158,20 @@ class MainViewModel(
 
     fun undo(): Boolean {
         if(uiState.value.currentPhotoIndex > 0) { // First check if there is an action to undo
+            val decrementedPhotoIndex = uiState.value.currentPhotoIndex - 1
+            // Unset the status
+            _uiState.value.photos[decrementedPhotoIndex].status = PhotoStatus.UNSET
+
             // Decrement currentPhotoIndex
             _uiState.update { currentState ->
                 currentState.copy(
-                    currentPhotoIndex = currentState.currentPhotoIndex - 1,
+                    currentPhotoIndex = decrementedPhotoIndex,
                     numUnset = currentState.numUnset + 1
                 )
             }
-            // Unset the status
-            _uiState.value.photos[uiState.value.currentPhotoIndex].status = PhotoStatus.UNSET
-
             /* Update database  */
             CoroutineScope(Dispatchers.IO).launch {
-                val photo = _uiState.value.photos[uiState.value.currentPhotoIndex]
+                val photo = _uiState.value.photos[decrementedPhotoIndex]
                 mediaStatusDao.update(photo.getMediaStatusEntity())
             }
             return true
@@ -279,7 +281,7 @@ class MainViewModel(
         val uri: String? = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
         val intent = Intent(Intent.ACTION_VIEW, uri?.toUri())
         try { startActivity(intent) }
-        catch (_: android.content.ActivityNotFoundException) {
+        catch (_: ActivityNotFoundException) {
             makeToast("No suitable app found")
         }
     }
