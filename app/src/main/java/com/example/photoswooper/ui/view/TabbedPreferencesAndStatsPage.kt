@@ -242,7 +242,13 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                     expandContentDescription = "Select data type for y-axis",
                     menuItems = StatsData.entries.map { it.toString().lowercase() + " " + it.extraInfo }.toTypedArray(),
                     menuItemIcons = StatsData.entries.map { painterResource(it.iconDrawableId) }.toTypedArray(),
-                    onSelectionChange = { viewModel.updateDataType(StatsData.valueOf(it.substringBefore(" ").uppercase())) }
+                    onSelectionChange = {
+                        viewModel.updateDataType(
+                            StatsData.valueOf(
+                                it.substringBefore(" ").uppercase()
+                            )
+                        )
+                    }
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -254,8 +260,13 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                     leadingIconPainter = painterResource(currentTimeFrame.iconDrawableId),
                     currentSelection = currentTimeFrame.toString().lowercase(),
                     expandContentDescription = "Select time frame for x-axis",
-                    menuItems = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() }.toTypedArray(),
-                    menuItemIcons = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { painterResource(it.iconDrawableId) }.toTypedArray(),
+                    menuItems = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() }
+                        .toTypedArray(),
+                    menuItemIcons = listOf(
+                        TimeFrame.DAY,
+                        TimeFrame.WEEK,
+                        TimeFrame.YEAR
+                    ).map { painterResource(it.iconDrawableId) }.toTypedArray(),
                     onSelectionChange = { viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase())) }
                 )
             }
@@ -309,8 +320,8 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                                         context,
                                         if (currentDataType == StatsData.SPACE_SAVED)
                                             barChartEntries()[index].y.yMax.toBigDecimal()
-                                                .setScale(2, RoundingMode.HALF_UP).toString() +  " MB"
-                                            else barChartEntries()[index].y.yMax.toString(),
+                                                .setScale(2, RoundingMode.HALF_UP).toString() + " MB"
+                                        else barChartEntries()[index].y.yMax.toString(),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 },
