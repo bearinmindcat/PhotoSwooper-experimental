@@ -8,6 +8,7 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -17,7 +18,9 @@ import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,11 +36,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -74,6 +81,7 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
+    val density = LocalDensity.current
 
     val uiState by mainViewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
@@ -83,6 +91,9 @@ fun MainScreen(
         } catch (_: IndexOutOfBoundsException) {
             null
         }
+
+    var actionBarHeight by remember { mutableStateOf(0.dp) }
+    val animatedActionBarHeight = animateDpAsState(actionBarHeight)
 
     /* For anchored draggable (photo swiping left/right) */
 
@@ -254,12 +265,17 @@ fun MainScreen(
                 }
             }
         },
-        sheetContent = { // TODO("Fix offset from bottom")
+        sheetContent = {
             ActionBar(
                 currentPhoto = currentPhoto,
                 numToDelete = numToDelete,
                 uiState,
                 mainViewModel,
+                modifier = Modifier.onGloballyPositioned { coordinates ->
+                    with (density) {
+                        actionBarHeight = coordinates.size.height.toDp()
+                    }
+                }
             )
             TabbedPreferencesAndStatsPage(
                 modifier = Modifier,
@@ -267,6 +283,6 @@ fun MainScreen(
                 numPhotosUnset = uiState.numUnset
             )
         },
-        sheetPeekHeight = 156.dp
+        sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp,
     )
 }

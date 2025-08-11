@@ -121,54 +121,54 @@ fun ActionBar(
                 }
             }
         }
-    }
 
-    /* Statistics row */
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .clickable(onClickLabel = "Click to change time frame") {
-                CoroutineScope(Dispatchers.Main).launch {
-                    viewModel.cycleStorageStatsTimeFrame()
+        /* Statistics row */
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .clickable(onClickLabel = "Click to change time frame") {
+                    CoroutineScope(Dispatchers.Main).launch {
+                        viewModel.cycleStorageStatsTimeFrame()
+                    }
                 }
-            }
-            .fillMaxWidth()
-            .padding(dimensionResource(R.dimen.padding_small))
-            .clip(MaterialTheme.shapes.medium)
-    ) {
-        val statsTextStyle = MaterialTheme.typography.bodyLarge
-        Text(
-            text = "Space saved this ",
-            style = statsTextStyle,
-            modifier = Modifier
-                .padding(
-                    start = dimensionResource(R.dimen.padding_small),
-                    top = dimensionResource(R.dimen.padding_small),
-                    bottom = dimensionResource(R.dimen.padding_small)
-                )
-        )
-        Icon(
-            painter = painterResource(R.drawable.shuffle),
-            contentDescription = null,
-            modifier = Modifier
-                .size(dimensionResource(R.dimen.xsmall_icon))
-        )
-        Text(
-            text = buildAnnotatedString {
-                append(" ")
-                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
-                append(uiState.currentStorageStatsTimeFrame.name.lowercase())
-                pop()
-                append(": ${formatShortFileSize(LocalContext.current, uiState.spaceSavedInTimeFrame)}")
-            },
-            style = statsTextStyle,
-            modifier = Modifier
-                .padding(
-                    end = dimensionResource(R.dimen.padding_small),
-                    top = dimensionResource(R.dimen.padding_small),
-                    bottom = dimensionResource(R.dimen.padding_small)
-                )
-        )
+                .fillMaxWidth()
+                .padding(dimensionResource(R.dimen.padding_small))
+                .clip(MaterialTheme.shapes.medium)
+        ) {
+            val statsTextStyle = MaterialTheme.typography.bodyLarge
+            Text(
+                text = "Space saved this ",
+                style = statsTextStyle,
+                modifier = Modifier
+                    .padding(
+                        start = dimensionResource(R.dimen.padding_small),
+                        top = dimensionResource(R.dimen.padding_small),
+                        bottom = dimensionResource(R.dimen.padding_small)
+                    )
+            )
+            Icon(
+                painter = painterResource(R.drawable.shuffle),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(dimensionResource(R.dimen.xsmall_icon))
+            )
+            Text(
+                text = buildAnnotatedString {
+                    append(" ")
+                    pushStyle(SpanStyle(textDecoration = TextDecoration.Underline))
+                    append(uiState.currentStorageStatsTimeFrame.name.lowercase())
+                    pop()
+                    append(": ${formatShortFileSize(LocalContext.current, uiState.spaceSavedInTimeFrame)}")
+                },
+                style = statsTextStyle,
+                modifier = Modifier
+                    .padding(
+                        end = dimensionResource(R.dimen.padding_small),
+                        top = dimensionResource(R.dimen.padding_small),
+                        bottom = dimensionResource(R.dimen.padding_small)
+                    )
+            )
+        }
     }
 }

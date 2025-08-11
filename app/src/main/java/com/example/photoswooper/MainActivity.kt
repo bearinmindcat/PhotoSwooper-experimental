@@ -17,6 +17,7 @@ import android.text.format.DateUtils
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +52,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         val database = MediaStatusDatabase.getDatabase(applicationContext)
         mediaStatusDao = database.mediaStatusDao()
@@ -127,13 +129,14 @@ class MainActivity : AppCompatActivity() {
             PhotoSwooperTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen(
                         mainViewModel = mainViewModel,
                         imageLoader = imageLoader,
-                        statsViewModel = statsViewModel
+                        statsViewModel = statsViewModel,
                     )
                 }
             }
