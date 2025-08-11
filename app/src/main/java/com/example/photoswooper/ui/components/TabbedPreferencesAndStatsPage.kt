@@ -237,7 +237,18 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                     bar = { index ->
                         DefaultVerticalBar(
                             brush = SolidColor(MaterialTheme.colorScheme.primary),
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    Toast.makeText(
+                                        context,
+                                        if (currentDataType == StatsData.SPACE_SAVED)
+                                            barChartEntries()[index].y.yMax.toBigDecimal()
+                                                .setScale(2, RoundingMode.HALF_UP).toString() +  " MB"
+                                            else barChartEntries()[index].y.yMax.toString(),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
                         ) {
                             Surface(
                                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
