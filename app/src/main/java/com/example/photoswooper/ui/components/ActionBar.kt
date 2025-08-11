@@ -28,7 +28,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.uistates.MainUiState
@@ -115,7 +114,7 @@ fun ActionBar(
                         .weight(0.2f)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.info_bold),
+                        painter = painterResource(R.drawable.info),
                         contentDescription = "Show more image information",
                         modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
                     )
@@ -153,7 +152,7 @@ fun ActionBar(
             painter = painterResource(R.drawable.shuffle),
             contentDescription = null,
             modifier = Modifier
-                .size(16.dp)
+                .size(dimensionResource(R.dimen.xsmall_icon))
         )
         Text(
             text = buildAnnotatedString {

@@ -38,7 +38,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -75,7 +74,6 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
-    val density = LocalDensity.current
 
     val uiState by mainViewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
@@ -185,7 +183,7 @@ fun MainScreen(
                                 modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.check_bold),
+                                    painter = painterResource(R.drawable.check),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier

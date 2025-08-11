@@ -48,7 +48,7 @@ fun ReviewDeletedButton(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                painter = painterResource(R.drawable.check_bold),
+                painter = painterResource(R.drawable.check),
                 contentDescription = null,
                 modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
             )
