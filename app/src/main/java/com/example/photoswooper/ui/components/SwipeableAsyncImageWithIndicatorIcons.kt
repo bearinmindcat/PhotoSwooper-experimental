@@ -104,25 +104,15 @@ fun SwipeableAsyncImageWithIndicatorIcons(
     val animatableOffsetY = animateFloatAsState(targetValue = offset.y)
     val animatableScale = animateFloatAsState(targetValue = scale)
 
-
-    /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
-    LaunchedEffect(showPhoto, photo) {
-        if (photo == previousPhoto) {
-            showPhoto = false
-            animatedScaleEntry.snapTo(0f)// Shrink to 0, ready for expand animation
-        }
-        else if (showPhoto) { // If photo is ready to be displayed
-            animatedScaleEntry.snapTo(0f)
-            delay(100)
-            if (reduceAnimations.value) animatedScaleEntry.snapTo(1f)
-            else animatedScaleEntry.animateTo(
-                1f,
-                spring(
-                    stiffness = Spring.StiffnessMediumLow,
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                )
+    /* Animate image depending on how far the user has swiped */
+    LaunchedEffect(anchoredDraggableState.requireOffset()) {
+        if (!reduceAnimations.value) {
+            viewModel.animatedImageScaleEntry.snapTo(
+                ((1.25f - (anchoredDraggableState.requireOffset().absoluteValue) / DragAnchors.Right.offset / 2f))
+                    .coerceIn(0.8f, 1f),
             )
-            previousPhoto = photo
+            imageAlpha = 3 * (1f - anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
+                .coerceIn(0f, 1f)
         }
     }
 
@@ -176,6 +166,7 @@ fun SwipeableAsyncImageWithIndicatorIcons(
             contentScale = ContentScale.FillWidth,
             modifier = modifier
                 .fillMaxSize()
+                .alpha(imageAlpha)
                 // Allow panning to be visible outside original bounds
                 .clipToBounds()
                 // Double-tap to toggle zoom

@@ -62,6 +62,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.StatsData
 import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.data.uistates.TimeFrame

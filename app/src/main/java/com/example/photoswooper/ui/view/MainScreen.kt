@@ -76,10 +76,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-enum class DragAnchors {
-    Left,
-    Center,
-    Right,
+enum class DragAnchors(val offset: Float) {
+    Left(-Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2),
+    Center(0f),
+    Right(Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
 }
 
 @Composable
@@ -108,7 +108,6 @@ fun MainScreen(
         } catch (_: IndexOutOfBoundsException) {
             null
         }
-
     var actionBarHeight by remember { mutableStateOf(0.dp) }
     val animatedActionBarHeight = animateDpAsState(
         actionBarHeight,
@@ -124,9 +123,9 @@ fun MainScreen(
         AnchoredDraggableState(
             initialValue = DragAnchors.Center,
             anchors = DraggableAnchors {
-                DragAnchors.Left at (-Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
-                DragAnchors.Center at 0f
-                DragAnchors.Right at (Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
+                DragAnchors.Left at DragAnchors.Left.offset
+                DragAnchors.Center at DragAnchors.Center.offset
+                DragAnchors.Right at DragAnchors.Right.offset
             },
         )
     }
@@ -142,7 +141,10 @@ fun MainScreen(
                     }
 
                     DragAnchors.Center -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && anchoredDraggableState.settledValue == DragAnchors.Center)
+                        if (
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                            && anchoredDraggableState.settledValue == DragAnchors.Center
+                        )
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
                     }
 
