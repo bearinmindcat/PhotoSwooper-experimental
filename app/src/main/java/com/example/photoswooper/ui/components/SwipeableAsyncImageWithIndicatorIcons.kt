@@ -114,6 +114,8 @@ fun SwipeableAsyncImageWithIndicatorIcons(
             imageAlpha = 3 * (1f - anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
                 .coerceIn(0f, 1f)
         }
+            indicatorIconsAlpha = 2*(anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
+                    .coerceIn(0f, 1f)
     }
 
     LaunchedEffect(scale) {
@@ -144,6 +146,7 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                 anchoredDraggableState.targetValue,
                 displayKeepHint = displayKeepHint,
                 displayDeleteHint = displayDeleteHint,
+                modifier = Modifier.alpha(indicatorIconsAlpha)
             )
         }
         AsyncImage(
@@ -238,11 +241,16 @@ fun SwipeableAsyncImageWithIndicatorIcons(
  * @param currentAnchor The anchor the user is currently dragging to (left to delete, right to keep)
  */
 @Composable
-private fun IndicatorIconRow(currentAnchor: DragAnchors, displayKeepHint: Boolean, displayDeleteHint: Boolean) {
+private fun IndicatorIconRow(
+    currentAnchor: DragAnchors,
+    displayKeepHint: Boolean,
+    displayDeleteHint: Boolean,
+    modifier: Modifier = Modifier
+) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -253,8 +261,11 @@ private fun IndicatorIconRow(currentAnchor: DragAnchors, displayKeepHint: Boolea
                 painter = painterResource(R.drawable.bookmark_simple),
                 contentDescription = null,
                 tint = animateColorAsState(
-                    if (currentAnchor == DragAnchors.Right) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceVariant,
+                    when (currentAnchor) {
+                        DragAnchors.Right -> MaterialTheme.colorScheme.primary
+                        DragAnchors.Left -> MaterialTheme.colorScheme.surface
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
                     label = "keepIconColour"
                 ).value,
                 modifier = Modifier
@@ -296,8 +307,11 @@ private fun IndicatorIconRow(currentAnchor: DragAnchors, displayKeepHint: Boolea
                 painter = painterResource(R.drawable.trash),
                 contentDescription = null,
                 tint = animateColorAsState(
-                    if (currentAnchor == DragAnchors.Left) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.surfaceVariant,
+                    when (currentAnchor) {
+                        DragAnchors.Left -> MaterialTheme.colorScheme.error
+                        DragAnchors.Right -> MaterialTheme.colorScheme.surface
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
                     label = "deleteIconColour"
                 ).value,
                 modifier = Modifier
