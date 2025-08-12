@@ -14,12 +14,6 @@ enum class IntPreference(val default: Int) {
 }
 
 data class PrefsUiState (
-    /** The actual preference for the number of photos to be shown before asking to fetch more photos */
-    val numPhotosPerStack: Int = IntPreference.num_photos_per_stack.default,
     /** Text input from user to be validated before committed to preferences */
-    val numPhotosPerStackTextInput: String = "",
-    val permanentlyDelete: Boolean = BooleanPreference.permanently_delete.default,
-    val systemFont: Boolean = BooleanPreference.system_font.default,
-    val dynamicTheme: Boolean = BooleanPreference.dynamic_theme.default,
-    val reduceAnimations: Boolean = BooleanPreference.reduce_animations.default
-)
+    val numPhotosPerStackTextInput: String = IntPreference.num_photos_per_stack.default.toString()
+   )

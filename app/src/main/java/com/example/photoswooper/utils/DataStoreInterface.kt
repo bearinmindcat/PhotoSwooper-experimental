@@ -25,7 +25,7 @@ class DataStoreInterface(val dataStore: DataStore<Preferences>) {
         }
     }
 
-    fun getIntSettingValue(setting: String): Flow<Int?> {
+    fun getIntSettingValue(setting: String): Flow<Int> {
         val settingKey = intPreferencesKey(setting)
         return dataStore.data
             .map { preferences ->

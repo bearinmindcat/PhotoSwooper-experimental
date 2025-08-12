@@ -420,7 +420,13 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
     val view = LocalView.current
 
     val viewModel = PrefsViewModel(dataStoreInterface = DataStoreInterface(context.dataStore))
+    viewModel.updateStackTextInput()
     val uiState by viewModel.uiState.collectAsState()
+    val permanentlyDelete = viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.permanently_delete.toString()).collectAsState(false)
+    val systemFont = viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.system_font.toString()).collectAsState(false)
+    val dynamicTheme = viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.dynamic_theme.toString()).collectAsState(false)
+    val reduceAnimations = viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+
 
     fun performSwitchHapticFeedback(toggledOn: Boolean) {
         if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -473,13 +479,13 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                             .padding(horizontal = dimensionResource(R.dimen.padding_small))
                     )
                     Slider(
-                        value = uiState.numPhotosPerStackTextInput.toFloatOrNull() ?: 30f,
+                        value = uiState.numPhotosPerStackTextInput.toFloatOrNull() ?: IntPreference.num_photos_per_stack.default.toFloat(),
                         onValueChange = {
                             viewModel.updatePhotosPerStackInput(it.roundToInt().toString())
                                         },
                         valueRange = 1f..100f,
                         onValueChangeFinished = {
-                            viewModel.updatePhotosPerStackPreference(uiState.numPhotosPerStackTextInput.toInt())
+                            viewModel.updateIntPreference(IntPreference.num_photos_per_stack.toString(),uiState.numPhotosPerStackTextInput.toInt())
                         },
                         modifier = Modifier
                             .weight(0.5f)
@@ -505,9 +511,9 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             },
             trailingContent = {
                 Switch(
-                    checked = uiState.permanentlyDelete,
+                    checked = permanentlyDelete.value,
                     onCheckedChange = {
-                        viewModel.togglePermanentlyDelete()
+                        viewModel.toggleBooleanSetting(BooleanPreference.permanently_delete.toString())
                         performSwitchHapticFeedback(it)
                     }
                 )
@@ -518,8 +524,8 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                 )
             },
             modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                viewModel.togglePermanentlyDelete()
-                performSwitchHapticFeedback(uiState.permanentlyDelete)
+                viewModel.toggleBooleanSetting(BooleanPreference.permanently_delete.toString())
+                performSwitchHapticFeedback(permanentlyDelete.value)
             }
         )
         /* System font preference */
@@ -537,9 +543,9 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             },
             trailingContent = {
                 Switch(
-                    checked = uiState.systemFont,
+                    checked = systemFont.value,
                     onCheckedChange = {
-                        viewModel.toggleSystemFont()
+                        viewModel.toggleBooleanSetting(BooleanPreference.system_font.toString())
                         performSwitchHapticFeedback(it)
                     }
                 )
@@ -550,8 +556,8 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                 )
             },
             modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                viewModel.toggleSystemFont()
-                performSwitchHapticFeedback(uiState.systemFont)
+                viewModel.toggleBooleanSetting(BooleanPreference.system_font.toString())
+                performSwitchHapticFeedback(systemFont.value)
             }
         )
         /* Dynamic theme preference */
@@ -570,9 +576,9 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             },
             trailingContent = {
                 Switch(
-                    checked = uiState.dynamicTheme,
+                    checked = dynamicTheme.value,
                     onCheckedChange = {
-                        viewModel.toggleDynamicTheme()
+                        viewModel.toggleBooleanSetting(BooleanPreference.dynamic_theme.toString())
                         performSwitchHapticFeedback(it)
                     }
                 )
@@ -583,8 +589,8 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                 )
             },
             modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                viewModel.toggleDynamicTheme()
-                performSwitchHapticFeedback(uiState.dynamicTheme)
+                viewModel.toggleBooleanSetting(BooleanPreference.dynamic_theme.toString())
+                performSwitchHapticFeedback(dynamicTheme.value)
             }
         )
         /* Reduce animations preference */
@@ -602,9 +608,9 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             },
             trailingContent = {
                 Switch(
-                    checked = uiState.reduceAnimations,
+                    checked = reduceAnimations.value,
                     onCheckedChange = {
-                        viewModel.toggleReduceAnimations()
+                        viewModel.toggleBooleanSetting(BooleanPreference.reduce_animations.toString())
                         performSwitchHapticFeedback(it)
                     }
                 )
@@ -615,8 +621,8 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                 )
             },
             modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                viewModel.toggleReduceAnimations()
-                performSwitchHapticFeedback(uiState.reduceAnimations)
+                viewModel.toggleBooleanSetting(BooleanPreference.reduce_animations.toString())
+                performSwitchHapticFeedback(reduceAnimations.value)
             }
         )
     }
