@@ -1,10 +1,10 @@
 package com.example.photoswooper.ui.components
 
 import android.content.res.Resources
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -36,9 +37,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
@@ -47,6 +50,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +66,8 @@ import com.example.photoswooper.ui.view.DragAnchors
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 
@@ -77,14 +83,15 @@ fun SwipeableAsyncImageWithIndicatorIcons(
     viewModel: MainViewModel,
     imageLoader: ImageLoader,
     anchoredDraggableState: AnchoredDraggableState<DragAnchors>,
+    modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val reduceAnimations = DataStoreInterface(context.dataStore)
+    val view = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+    val reduceAnimations = DataStoreInterface(LocalContext.current.dataStore)
         .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
 
-    val animatedScaleEntry = remember { Animatable(0f) }
-    var previousPhoto by remember { mutableStateOf(viewModel.uiState.value.photos.last().copy(id = 1234567890)) }
-    var showPhoto by remember { mutableStateOf(false) }
+    var imageAlpha by remember { mutableStateOf(1f) }
+    var indicatorIconsAlpha by remember { mutableStateOf(0f) }
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -153,9 +160,21 @@ fun SwipeableAsyncImageWithIndicatorIcons(
             model = photo.uri,
             imageLoader = imageLoader,
             contentDescription = null,
-            onSuccess = { showPhoto = true },
+            onSuccess = {
+                /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
+                coroutineScope.launch {
+                    anchoredDraggableState.animateTo(
+                        DragAnchors.Center,
+                        tween(0)
+                    )
+                    viewModel.enterImage(coroutineScope)
+                    view.performHapticFeedback(
+                        HapticFeedbackConstants.CLOCK_TICK
+                    )
+                }
+            },
             contentScale = ContentScale.FillWidth,
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
                 // Allow panning to be visible outside original bounds
                 .clipToBounds()
@@ -194,7 +213,7 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                                     y = 0
                                 )
                             }
-                            .scale(animatedScaleEntry.value)
+                            .scale(viewModel.animatedImageScaleEntry.value)
                     } else {
                         Modifier
                             // Detect zoom & pan using transformable

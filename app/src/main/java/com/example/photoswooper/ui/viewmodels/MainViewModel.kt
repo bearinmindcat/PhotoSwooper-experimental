@@ -5,12 +5,16 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.TimeFrame
@@ -18,6 +22,7 @@ import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -34,6 +39,38 @@ class MainViewModel(
 ): ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
+
+    val reduceAnimations = dataStoreInterface
+        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString())
+    val defaultEntryAnimationSpec = spring<Float>(
+        stiffness = Spring.StiffnessMediumLow,
+        dampingRatio = Spring.DampingRatioLowBouncy,
+    )
+    val defaultExitAnimationSpec = spring<Float>(
+        Spring.DampingRatioNoBouncy,
+        Spring.StiffnessMedium
+    )
+    val animatedImageScaleEntry = Animatable(0f)
+    fun enterImage(coroutineScope: CoroutineScope) {
+        coroutineScope.launch {
+            animatedImageScaleEntry.snapTo(0f)
+            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(1f)
+            else animatedImageScaleEntry.animateTo(
+                1f,
+                defaultEntryAnimationSpec
+            )
+        }
+    }
+    fun exitImage(coroutineScope: CoroutineScope) {
+        coroutineScope.launch {
+            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(0f)
+            else animatedImageScaleEntry.animateTo(
+                0f,
+                defaultExitAnimationSpec
+            )
+        }
+    }
+
 
     fun getPhotosToDelete() = uiState.value.photos.filter { photo ->
         photo.status == PhotoStatus.DELETE
@@ -156,23 +193,31 @@ class MainViewModel(
         else return false
     }
 
-    fun undo(): Boolean {
-        if(uiState.value.currentPhotoIndex > 0) { // First check if there is an action to undo
-            val decrementedPhotoIndex = uiState.value.currentPhotoIndex - 1
-            // Unset the status
-            _uiState.value.photos[decrementedPhotoIndex].status = PhotoStatus.UNSET
+    fun undo(coroutineScope: CoroutineScope): Boolean {
+        if (uiState.value.currentPhotoIndex > 0) { // First check if there is an action to undo
+            viewModelScope.launch {
+                exitImage(coroutineScope)
+                delay(100)
+                if (uiState.value.currentPhotoIndex > 0) { // Check if undo valid again, after the above delay
+                val decrementedPhotoIndex = uiState.value.currentPhotoIndex - 1
+                // Unset the status
+                _uiState.value.photos[decrementedPhotoIndex].status = PhotoStatus.UNSET
 
-            // Decrement currentPhotoIndex
-            _uiState.update { currentState ->
-                currentState.copy(
-                    currentPhotoIndex = decrementedPhotoIndex,
-                    numUnset = currentState.numUnset + 1
-                )
-            }
-            /* Update database  */
-            CoroutineScope(Dispatchers.IO).launch {
-                val photo = _uiState.value.photos[decrementedPhotoIndex]
-                mediaStatusDao.update(photo.getMediaStatusEntity())
+                // Decrement currentPhotoIndex
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        currentPhotoIndex = decrementedPhotoIndex,
+                        numUnset = currentState.numUnset + 1
+                    )
+                }
+                /* Update database  */
+                CoroutineScope(Dispatchers.IO).launch {
+                    val photo = _uiState.value.photos[decrementedPhotoIndex]
+                    mediaStatusDao.update(photo.getMediaStatusEntity())
+                }
+                enterImage(coroutineScope)
+                }
+                else enterImage(coroutineScope)
             }
             return true
         }

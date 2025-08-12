@@ -27,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalKoalaPlotApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ActionBar(
@@ -63,6 +65,7 @@ fun ActionBar(
 ) {
     val view = LocalView.current
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val reduceAnimations = DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
     val extraSmallIconSize = dimensionResource(R.dimen.xsmall_icon)
@@ -115,7 +118,7 @@ fun ActionBar(
                 /* Undo button TODO("Add rotation animation when clicked")*/
                 FilledIconButton(
                     onClick = {
-                        val undoResult = viewModel.undo()
+                        val undoResult = viewModel.undo(coroutineScope)
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             if (undoResult)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

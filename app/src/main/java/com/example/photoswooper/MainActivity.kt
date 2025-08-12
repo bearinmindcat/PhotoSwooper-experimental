@@ -69,6 +69,8 @@ class MainActivity : AppCompatActivity() {
                     add(GifDecoder.Factory())
                 }
             }
+            .memoryCache(null)
+            .diskCache(null) // Disable cache so animation is called every time in AsyncPhoto (needs an onSuccess call)
             .build()
 
         val contentResolverInterface = ContentResolverInterface(
