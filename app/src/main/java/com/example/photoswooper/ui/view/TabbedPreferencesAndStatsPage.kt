@@ -229,7 +229,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier
-                .weight(0.1f)
+                .weight(0.15f)
                 .fillMaxWidth()
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

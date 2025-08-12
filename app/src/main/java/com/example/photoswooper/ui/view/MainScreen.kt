@@ -331,9 +331,10 @@ fun MainScreen(
                 }
             )
             TabbedPreferencesAndStatsPage(
-                modifier = Modifier,
                 statsViewModel = statsViewModel,
-                numPhotosUnset = uiState.numUnset
+                numPhotosUnset = uiState.numUnset,
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.navigationBars)
             )
         },
         sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp,
