@@ -1,10 +1,13 @@
 package com.example.photoswooper.ui.viewmodels
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -104,6 +107,7 @@ class MainViewModel(
         )
         if (uiState.value.photos.isEmpty()) { // Check if zero unswiped photos could be found
             viewModelScope.launch {
+                delay(1000) // Delay so that the loading indicator is shown
                 _uiState.update { currentState ->
                     currentState.copy(
                         isLoading = false
@@ -323,8 +327,8 @@ class MainViewModel(
     }
 
     fun openLocationInMapsApp(photo: Photo?) {
-        val uri: String? = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
-        val intent = Intent(Intent.ACTION_VIEW, uri?.toUri())
+        val uri = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
+        val intent = Intent(Intent.ACTION_VIEW, uri.toUri())
         try { startActivity(intent) }
         catch (_: ActivityNotFoundException) {
             makeToast("No suitable app found")
@@ -382,5 +386,25 @@ class MainViewModel(
                 isLoading = newState
             )
         }
+    }
+
+    fun updatePermissionsGranted(newState: Boolean) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                permissionsGranted = newState
+            )
+        }
+    }
+
+    fun navigateToAppSettingsForPermissions(context: Context) {
+        val uri = Uri.fromParts("package", context.packageName, null)
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri)
+
+        context.startActivity(intent)
+        Toast.makeText(
+            context,
+            "Click on \"Permissions\", then grant photos & videos / storage permissions",
+            Toast.LENGTH_LONG
+        ).show()
     }
 }

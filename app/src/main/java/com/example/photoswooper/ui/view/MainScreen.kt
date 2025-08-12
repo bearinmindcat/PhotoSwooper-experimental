@@ -20,9 +20,11 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
-import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
@@ -31,12 +33,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,7 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.checkSelfPermission
 import coil3.ImageLoader
 import com.example.photoswooper.R
-import com.example.photoswooper.checkPermissionsAndGetPhotos
+import com.example.photoswooper.checkPermissions
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
@@ -164,25 +168,19 @@ fun MainScreen(
                     DragAnchors.Left -> {
                         mainViewModel.markPhoto(PhotoStatus.DELETE)
                         mainViewModel.nextPhoto()
-                        anchoredDraggableState.animateTo(
+                        anchoredDraggableState.snapTo(
                             DragAnchors.Center,
-                            animationSpec = spring(stiffness = 0f)
                         )
                     }
                     DragAnchors.Right -> {
                         mainViewModel.markPhoto(PhotoStatus.KEEP)
                         mainViewModel.nextPhoto()
-                        anchoredDraggableState.animateTo(
-                            DragAnchors.Center,
-                            animationSpec = spring(stiffness = 0f)
+                        anchoredDraggableState.snapTo(
+                            DragAnchors.Center
                         )
                     }
 
                     else -> { /* Maybe add a markPhotoUnset() function if necessary? */
-                        anchoredDraggableState.animateTo(
-                            DragAnchors.Center,
-                            animationSpec = spring(stiffness = 0f)
-                        )
                     }
                 }
             }
@@ -212,6 +210,67 @@ fun MainScreen(
                     .fillMaxSize()
             ) {
                 when {
+                    /* When permissions not granted */
+                    (uiState.permissionsGranted == false) -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.x),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .padding(bottom = dimensionResource(R.dimen.padding_medium))
+                            )
+                            Text(
+                                "Please grant PhotoSwooper access to your photos",
+                                style = MaterialTheme.typography.titleLarge,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
+                            )
+                            Row {
+                                Button(
+                                    onClick = {
+                                        mainViewModel.navigateToAppSettingsForPermissions(context)
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) view.performHapticFeedback(
+                                            HapticFeedbackConstants.CONFIRM
+                                        )
+                                    },
+                                    shape = MaterialTheme.shapes.extraLarge.copy(
+                                        topEnd = CornerSize(4.dp),
+                                        bottomEnd = CornerSize(4.dp)
+                                    )
+                                ) {
+                                    Text("Go to app settings")
+                                }
+                                Spacer(Modifier.width(2.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                            checkPermissions(
+                                                context,
+                                                onPermissionsGranted = {
+                                                    CoroutineScope(Dispatchers.Main).launch {
+                                                        mainViewModel.updatePermissionsGranted(true)
+                                                        mainViewModel.getNewPhotos()
+                                                    }
+                                                }
+                                            )
+                                    },
+                                    shape = MaterialTheme.shapes.extraLarge.copy(
+                                        topStart = CornerSize(4.dp),
+                                        bottomStart = CornerSize(4.dp)
+                                    ),
+                                ) {
+                                    Icon( // TODO("Add spinning animation when clicked")
+                                        painterResource(R.drawable.arrows_clockwise),
+                                        null,
+                                        modifier = Modifier.size(dimensionResource(R.dimen.small_icon)))
+                                }
+                            }}
+                    }
                     /* When loading new photos */
                     (uiState.isLoading) -> {
                         if (reduceAnimations.value) Text(
@@ -257,10 +316,12 @@ fun MainScreen(
                                 modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
                             )
                                 Button(onClick = {
-                                    checkPermissionsAndGetPhotos(
-                                        context = context,
-                                        onPermissionsGranted = { mainViewModel.getNewPhotos() }
-                                    )
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        checkPermissions(
+                                            context = context,
+                                            onPermissionsGranted = { mainViewModel.getNewPhotos() }
+                                        )
+                                    }
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 }) {
@@ -274,7 +335,7 @@ fun MainScreen(
                             ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
                         else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                             Button(onClick = {
-                                checkPermissionsAndGetPhotos(
+                                checkPermissions(
                                     context = context,
                                     onPermissionsGranted = { mainViewModel.getNewPhotos() }
                                 )

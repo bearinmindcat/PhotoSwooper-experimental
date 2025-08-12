@@ -14,6 +14,7 @@ enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
 
 data class MainUiState(
     val photos: MutableList<Photo> = mutableListOf(),
+    val permissionsGranted: Boolean? = null,
     val isLoading: Boolean = true,
     val currentPhotoIndex: Int = 0,
     val numUnset: Int = 0,

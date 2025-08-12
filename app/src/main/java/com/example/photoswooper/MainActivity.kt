@@ -47,6 +47,12 @@ import kotlinx.coroutines.launch
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+/** Permissions that should be granted for read access to all storage */
+val fullReadPermissions = if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+    arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
+else
+    arrayOf(READ_EXTERNAL_STORAGE)
+
 class MainActivity : AppCompatActivity() {
     private lateinit var mediaStatusDao: MediaStatusDao
     private lateinit var mainViewModel: MainViewModel
@@ -112,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         CoroutineScope(Dispatchers.Main).launch {
-            checkPermissionsAndGetPhotos(
+            checkPermissions(
                 context = this@MainActivity,
                 onPermissionsGranted = { mainViewModel.getNewPhotos() }
             )
@@ -150,17 +156,10 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         val permissionMap: Map<String, Int> = permissions.associateWith { grantResults[permissions.indexOf(it)] }
 
-        /** Permissions that should be granted for read access to all storage */
-        val fullReadPermissions = if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            arrayOf(READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
-        else
-            arrayOf(READ_EXTERNAL_STORAGE)
-
         /* Write access is only needed for lower android versions (< 11) which don't support MediaStore trash/delete requests */
         val writeAccess = if (SDK_INT < Build.VERSION_CODES.Q)
             permissionMap[WRITE_EXTERNAL_STORAGE] == PERMISSION_GRANTED
             else true
-
 
         val fullReadAccess = permissionMap.filter {
             fullReadPermissions.contains(it.key)
@@ -184,6 +183,7 @@ class MainActivity : AppCompatActivity() {
                     "Cannot read photos & videos without read permissions",
                     Toast.LENGTH_LONG
                 ).show()
+                mainViewModel.updatePermissionsGranted(false)
             }
             if (!writeAccess) {
                 Toast.makeText(
@@ -191,8 +191,10 @@ class MainActivity : AppCompatActivity() {
                     "Cannot delete photos & videos without write permissions",
                     Toast.LENGTH_LONG
                 ).show()
+                mainViewModel.updatePermissionsGranted(false)
             }
         } else {
+            mainViewModel.updatePermissionsGranted(true)
             CoroutineScope(Dispatchers.Main).launch { mainViewModel.getNewPhotos() }
         }
     }
@@ -226,9 +228,9 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-fun checkPermissionsAndGetPhotos(
+fun checkPermissions(
     context: Context,
-    onPermissionsGranted: suspend () -> Unit
+    onPermissionsGranted: suspend () -> Unit = {  }
 ) {
     val permissionsToRequest = mutableListOf<String>()
     /* Permissions to check depending on the android version */
@@ -266,5 +268,7 @@ fun checkPermissionsAndGetPhotos(
             101
         ) // The result of this is handled in the onRequestPermissionsResult() function
     else
-        CoroutineScope(Dispatchers.IO).launch { onPermissionsGranted() }
+        CoroutineScope(Dispatchers.IO).launch {
+            onPermissionsGranted()
+        }
 }
