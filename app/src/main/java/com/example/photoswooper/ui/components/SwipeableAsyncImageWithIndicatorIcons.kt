@@ -107,7 +107,7 @@ fun SwipeableAsyncImageWithIndicatorIcons(
         else if (showPhoto) { // If photo is ready to be displayed
             animatedScaleEntry.snapTo(0f)
             delay(100)
-            if (reduceAnimations.value == true) animatedScaleEntry.snapTo(1f)
+            if (reduceAnimations.value) animatedScaleEntry.snapTo(1f)
             else animatedScaleEntry.animateTo(
                 1f,
                 spring(

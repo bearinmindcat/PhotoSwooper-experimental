@@ -87,7 +87,7 @@ fun ActionBar(
 
     /* Bouncy effect when the time frame is changed */
     LaunchedEffect(uiState.currentStorageStatsTimeFrame) {
-        if (reduceAnimations.value == false) {
+        if (!reduceAnimations.value) {
             shuffleIconSize = expandedIconSize
             shuffleIconRotation = 10f
             delay(200)

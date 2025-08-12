@@ -104,7 +104,13 @@ fun MainScreen(
         }
 
     var actionBarHeight by remember { mutableStateOf(0.dp) }
-    val animatedActionBarHeight = animateDpAsState(actionBarHeight)
+    val animatedActionBarHeight = animateDpAsState(
+        actionBarHeight,
+        spring(
+            stiffness = if (reduceAnimations.value) 0f else Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioLowBouncy,
+        )
+    )
 
     /* For anchored draggable (photo swiping left/right) */
 
@@ -200,7 +206,7 @@ fun MainScreen(
                 when {
                     /* When loading new photos */
                     (uiState.isLoading) -> {
-                        if (reduceAnimations.value == true) Text(
+                        if (reduceAnimations.value) Text(
                             text = "Loading...",
                             style = MaterialTheme.typography.titleLarge,
                             textAlign = TextAlign.Center,
@@ -281,7 +287,7 @@ fun MainScreen(
                 AnimatedVisibility(
                     visible = uiState.showInfo && currentPhoto != null,
                     enter =
-                        if (reduceAnimations.value == true) fadeIn()
+                        if (reduceAnimations.value) fadeIn()
                         else slideInVertically(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,
@@ -290,7 +296,7 @@ fun MainScreen(
                             initialOffsetY = { it }
                         ),
                     exit =
-                        if (reduceAnimations.value == true) fadeOut()
+                        if (reduceAnimations.value) fadeOut()
                         else slideOutVertically(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,

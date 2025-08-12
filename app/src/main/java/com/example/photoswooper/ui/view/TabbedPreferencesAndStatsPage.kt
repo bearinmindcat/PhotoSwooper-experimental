@@ -1,6 +1,7 @@
 package com.example.photoswooper.ui.view
 
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
@@ -422,12 +423,12 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
 
     fun performSwitchHapticFeedback(toggledOn: Boolean) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             if (toggledOn)
                 view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
             else
                 view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+        } else if (SDK_INT >= Build.VERSION_CODES.R)
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
 
@@ -487,8 +488,10 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                 }
             }
         )
+        // TODO("Make BooleanSettingItem Composable")
         /* Permanently delete preference */
-        ListItem(
+        if (SDK_INT >= Build.VERSION_CODES.R)
+            ListItem(
             leadingContent = {
                 Icon(
                     painter = painterResource(R.drawable.trash),
@@ -503,7 +506,6 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             trailingContent = {
                 Switch(
                     checked = uiState.permanentlyDelete,
-                    enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
                     onCheckedChange = {
                         viewModel.togglePermanentlyDelete()
                         performSwitchHapticFeedback(it)
@@ -553,7 +555,8 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             }
         )
         /* Dynamic theme preference */
-        ListItem(
+        if (SDK_INT >= Build.VERSION_CODES.S)
+            ListItem(
             leadingContent = {
                 Icon(
                     painter = painterResource(R.drawable.palette),
@@ -568,7 +571,6 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
             trailingContent = {
                 Switch(
                     checked = uiState.dynamicTheme,
-                    enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                     onCheckedChange = {
                         viewModel.toggleDynamicTheme()
                         performSwitchHapticFeedback(it)

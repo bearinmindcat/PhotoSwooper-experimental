@@ -117,11 +117,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContent {
-            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.system_font.toString()).collectAsState(null)
-            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.dynamic_theme.toString()).collectAsState(null)
+            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.system_font.toString()).collectAsState(!BooleanPreference.system_font.default)
+            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.dynamic_theme.toString()).collectAsState(BooleanPreference.dynamic_theme.default)
             PhotoSwooperTheme(
-                customFont = systemFont?.not() ?: !BooleanPreference.system_font.default,
-                dynamicColor = dynamicTheme?: BooleanPreference.dynamic_theme.default
+                systemFont = systemFont,
+                dynamicColor = dynamicTheme
             ) {
                 // A surface container using the 'background' color from the theme
                 Surface(

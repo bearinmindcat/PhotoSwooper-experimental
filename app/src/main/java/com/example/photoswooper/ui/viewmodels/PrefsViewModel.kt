@@ -41,7 +41,6 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
             _uiState.update { currentState ->
                 currentState.copy(
                     permanentlyDelete = dataStoreInterface.getBooleanSettingValue(BooleanPreference.permanently_delete.toString()).first()
-                        ?: BooleanPreference.permanently_delete.default
                 )
             }
         }
@@ -49,7 +48,6 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
             _uiState.update { currentState ->
                 currentState.copy(
                     systemFont = dataStoreInterface.getBooleanSettingValue(BooleanPreference.system_font.toString()).first()
-                        ?: BooleanPreference.system_font.default
                 )
             }
         }
@@ -57,7 +55,6 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
             _uiState.update { currentState ->
                 currentState.copy(
                     dynamicTheme = dataStoreInterface.getBooleanSettingValue(BooleanPreference.dynamic_theme.toString()).first()
-                        ?: BooleanPreference.dynamic_theme.default
                 )
             }
         }
@@ -65,7 +62,6 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
             _uiState.update { currentState ->
                 currentState.copy(
                     dynamicTheme = dataStoreInterface.getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).first()
-                        ?: BooleanPreference.reduce_animations.default
                 )
             }
         }
@@ -153,6 +149,7 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
             )
         }
     }
+
     fun toggleReduceAnimations() {
         val newPreference = !uiState.value.reduceAnimations
         CoroutineScope(Dispatchers.IO).launch {

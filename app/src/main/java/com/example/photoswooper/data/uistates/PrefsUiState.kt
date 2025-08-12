@@ -4,7 +4,7 @@ import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 
 enum class BooleanPreference(val default: Boolean){
-    permanently_delete((SDK_INT < Build.VERSION_CODES.R)),
+    permanently_delete(SDK_INT < Build.VERSION_CODES.R),
     system_font(false),
     dynamic_theme(SDK_INT >= Build.VERSION_CODES.S),
     reduce_animations(false)

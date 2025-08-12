@@ -5,15 +5,17 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.uistates.IntPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class DataStoreInterface(val dataStore: DataStore<Preferences>) {
-    fun getBooleanSettingValue(setting: String): Flow<Boolean?> {
+    fun getBooleanSettingValue(setting: String): Flow<Boolean> {
         val settingKey = booleanPreferencesKey(setting)
         return dataStore.data
             .map { preferences ->
-                preferences[settingKey]
+                preferences[settingKey] ?: BooleanPreference.valueOf(setting).default
             }
     }
     suspend fun setBooleanSettingValue(newValue: Boolean, setting: String) {
@@ -27,7 +29,7 @@ class DataStoreInterface(val dataStore: DataStore<Preferences>) {
         val settingKey = intPreferencesKey(setting)
         return dataStore.data
             .map { preferences ->
-                preferences[settingKey]
+                preferences[settingKey] ?: IntPreference.valueOf(setting).default
             }
     }
     suspend fun setIntSettingValue(newValue: Int, setting: String) {

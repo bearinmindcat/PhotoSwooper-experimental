@@ -254,7 +254,7 @@ val unspecified_scheme = ColorFamily(
 @Composable
 fun PhotoSwooperTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    customFont: Boolean = true,
+    systemFont: Boolean = false,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable() () -> Unit
@@ -271,7 +271,7 @@ fun PhotoSwooperTheme(
 
   MaterialTheme(
     colorScheme = colorScheme,
-    typography = if (customFont) PhotoSwooperTypography else MaterialTheme.typography,
+    typography = if (systemFont) MaterialTheme.typography else PhotoSwooperTypography,
     content = content
   )
 }
