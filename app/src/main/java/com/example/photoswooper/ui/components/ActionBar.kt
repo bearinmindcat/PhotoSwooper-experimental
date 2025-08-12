@@ -182,6 +182,8 @@ fun ActionBar(
                 .clickable(onClickLabel = "Click to change time frame") {
                     CoroutineScope(Dispatchers.Main).launch {
                         viewModel.cycleStorageStatsTimeFrame()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     }
                 }
                 .fillMaxWidth()

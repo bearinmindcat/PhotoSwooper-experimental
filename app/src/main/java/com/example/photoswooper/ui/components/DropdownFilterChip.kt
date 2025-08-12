@@ -1,6 +1,8 @@
 package com.example.photoswooper.ui.components
 
-import android.util.Log
+import android.os.Build
+import android.os.Build.VERSION.SDK_INT
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -28,6 +30,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -50,6 +53,7 @@ fun DropdownFilterChip(
     fun getDisplayedString(menuItem: String): String = menuItem.replace("_", " ").replaceFirstChar { it.uppercase() }
 
     val context = LocalContext.current
+    val view = LocalView.current
     val density = LocalDensity.current
     var expanded by remember { mutableStateOf(false) }
     var filterChipWidth: Dp by remember { mutableStateOf(0.dp) }
@@ -93,7 +97,11 @@ fun DropdownFilterChip(
                         .rotate(caretRotation.value)
                 )
             },
-            onClick = { expanded = !expanded },
+            onClick = {
+                expanded = !expanded
+                if (SDK_INT >= Build.VERSION_CODES.R)
+                    view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
+                      },
             colors =
                 FilterChipDefaults.filterChipColors().copy(
                     containerColor =
@@ -108,7 +116,11 @@ fun DropdownFilterChip(
         )
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
+            onDismissRequest = {
+                expanded = false
+                if (SDK_INT >= Build.VERSION_CODES.R)
+                    view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
+                               },
             border = FilterChipDefaults.filterChipBorder(true, false),
             shape = FilterChipDefaults.shape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -118,7 +130,6 @@ fun DropdownFilterChip(
                 val menuItemIndex = menuItems.indexOf(menuItem)
                 DropdownMenuItem(
                     leadingIcon = {
-                        Log.v(null, (menuItemIcons.getOrNull(menuItemIndex) is Painter).toString())
                         if (menuItemIcons.getOrNull(menuItemIndex) is Painter)
                             Icon(
                                 menuItemIcons[menuItemIndex],
@@ -131,8 +142,8 @@ fun DropdownFilterChip(
                         style = MaterialTheme.typography.labelLarge,
                     ) },
                     onClick = {
-                        onSelectionChange(menuItem)
                         expanded = !expanded
+                        onSelectionChange(menuItem)
                     },
                     enabled = menuItem != currentSelection
                 )

@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -40,7 +41,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -96,6 +96,7 @@ fun TabbedPreferencesAndStatsPage(
     numPhotosUnset: Int
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val reduceAnimations = DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
 
@@ -110,6 +111,10 @@ fun TabbedPreferencesAndStatsPage(
             dampingRatio = Spring.DampingRatioLowBouncy,
         ),
     )
+    val onTabChange = {
+        if (SDK_INT >= Build.VERSION_CODES.R)
+        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+    }
 
     /* Update the stats when the time frame or date to fetch changes */
     LaunchedEffect(uiState.timeFrame, uiState.dateToFetchFromMillis) {
@@ -146,7 +151,10 @@ fun TabbedPreferencesAndStatsPage(
         ) {
             Tab(
                 selected = (tabIndex == TabIndex.STATS.ordinal),
-                onClick = { tabIndex = TabIndex.STATS.ordinal },
+                onClick = {
+                    tabIndex = TabIndex.STATS.ordinal
+                    onTabChange()
+                          },
                 modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_small))
             ) {
                 Icon(
@@ -160,7 +168,10 @@ fun TabbedPreferencesAndStatsPage(
             }
             Tab(
                 selected = (tabIndex == TabIndex.SETTINGS.ordinal),
-                onClick = { tabIndex = TabIndex.SETTINGS.ordinal },
+                onClick = {
+                    tabIndex = TabIndex.SETTINGS.ordinal
+                    onTabChange()
+                          },
                 modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_small))
             ) {
                 Icon(
@@ -176,7 +187,7 @@ fun TabbedPreferencesAndStatsPage(
         AnimatedContent(
             tabIndex,
             transitionSpec = {
-                if (reduceAnimations.value == true) fadeIn().togetherWith(fadeOut())
+                if (reduceAnimations.value) fadeIn().togetherWith(fadeOut())
                 else
                     slideIntoContainer(
                         towards =
@@ -250,7 +261,9 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                                 it.substringBefore(" ").uppercase()
                             )
                         )
-                    }
+                        if (SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    },
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -269,7 +282,11 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                         TimeFrame.WEEK,
                         TimeFrame.YEAR
                     ).map { painterResource(it.iconDrawableId) }.toTypedArray(),
-                    onSelectionChange = { viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase())) }
+                    onSelectionChange = {
+                        viewModel.updateTimeFrame(TimeFrame.valueOf(it.uppercase()))
+                        if (SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    },
                 )
             }
         }
@@ -356,7 +373,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
             /* Previous date button */
             IconButton(onClick = {
                 viewModel.previousDate()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                     view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
             }) {
                 Icon(
@@ -369,7 +386,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
             FilledTonalButton(
                 onClick = {
                     viewModel.resetDate()
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    if (SDK_INT >= Build.VERSION_CODES.R)
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                           },
                 enabled = !uiState.currentDateShown
@@ -395,11 +412,11 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                             "Cannot see into the future.",
                             Toast.LENGTH_SHORT
                         ).show()
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                        if (SDK_INT >= Build.VERSION_CODES.R)
                             view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                     }
                     else {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                        if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                             view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
                     }
                 },
@@ -462,7 +479,7 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))
                 ) {
-                    TextField(
+                    OutlinedTextField(
                         value = uiState.numPhotosPerStackTextInput,
                         onValueChange = { input -> // Update UI value & dataStore only if valid
                             if(!viewModel.validatePhotosPerStackInputAndUpdate(input))
@@ -476,18 +493,22 @@ private fun PreferencesCard(modifier: Modifier = Modifier) {
                             keyboardType = KeyboardType.Number
                         ),
                         modifier = Modifier
-                            .weight(0.2f)
-                            .padding(horizontal = dimensionResource(R.dimen.padding_small))
+                            .weight(0.15f)
+                            .padding(dimensionResource(R.dimen.padding_small))
                     )
                     Slider(
                         value = uiState.numPhotosPerStackTextInput.toFloatOrNull() ?: IntPreference.num_photos_per_stack.default.toFloat(),
                         onValueChange = {
-                            viewModel.updatePhotosPerStackInput(it.roundToInt().toString())
+                            if (it.roundToInt() != uiState.numPhotosPerStackTextInput.toIntOrNull()) {
+                                viewModel.updatePhotosPerStackInput(it.roundToInt().toString())
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            }
                                         },
-                        valueRange = 1f..100f,
+                        valueRange = 10f..100f,
                         onValueChangeFinished = {
                             viewModel.updateIntPreference(IntPreference.num_photos_per_stack.toString(),uiState.numPhotosPerStackTextInput.toInt())
                         },
+                        steps = 8,
                         modifier = Modifier
                             .weight(0.5f)
                             .padding(horizontal = dimensionResource(R.dimen.padding_small))
