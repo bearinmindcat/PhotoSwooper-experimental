@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -91,8 +92,13 @@ fun MainScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val density = LocalDensity.current
+
     val reduceAnimations = DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+    val limitedPhotoAccess = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            && (checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PERMISSION_GRANTED)
+            && (checkSelfPermission(context, READ_MEDIA_IMAGES) == PERMISSION_DENIED)
+
 
     val uiState by mainViewModel.uiState.collectAsState()
     val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
@@ -228,7 +234,7 @@ fun MainScreen(
                         )
                     }
 
-                    (uiState.photos.isEmpty()) -> {
+                    (uiState.photos.isEmpty()) -> {// TODO("Check if this is the last round of photos then show this, instead of checking of scanning list is empty. Can add another UiState edited in [MainViewModel.getNewPhotos()]")
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
@@ -248,12 +254,6 @@ fun MainScreen(
                                 color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
                             )
-                            if (checkSelfPermission(// TODO("Always show button, just change text to 'scan again' on older devices")
-                                    context,
-                                    READ_MEDIA_VISUAL_USER_SELECTED
-                                ) == PERMISSION_GRANTED
-                                && checkSelfPermission(context, READ_MEDIA_IMAGES) == PERMISSION_DENIED
-                            ) {
                                 Button(onClick = {
                                     checkPermissionsAndGetPhotos(
                                         context = context,
@@ -262,9 +262,8 @@ fun MainScreen(
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 }) {
-                                    Text("Select more photos")
+                                    Text(if (limitedPhotoAccess) "Select more photos" else "Scan again")
                                 }
-                            }
                         }
                     }
 
