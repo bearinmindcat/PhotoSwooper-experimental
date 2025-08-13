@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.RoundingMode
 import java.util.Calendar
 import kotlin.math.roundToLong
 
@@ -98,7 +99,8 @@ class StatsViewModel(
                 StatsData.SWIPE_COUNT -> mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis,).size.toFloat()
                 StatsData.DELETED_COUNT -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis,).size.toFloat()
                 StatsData.SPACE_SAVED -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis)
-                    .sumOf { it.size }.toInt().div(1000000f) // div 1000000 to convert to MB TODO("May need to adjust depending on max  value")
+                    .sumOf { it.size }.toInt().div(1000000f)
+                    .toBigDecimal().setScale(2, RoundingMode.HALF_UP).toFloat() // div 1000000 to convert to MB TODO("May need to adjust depending on max  value")
             }
         }
 

@@ -82,7 +82,6 @@ import io.github.koalaplot.core.xygraph.CategoryAxisModel
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
 import kotlinx.coroutines.delay
-import java.math.RoundingMode
 import kotlin.math.roundToInt
 
 private enum class TabIndex {
@@ -338,8 +337,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                                     Toast.makeText(
                                         context,
                                         if (currentDataType == StatsData.SPACE_SAVED)
-                                            barChartEntries()[index].y.yMax.toBigDecimal()
-                                                .setScale(2, RoundingMode.HALF_UP).toString() + " MB"
+                                            barChartEntries()[index].y.yMax.toString() + " MB"
                                         else barChartEntries()[index].y.yMax.toString(),
                                         Toast.LENGTH_SHORT
                                     ).show()
