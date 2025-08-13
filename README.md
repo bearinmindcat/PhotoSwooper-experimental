@@ -20,7 +20,7 @@ Hope you enjoy!
 
 ## Features
 
-> Features last updated 2025-07-28
+> Features last updated 2025-08-13
 
 - [X] Undo button
 - [X] Info drawer
@@ -31,7 +31,7 @@ Hope you enjoy!
 
 ## Screenshots
 
-> Screenshots as of 2025-07-28
+> Screenshots as of 2025-08-13
 
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/info.png" alt="Home screen" width="200"/>
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/stats.png" alt="Library screen" width="200"/>
