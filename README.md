@@ -27,6 +27,7 @@ Hope you enjoy!
 - [X] Review photos to be deleted
 - [X] Statistics page
 - [x] Settings page
+- [x] No ads, forever!
 
 ## Screenshots
 

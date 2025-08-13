@@ -171,7 +171,7 @@ fun ReviewDialog(
                     TextButton(
                         onClick = {
                             onConfirmation()
-                            if(disableReviewDialog) onDisableReviewDialog()
+                            if(disableReviewDialog) onDisableReviewDialog() // TODO("Haptic feedback in Review dialog")
                         },
                         modifier = Modifier.padding(8.dp),
                     ) {

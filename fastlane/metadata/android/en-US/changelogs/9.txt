@@ -1,0 +1,13 @@
+Features:
+- Basic zooming
+- New icon, custom colours & font!!
+- Animations!!
+- Customisable data shown in the stats screen
+- View value of statistics data by clicking on it
+- Indicator icons that show what swiping in each direction does
+
+Fixes:
+- Fix limited photo selection
+- Fix permissions handling on Android < 12
+- Fix colour of status bar text
+- Make the peak height of the bottom sheet consistent between device sizes
