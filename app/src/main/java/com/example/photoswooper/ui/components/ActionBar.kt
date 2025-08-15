@@ -152,7 +152,7 @@ fun ActionBar(
                 FilledTonalIconButton(
                     onClick = {
                         if (currentPhoto != null) {
-                            viewModel.toggleInfo()
+                            viewModel.toggleHideInfoRow()
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)

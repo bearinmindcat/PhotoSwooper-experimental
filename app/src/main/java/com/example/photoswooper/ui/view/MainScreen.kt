@@ -30,9 +30,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
@@ -366,17 +367,19 @@ fun MainScreen(
                             ),
                             targetOffsetY = { it }
                         ),
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .wrapContentHeight()
                 ) {
                     InfoRow(
-                        mainViewModel,
-                        currentPhoto,
-                        Modifier
+                        viewModel = mainViewModel,
+                        currentPhoto = currentPhoto,
+                        modifier = Modifier
                             .background(
                                 MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
                                 MaterialTheme.shapes.medium
                             )
-                            .widthIn(max = 380.dp)
+                            .sizeIn(maxWidth = 380.dp)
                     )
                 }
             }

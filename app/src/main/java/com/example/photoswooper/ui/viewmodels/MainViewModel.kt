@@ -318,7 +318,18 @@ class MainViewModel(
         }
     }
 
-    fun toggleInfo() {
+    fun toggleInfoRowSize() {
+        // Update user preference
+        CoroutineScope(Dispatchers.IO).launch {
+            val infoRowExpandedSetting = BooleanPreference.info_row_expanded.toString()
+            dataStoreInterface.setBooleanSettingValue(
+                newValue = !(dataStoreInterface.getBooleanSettingValue(infoRowExpandedSetting).first()),
+                setting = infoRowExpandedSetting
+            )
+        }
+    }
+
+    fun toggleHideInfoRow() {
         _uiState.update { currentState ->
             currentState.copy(
                 showInfo = !currentState.showInfo

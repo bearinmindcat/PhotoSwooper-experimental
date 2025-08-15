@@ -251,7 +251,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                 DropdownFilterChip(
                     leadingIconPainter = painterResource(currentDataType.iconDrawableId),
                     currentSelection = currentDataType.toString().lowercase() + " " + currentDataType.extraInfo,
-                    expandContentDescription = "Select data type for y-axis",
+                    menuItemsDescription = "data types for y-axis",
                     menuItems = StatsData.entries.map { it.toString().lowercase() + " " + it.extraInfo }.toTypedArray(),
                     menuItemIcons = StatsData.entries.map { painterResource(it.iconDrawableId) }.toTypedArray(),
                     onSelectionChange = {
@@ -273,7 +273,7 @@ private fun StatsCard(viewModel: StatsViewModel, uiState: StatsUiState) {
                 DropdownFilterChip(
                     leadingIconPainter = painterResource(currentTimeFrame.iconDrawableId),
                     currentSelection = currentTimeFrame.toString().lowercase(),
-                    expandContentDescription = "Select time frame for x-axis",
+                    menuItemsDescription = "Time frame for x-axis",
                     menuItems = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() }
                         .toTypedArray(),
                     menuItemIcons = listOf(
