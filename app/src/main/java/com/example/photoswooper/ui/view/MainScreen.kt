@@ -399,10 +399,12 @@ fun MainScreen(
             TabbedPreferencesAndStatsPage(
                 statsViewModel = statsViewModel,
                 numPhotosUnset = uiState.numUnset,
+                expandBottomSheet = { mainViewModel.expandBottomSheet(it) },
                 modifier = Modifier
                     .windowInsetsPadding(WindowInsets.navigationBars)
             )
         },
         sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp,
+        scaffoldState = mainViewModel.bottomSheetScaffoldState,
     )
 }

@@ -48,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +82,7 @@ import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.XYGraph
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -91,11 +93,13 @@ private enum class TabIndex {
 @Composable
 fun TabbedPreferencesAndStatsPage(
     statsViewModel: StatsViewModel,
+    numPhotosUnset: Int,
+    expandBottomSheet: (CoroutineScope) -> Unit,
     modifier: Modifier = Modifier,
-    numPhotosUnset: Int
 ) {
     val context = LocalContext.current
     val view = LocalView.current
+    val currentCoroutineScope = rememberCoroutineScope()
     val reduceAnimations = DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
 
@@ -112,7 +116,8 @@ fun TabbedPreferencesAndStatsPage(
     )
     val onTabChange = {
         if (SDK_INT >= Build.VERSION_CODES.R)
-        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+        expandBottomSheet(currentCoroutineScope)
     }
 
     /* Update the stats when the time frame or date to fetch changes */

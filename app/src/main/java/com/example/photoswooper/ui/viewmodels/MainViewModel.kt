@@ -11,6 +11,8 @@ import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.material3.BottomSheetScaffoldState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -33,12 +35,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Date
 
-class MainViewModel(
+@OptIn(ExperimentalMaterial3Api::class)
+class MainViewModel (
     private val contentResolverInterface: ContentResolverInterface,
     private val mediaStatusDao: MediaStatusDao,
     private val startActivity: (Intent) -> Unit,
     private val dataStoreInterface: DataStoreInterface,
     private val makeToast: (String) -> Unit,
+    val bottomSheetScaffoldState: BottomSheetScaffoldState,
 ): ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
@@ -300,6 +304,13 @@ class MainViewModel(
             }
             else
                 makeToast("Deletion unsuccessful, please check permissions.")
+        }
+    }
+
+    fun expandBottomSheet(coroutineScope: CoroutineScope) {
+        coroutineScope.launch {
+            if (bottomSheetScaffoldState.bottomSheetState.hasExpandedState)
+                bottomSheetScaffoldState.bottomSheetState.expand()
         }
     }
 

@@ -20,10 +20,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -57,6 +60,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaStatusDao: MediaStatusDao
     private lateinit var mainViewModel: MainViewModel
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -85,19 +89,6 @@ class MainActivity : AppCompatActivity() {
             dataStoreInterface = dataStoreInterface,
             activity = this as Activity
         )
-        mainViewModel = MainViewModel(
-            contentResolverInterface = contentResolverInterface,
-            mediaStatusDao = mediaStatusDao,
-            dataStoreInterface = dataStoreInterface,
-            makeToast = {
-                Toast.makeText(
-                    this,
-                    it,
-                    Toast.LENGTH_SHORT
-                    ).show()
-            },
-            startActivity = { this.startActivity(it) }
-        )
         val statsViewModel = StatsViewModel(
             mediaStatusDao = mediaStatusDao,
             formatDateTime = { epochMillis, flags ->
@@ -125,6 +116,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContent {
+            val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
+            mainViewModel = remember { MainViewModel(
+                contentResolverInterface = contentResolverInterface,
+                mediaStatusDao = mediaStatusDao,
+                bottomSheetScaffoldState = bottomSheetScaffoldState,
+                dataStoreInterface = dataStoreInterface,
+                makeToast = {
+                    Toast.makeText(
+                        this,
+                        it,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                startActivity = { this.startActivity(it) }
+            ) }
             val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.system_font.toString()).collectAsState(!BooleanPreference.system_font.default)
             val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.dynamic_theme.toString()).collectAsState(BooleanPreference.dynamic_theme.default)
             PhotoSwooperTheme(
