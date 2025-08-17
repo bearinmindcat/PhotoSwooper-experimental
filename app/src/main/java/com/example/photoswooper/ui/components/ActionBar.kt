@@ -41,7 +41,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import com.example.photoswooper.R
-import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.dataStore
@@ -57,7 +56,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalFoundationApi::class, ExperimentalKoalaPlotApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ActionBar(
-    currentPhoto: Photo?,
     numToDelete: Int,
     uiState: MainUiState,
     viewModel: MainViewModel,
@@ -151,13 +149,7 @@ fun ActionBar(
                 /* Info button */
                 FilledTonalIconButton(
                     onClick = {
-                        if (currentPhoto != null) {
-                            viewModel.toggleHideInfoRow()
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-
+                        TODO("Implement filter button")
                     },
                     modifier = Modifier
                         .padding(
@@ -166,8 +158,8 @@ fun ActionBar(
                         .weight(0.2f)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.info),
-                        contentDescription = "Show more image information",
+                        painter = painterResource(R.drawable.funnel_bold),
+                        contentDescription = "Filter/sort the photos & videos",
                         modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
                     )
                 }

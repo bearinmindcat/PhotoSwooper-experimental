@@ -95,6 +95,8 @@ class MainViewModel (
 
     /* Get new photos and add them to the UI state */
     suspend fun getNewPhotos() {
+        val numPhotosPerStackPreference =
+            dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
         // Delete old photos from uiState
         _uiState.update { currentState ->
             currentState.copy(
@@ -107,9 +109,9 @@ class MainViewModel (
             onAddPhoto = {
                 _uiState.value.photos.add(it)
             },
-            numPhotos = 2
+            numPhotos = minOf(numPhotosPerStackPreference, 2)
         )
-        if (uiState.value.photos.isEmpty()) { // Check if zero unswiped photos could be found
+        if (uiState.value.photos.isEmpty()) { // Ensure photos were found before continuing
             viewModelScope.launch {
                 delay(1000) // Delay so that the loading indicator is shown
                 _uiState.update { currentState ->
@@ -119,35 +121,32 @@ class MainViewModel (
                 }
             }
         }
-        else {
-            // Update UI state & prompt recomposition/update
+        else { // Update UI state & prompt recomposition/update
             _uiState.update { currentState ->
                 currentState.copy(
                     currentPhotoIndex = 0,
-                    numUnset = dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
-                        ?: IntPreference.num_photos_per_stack.default,
+                    numUnset = numPhotosPerStackPreference,
                     isLoading = false,
                 )
             }
-            // Add the rest of the photos asynchronously (speedy)
-            viewModelScope.launch {
-                contentResolverInterface.getPhotos(
-                    onAddPhoto = {
-                        _uiState.value.photos.add(it)
-                    },
-                    numPhotos = (dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
-                        ?: IntPreference.num_photos_per_stack.default),
-                    photosAdded = uiState.value.photos.toMutableSet()
-                )
-                if (uiState.value.photos.size != (dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
-                        ?: IntPreference.num_photos_per_stack.default)
-                ) {
-                    makeToast("No more photos found, Last round!")
-                    // Update UI state with the actual number of photos found
-                    _uiState.update { currentState ->
-                        currentState.copy(
-                            numUnset = currentState.photos.filter { it.status == PhotoStatus.UNSET }.size
-                        )
+            if (uiState.value.photos.size < numPhotosPerStackPreference) {
+                // Add the rest of the photos asynchronously (speedy)
+                viewModelScope.launch {
+                    contentResolverInterface.getPhotos(
+                        onAddPhoto = {
+                            _uiState.value.photos.add(it)
+                        },
+                        numPhotos = numPhotosPerStackPreference,
+                        photosAdded = uiState.value.photos.toMutableSet()
+                    )
+                    if (uiState.value.photos.size != numPhotosPerStackPreference) {
+                        makeToast("No more photos found, Last round!")
+                        // Update UI state with the actual number of photos found
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                numUnset = currentState.photos.filter { it.status == PhotoStatus.UNSET }.size
+                            )
+                        }
                     }
                 }
             }
