@@ -16,4 +16,5 @@ data class MediaStatus(
     val status: PhotoStatus,
     val size: Long,
     val dateModified: Long,
+    val snoozedUntil: Long? = null
 )

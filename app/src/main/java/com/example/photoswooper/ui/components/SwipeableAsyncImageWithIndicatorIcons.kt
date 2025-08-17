@@ -102,7 +102,10 @@ fun SwipeableAsyncImageWithIndicatorIcons(
     // Animated for smooth transitions
     val animatableOffsetX = animateFloatAsState(targetValue = offset.x)
     val animatableOffsetY = animateFloatAsState(targetValue = offset.y)
-    val animatableScale = animateFloatAsState(targetValue = scale)
+    val animatableScale = animateFloatAsState(
+        targetValue = scale,
+        animationSpec = viewModel.defaultEntryAnimationSpec
+    )
 
     /* Animate image depending on how far the user has swiped */
     LaunchedEffect(anchoredDraggableState.requireOffset()) {
@@ -186,7 +189,8 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                                         ?: 0f) / 25,
                                 )
                             }
-                        }
+                        },
+                        onTap = { viewModel.toggleInfoAndActionButtons() }
                     )
                 }
                 .then(

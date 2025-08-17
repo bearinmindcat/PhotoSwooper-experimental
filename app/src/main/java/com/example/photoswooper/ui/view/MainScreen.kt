@@ -7,6 +7,7 @@ import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.content.res.Resources
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
@@ -69,6 +70,7 @@ import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.ActionBar
+import com.example.photoswooper.ui.components.FloatingActionsRow
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.ReviewDialog
@@ -78,6 +80,7 @@ import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -139,25 +142,7 @@ fun MainScreen(
     LaunchedEffect(anchoredDraggableState) {
         snapshotFlow { anchoredDraggableState.targetValue }
             .collectLatest { position ->
-                when (position) {
-                    DragAnchors.Left -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-                    }
-
-                    DragAnchors.Center -> {
-                        if (
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                            && anchoredDraggableState.settledValue == DragAnchors.Center
-                        )
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
-                    }
-
-                    DragAnchors.Right -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-                    }
-                }
+                performDragHapticFeedback(position, view, anchoredDraggableState)
             }
     }
 
@@ -347,8 +332,9 @@ fun MainScreen(
                             }
                     }
                 }
+                /* Column of floating actions & info drawer */
                 AnimatedVisibility(
-                    visible = uiState.showInfo && currentPhoto != null,
+                    visible = uiState.showInfoAndFloatingActions && currentPhoto != null,
                     enter =
                         if (reduceAnimations.value) fadeIn()
                         else slideInVertically(
@@ -368,25 +354,53 @@ fun MainScreen(
                             targetOffsetY = { it }
                         ),
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
                         .wrapContentHeight()
+                        .align(Alignment.BottomCenter)
                 ) {
-                    InfoRow(
-                        viewModel = mainViewModel,
-                        currentPhoto = currentPhoto,
-                        modifier = Modifier
-                            .background(
-                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
-                                MaterialTheme.shapes.medium
+                    var delayedShowFloatingActions by remember { mutableStateOf(false) }
+                    LaunchedEffect(null) {
+                        delay(200)
+                        delayedShowFloatingActions = true
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        AnimatedVisibility(
+                            delayedShowFloatingActions,
+                            enter = slideInVertically(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                ),
+                                initialOffsetY = { it }
+                            ),
+                            exit = slideOutVertically(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                ),
+                                targetOffsetY = { it }
+                            ),
+                        ){
+                            FloatingActionsRow(
+                                currentPhoto = currentPhoto,
+                                viewModel = mainViewModel
                             )
-                            .sizeIn(maxWidth = 380.dp)
-                    )
+                        }
+                        InfoRow(
+                            viewModel = mainViewModel,
+                            currentPhoto = currentPhoto,
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                                    MaterialTheme.shapes.medium
+                                )
+                                .sizeIn(maxWidth = 380.dp)
+                        )
+                    }
                 }
             }
         },
         sheetContent = {
             ActionBar(
-                currentPhoto = currentPhoto,
                 numToDelete = numToDelete,
                 uiState,
                 mainViewModel,
@@ -404,7 +418,33 @@ fun MainScreen(
                     .windowInsetsPadding(WindowInsets.navigationBars)
             )
         },
-        sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp,
+        sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp *3/4,
         scaffoldState = mainViewModel.bottomSheetScaffoldState,
     )
+}
+
+private fun performDragHapticFeedback(
+    position: DragAnchors,
+    view: View,
+    anchoredDraggableState: AnchoredDraggableState<DragAnchors>
+) {
+    when (position) {
+        DragAnchors.Left -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+        }
+
+        DragAnchors.Center -> {
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                && anchoredDraggableState.settledValue == DragAnchors.Center
+            )
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
+        }
+
+        DragAnchors.Right -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+        }
+    }
 }

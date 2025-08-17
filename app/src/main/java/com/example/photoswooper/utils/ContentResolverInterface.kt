@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import java.io.DataInputStream
 import java.io.File
 import java.security.MessageDigest
-import java.util.Date
+import java.util.Calendar
 
 
 class ContentResolverInterface(
@@ -190,10 +190,13 @@ class ContentResolverInterface(
                             /* Add photo if unset */
                             if (findPhotoByHash.status == PhotoStatus.UNSET)
                                 addPhoto()
+                            else if (findPhotoByHash.snoozedUntil != null && findPhotoByHash.snoozedUntil <= currentDate)
+                                addPhoto()
                         }
                         /* Photo has not been swiped */
                         else -> {
-                            addPhoto()
+                            if (findPhotoById?.snoozedUntil == null || findPhotoById.snoozedUntil <= currentDate)
+                                addPhoto()
                         }
                     }
                 } else {
@@ -211,7 +214,7 @@ class ContentResolverInterface(
             val permanentlyDelete = dataStoreInterface.getBooleanSettingValue(BooleanPreference.permanently_delete.toString()).first()
 
             val editPendingIntent =
-                if (permanentlyDelete ?: BooleanPreference.permanently_delete.default)
+                if (permanentlyDelete)
                     MediaStore.createDeleteRequest(
                         contentResolver,
                         uris

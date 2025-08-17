@@ -3,6 +3,7 @@ package com.example.photoswooper.ui.components
 import android.os.Build
 import android.text.format.Formatter.formatShortFileSize
 import android.view.HapticFeedbackConstants
+import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -149,7 +150,13 @@ fun ActionBar(
                 /* Info button */
                 FilledTonalIconButton(
                     onClick = {
-                        TODO("Implement filter button")
+                        Toast.makeText(
+                            context,
+                            "Filtering not implemented yet",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                     },
                     modifier = Modifier
                         .padding(

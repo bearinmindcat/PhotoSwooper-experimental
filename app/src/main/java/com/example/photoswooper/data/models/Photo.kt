@@ -8,10 +8,11 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-enum class PhotoStatus() {
+enum class PhotoStatus {
     UNSET,
     DELETE,
     KEEP,
+    SNOOZE
 }
 
 data class Photo (
@@ -28,16 +29,15 @@ data class Photo (
     var status: PhotoStatus
 ) {
     fun getFormattedDate(): String {
-        if (dateTaken != null) {
+        return if (dateTaken != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                return LocalDateTime.ofInstant(Instant.ofEpochMilli(dateTaken), ZoneId.systemDefault()).toString()
+                LocalDateTime.ofInstant(Instant.ofEpochMilli(dateTaken), ZoneId.systemDefault()).toString()
                     .substringBefore("T")
             } else {
-                return DateFormat.format("yyyy-MM-dd", dateTaken).toString()
+                DateFormat.format("yyyy-MM-dd", dateTaken).toString()
             }
-        }
-        else {
-            return ""
+        } else {
+            ""
         }
     }
 
@@ -49,7 +49,45 @@ data class Photo (
             mediaStoreId = id,
             status = status,
             size = size,
-            dateModified = System.currentTimeMillis()
+            dateModified = System.currentTimeMillis(),
         )
+    }
+
+    /* Recommended override: location is an Array so contentEquals should be used for that, not just equals */
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Photo
+
+        if (id != other.id) return false
+        if (dateTaken != other.dateTaken) return false
+        if (size != other.size) return false
+        if (uri != other.uri) return false
+        if (fileHash != other.fileHash) return false
+        if (!location.contentEquals(other.location)) return false
+        if (album != other.album) return false
+        if (description != other.description) return false
+        if (title != other.title) return false
+        if (resolution != other.resolution) return false
+        if (status != other.status) return false
+
+        return true
+        }
+
+    /* Recommended override: location is an Array so contentEquals should be used for that, not just equals */
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + (dateTaken?.hashCode() ?: 0)
+        result = 31 * result + size.hashCode()
+        result = 31 * result + uri.hashCode()
+        result = 31 * result + fileHash.hashCode()
+        result = 31 * result + (location?.contentHashCode() ?: 0)
+        result = 31 * result + (album?.hashCode() ?: 0)
+        result = 31 * result + (description?.hashCode() ?: 0)
+        result = 31 * result + (title?.hashCode() ?: 0)
+        result = 31 * result + (resolution?.hashCode() ?: 0)
+        result = 31 * result + status.hashCode()
+        return result
     }
 }

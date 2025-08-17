@@ -14,6 +14,10 @@ enum class IntPreference(val default: Int) {
     num_photos_per_stack(30),
 }
 
+enum class LongPreference(val default: Long) {
+    snooze_length(2*TimeFrame.WEEK.milliseconds),
+}
+
 data class PrefsUiState (
     /** Text input from user to be validated before committed to preferences */
     val numPhotosPerStackTextInput: String = IntPreference.num_photos_per_stack.default.toString()

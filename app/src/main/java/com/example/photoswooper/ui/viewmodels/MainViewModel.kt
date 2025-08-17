@@ -21,6 +21,7 @@ import com.example.photoswooper.data.models.Photo
 import com.example.photoswooper.data.models.PhotoStatus
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
+import com.example.photoswooper.data.uistates.LongPreference
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.utils.ContentResolverInterface
@@ -33,7 +34,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import java.util.Date
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainViewModel (
@@ -46,6 +49,13 @@ class MainViewModel (
 ): ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
+    val snoozeLengthMillis = dataStoreInterface.getLongSettingValue(LongPreference.snooze_length.toString())
+    fun getCurrentPhoto() =
+        try {
+            uiState.value.photos[uiState.value.currentPhotoIndex]
+        } catch (_: IndexOutOfBoundsException) {
+            null
+        }
 
     val reduceAnimations = dataStoreInterface
         .getBooleanSettingValue(BooleanPreference.reduce_animations.toString())
@@ -159,13 +169,31 @@ class MainViewModel (
         _uiState.value.photos[index].status = status
 
         /* Update database only if keeping/unsetting the photo. Only marked as DELETE when confirmed and the file is deleted */
-        CoroutineScope(Dispatchers.IO).launch {
-            if (status != PhotoStatus.DELETE)
+        if (status == PhotoStatus.SNOOZE) {
+            val snoozeLength = dataStoreInterface.getLongSettingValue(
+                setting = LongPreference.snooze_length.toString()
+            )
+            CoroutineScope(Dispatchers.IO).launch {
+                val snoozeEndDate = Calendar.getInstance().timeInMillis + snoozeLength.first()
+                mediaStatusDao.update(
+                    photo.getMediaStatusEntity().copy(
+                        snoozedUntil = snoozeEndDate
+                    )
+                )
+            }
+            viewModelScope.launch {
+                makeToast(
+                    "Hidden for ${snoozeLength.first().milliseconds.inWholeDays} days"
+                )
+            }
+        }
+            else if (status != PhotoStatus.DELETE)
+                CoroutineScope(Dispatchers.IO).launch {
                 mediaStatusDao.update(photo.getMediaStatusEntity())
         }
 
-        /* If photo being marked as UNSET, update the unset count & set the index to the next UNSET photo */
-        Log.d("Photo marking", "Photo at index ${index} marked as ${photo.status}")
+        /* If photo being marked as UNSET (e.g. in the review screen), update the unset count & set the index to the first UNSET photo */
+        Log.d("Photo marking", "Photo at index $index marked as ${photo.status}")
         if (status == PhotoStatus.UNSET)
             _uiState.update { currentState ->
                 currentState.copy(
@@ -206,20 +234,20 @@ class MainViewModel (
                 exitImage(coroutineScope)
                 delay(100)
                 if (uiState.value.currentPhotoIndex > 0) { // Check if undo valid again, after the above delay
-                val decrementedPhotoIndex = uiState.value.currentPhotoIndex - 1
+                val latestSwipedPhotoIndex = uiState.value.currentPhotoIndex - 1
                 // Unset the status
-                _uiState.value.photos[decrementedPhotoIndex].status = PhotoStatus.UNSET
+                _uiState.value.photos[latestSwipedPhotoIndex].status = PhotoStatus.UNSET
 
                 // Decrement currentPhotoIndex
                 _uiState.update { currentState ->
                     currentState.copy(
-                        currentPhotoIndex = decrementedPhotoIndex,
+                        currentPhotoIndex = latestSwipedPhotoIndex,
                         numUnset = currentState.numUnset + 1
                     )
                 }
                 /* Update database  */
                 CoroutineScope(Dispatchers.IO).launch {
-                    val photo = _uiState.value.photos[decrementedPhotoIndex]
+                    val photo = _uiState.value.photos[latestSwipedPhotoIndex]
                     mediaStatusDao.update(photo.getMediaStatusEntity())
                 }
                 enterImage(coroutineScope)
@@ -339,17 +367,25 @@ class MainViewModel (
         }
     }
 
-    fun toggleHideInfoRow() {
+    fun toggleInfoAndActionButtons() {
         _uiState.update { currentState ->
             currentState.copy(
-                showInfo = !currentState.showInfo
+                showInfoAndFloatingActions = !currentState.showInfoAndFloatingActions
             )
         }
     }
 
-    fun openLocationInMapsApp(photo: Photo?) {
+    fun openLocationInMapsApp(photo: Photo? = getCurrentPhoto()) {
         val uri = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
         val intent = Intent(Intent.ACTION_VIEW, uri.toUri())
+        try { startActivity(intent) }
+        catch (_: ActivityNotFoundException) {
+            makeToast("No suitable app found")
+        }
+    }
+    fun openPhotoInGalleryApp(photo: Photo? = getCurrentPhoto()) {
+        val uri = photo?.uri
+        val intent = Intent(Intent.ACTION_VIEW, uri)
         try { startActivity(intent) }
         catch (_: ActivityNotFoundException) {
             makeToast("No suitable app found")
@@ -427,5 +463,14 @@ class MainViewModel (
             "Click on \"Permissions\", then grant photos & videos / storage permissions",
             Toast.LENGTH_LONG
         ).show()
+    }
+
+    fun updateSnoozeLengthMillis(newSnoozeLength: Long) {
+        CoroutineScope(Dispatchers.IO).launch {
+            dataStoreInterface.setLongSettingValue(
+                setting = LongPreference.snooze_length.toString(),
+                newValue = newSnoozeLength
+            )
+        }
     }
 }

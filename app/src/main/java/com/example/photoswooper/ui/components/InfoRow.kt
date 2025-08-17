@@ -27,13 +27,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
@@ -101,7 +101,7 @@ fun InfoRow(
         )
     )
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.pointerInput(null) {}) { // empty pointerInput prevents image receiving taps accidentally
         IconButton(
             onClick = {
                 if (SDK_INT >= Build.VERSION_CODES.R) view.performHapticFeedback(
@@ -193,7 +193,6 @@ fun InfoRow(
                                 action = currentInfo.action,
                             )
                         }
-                        ShareButton { viewModel.sharePhoto() }
                     }
                 }
             }
@@ -226,7 +225,6 @@ fun InfoRow(
 
                             )
                     }
-                    ShareButton { viewModel.sharePhoto() }
                 }
             }
         }
@@ -278,24 +276,6 @@ fun Info(
             modifier =
                 if (action != null && value != null) Modifier.clickable { action() }
                 else Modifier
-        )
-    }
-}
-
-@Composable
-private fun ShareButton(onShare: () -> Unit) {
-    val view = LocalView.current
-    OutlinedIconButton(
-        onClick = {
-            onShare()
-            if (SDK_INT >= Build.VERSION_CODES.R)
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        }
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.share_network),
-            contentDescription = "Share photo",
-            modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
         )
     }
 }
