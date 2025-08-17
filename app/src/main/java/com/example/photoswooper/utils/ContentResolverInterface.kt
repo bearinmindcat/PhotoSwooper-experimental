@@ -168,24 +168,23 @@ class ContentResolverInterface(
                         }
                     }
 
+                    val currentDate = Calendar.getInstance().timeInMillis
+
                     val findPhotoByHash = dao.findByHash(fileHash)
-                    val findById = dao.findByMediaStoreId(fetchedId)
-                    val findPhotoInSession = photosAdded.find { it.id == fetchedId }
+                    val findPhotoById = dao.findByMediaStoreId(fetchedId)
+                    val photoInDatabaseHasBeenSwiped = listOf(PhotoStatus.DELETE, PhotoStatus.KEEP).contains(findPhotoById?.status)
+                    val photoFoundInSession = photosAdded.find { it.id == fetchedId } != null
 
                     when {
                         /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
-                        ((findPhotoInSession != null || (findById?.status ?: PhotoStatus.UNSET) != PhotoStatus.UNSET)) -> {  }
+                        ((photoFoundInSession || photoInDatabaseHasBeenSwiped)) -> {  }
                         /* Photo is in the database but its MediaStore ID has changed.
                         * This will therefore 1. update the MediaStore ID. 2. if the status is UNSET, add the photo */
                         (findPhotoByHash != null) -> {
-                            Log.v("MediaStore", "Photo hash $fileHash has been found in database, updating id to $fetchedId")
+                            Log.v("MediaStore", "Photo hash has been found in database, updating id to $fetchedId")
+                            // TODO("This case is almost always true, so should remove the Id from the database, and use hash as primary key")
                             /* Update database */
                             CoroutineScope(Dispatchers.IO).launch {
-                                var currentDate: Long = 0
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                                    currentDate = Date().toInstant().toEpochMilli()
-                                else
-                                    null// TODO("Get current date in epoch milli for Android version < O")
                                 dao.update(findPhotoByHash.copy(mediaStoreId = fetchedId, dateModified = currentDate))
                             }
                             /* Add photo if unset */
