@@ -16,9 +16,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
 import com.example.photoswooper.data.database.MediaStatusDao
-import com.example.photoswooper.data.models.Photo
-import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.models.Media
+import com.example.photoswooper.data.models.MediaStatus
+import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.LongPreference
@@ -36,6 +39,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,53 +49,12 @@ class MainViewModel (
     private val startActivity: (Intent) -> Unit,
     private val dataStoreInterface: DataStoreInterface,
     private val makeToast: (String) -> Unit,
+    private val uiCoroutineScope: CoroutineScope,
     val bottomSheetScaffoldState: BottomSheetScaffoldState,
+    val player: ExoPlayer,
 ): ViewModel() {
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying,))
     val uiState = _uiState.asStateFlow()
-    val snoozeLengthMillis = dataStoreInterface.getLongSettingValue(LongPreference.snooze_length.toString())
-    fun getCurrentPhoto() =
-        try {
-            uiState.value.photos[uiState.value.currentPhotoIndex]
-        } catch (_: IndexOutOfBoundsException) {
-            null
-        }
-
-    val reduceAnimations = dataStoreInterface
-        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString())
-    val defaultEntryAnimationSpec = spring<Float>(
-        stiffness = Spring.StiffnessMediumLow,
-        dampingRatio = Spring.DampingRatioLowBouncy,
-    )
-    val defaultExitAnimationSpec = spring<Float>(
-        Spring.DampingRatioNoBouncy,
-        Spring.StiffnessMedium
-    )
-    val animatedImageScaleEntry = Animatable(0f)
-    fun enterImage(coroutineScope: CoroutineScope) {
-        coroutineScope.launch {
-            animatedImageScaleEntry.snapTo(0f)
-            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(1f)
-            else animatedImageScaleEntry.animateTo(
-                1f,
-                defaultEntryAnimationSpec
-            )
-        }
-    }
-    fun exitImage(coroutineScope: CoroutineScope) {
-        coroutineScope.launch {
-            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(0f)
-            else animatedImageScaleEntry.animateTo(
-                0f,
-                defaultExitAnimationSpec
-            )
-        }
-    }
-
-
-    fun getPhotosToDelete() = uiState.value.photos.filter { photo ->
-        photo.status == PhotoStatus.DELETE
-    }
 
     init {
         viewModelScope.launch {
@@ -103,58 +66,123 @@ class MainViewModel (
         }
     }
 
-    /* Get new photos and add them to the UI state */
-    suspend fun getNewPhotos() {
-        val numPhotosPerStackPreference =
-            dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first()
-        // Delete old photos from uiState
-        _uiState.update { currentState ->
-            currentState.copy(
-                photos = mutableListOf(),
-                isLoading = true
+    val snoozeLengthMillis = dataStoreInterface.getLongSettingValue(LongPreference.SNOOZE_LENGTH.setting)
+    fun getCurrentMedia() =
+        try {
+            uiState.value.mediaItems[uiState.value.currentIndex]
+        } catch (_: IndexOutOfBoundsException) {
+            null
+        }
+
+    val reduceAnimations = dataStoreInterface
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)
+    val defaultEntryAnimationSpec = spring<Float>(
+        stiffness = Spring.StiffnessMediumLow,
+        dampingRatio = Spring.DampingRatioLowBouncy,
+    )
+    val defaultExitAnimationSpec = spring<Float>(
+        Spring.DampingRatioNoBouncy,
+        Spring.StiffnessMedium
+    )
+    val animatedImageScaleEntry = Animatable(0f)
+    fun enterImage() {
+        uiCoroutineScope.launch {
+            animatedImageScaleEntry.snapTo(0f)
+            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(1f)
+            else animatedImageScaleEntry.animateTo(
+                1f,
+                defaultEntryAnimationSpec
             )
         }
-        // Add the first two photos
-        contentResolverInterface.getPhotos(
-            onAddPhoto = {
-                _uiState.value.photos.add(it)
+    }
+    fun exitImage() {
+        uiCoroutineScope.launch {
+            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(0f)
+            else animatedImageScaleEntry.animateTo(
+                0f,
+                defaultExitAnimationSpec
+            )
+        }
+    }
+    fun onMediaLoaded() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                mediaBuffering = false
+            )
+        }
+    }
+
+
+    fun getMediaToDelete() = uiState.value.mediaItems.filter { media ->
+        media.status == MediaStatus.DELETE
+    }
+
+    /* Get new media items and add them to the UI state */
+    suspend fun resetAndGetNewMediaItems() {
+        val random = Random(17530163829)
+        val numPerStackPreference =
+            dataStoreInterface.getIntSettingValue(IntPreference.NUM_PHOTOS_PER_STACK.setting).first()
+
+        // Delete old mediaItems from uiState
+        _uiState.update { currentState ->
+            currentState.copy(
+                mediaItems = mutableListOf(),
+                fetchingMedia = true
+            )
+        }
+        // Add the first media synchronously
+        val maxMediaItemsToAddSynchronously = minOf(numPerStackPreference, 2)
+        val numPhotosToAddSynchronously = random.nextInt(maxMediaItemsToAddSynchronously)
+        contentResolverInterface.getAllMediaFromMediaStore(
+            onAddMedia = {
+                _uiState.value.mediaItems.add(it)
             },
-            numPhotos = minOf(numPhotosPerStackPreference, 2)
+            targetNumPhotos = numPhotosToAddSynchronously,
+            targetNumVideos = maxMediaItemsToAddSynchronously - numPhotosToAddSynchronously,
         )
-        if (uiState.value.photos.isEmpty()) { // Ensure photos were found before continuing
+        // Ensure media items were found before continuing
+        if (uiState.value.mediaItems.isEmpty()) {
             viewModelScope.launch {
                 delay(1000) // Delay so that the loading indicator is shown
                 _uiState.update { currentState ->
                     currentState.copy(
-                        isLoading = false
+                        fetchingMedia = false
                     )
                 }
             }
         }
-        else { // Update UI state & prompt recomposition/update
+        // Media items were found -> Update UI state & display the current media
+        else {
             _uiState.update { currentState ->
                 currentState.copy(
-                    currentPhotoIndex = 0,
-                    numUnset = numPhotosPerStackPreference,
-                    isLoading = false,
+                    currentIndex = 0,
+                    numUnset = numPerStackPreference,
+                    fetchingMedia = false,
+                    mediaBuffering = true
                 )
             }
-            if (uiState.value.photos.size < numPhotosPerStackPreference) {
-                // Add the rest of the photos asynchronously (speedy)
+            if (getCurrentMedia()?.type == MediaType.VIDEO){
+                onCurrentMediaIsVideo()
+            }
+            if (uiState.value.mediaItems.size < numPerStackPreference) {
+                // Add the rest asynchronously
                 viewModelScope.launch {
-                    contentResolverInterface.getPhotos(
-                        onAddPhoto = {
-                            _uiState.value.photos.add(it)
+                    val numPhotosToAddAsync = random.nextInt(numPerStackPreference)
+                    contentResolverInterface.getAllMediaFromMediaStore(
+                        onAddMedia = {
+                            _uiState.value.mediaItems.add(it)
                         },
-                        numPhotos = numPhotosPerStackPreference,
-                        photosAdded = uiState.value.photos.toMutableSet()
+                        targetNumPhotos = numPhotosToAddAsync,
+                        targetNumVideos = numPerStackPreference - numPhotosToAddAsync,
+                        mediaAdded = uiState.value.mediaItems.toMutableSet(),
                     )
-                    if (uiState.value.photos.size != numPhotosPerStackPreference) {
-                        makeToast("No more photos found, Last round!")
-                        // Update UI state with the actual number of photos found
+                    shuffleItemsAfterCurrentIndex()
+                    if (uiState.value.mediaItems.size != numPerStackPreference) {
+                        makeToast("Last round!")
+                        // Update UI state with the actual number of media items found
                         _uiState.update { currentState ->
                             currentState.copy(
-                                numUnset = currentState.photos.filter { it.status == PhotoStatus.UNSET }.size
+                                numUnset = currentState.mediaItems.filter { it.status == MediaStatus.UNSET }.size
                             )
                         }
                     }
@@ -163,20 +191,30 @@ class MainViewModel (
         }
     }
 
-    fun markPhoto(status: PhotoStatus, index: Int = uiState.value.currentPhotoIndex) {
-        // Set the status
-        val photo = _uiState.value.photos[index]
-        _uiState.value.photos[index].status = status
+    private fun shuffleItemsAfterCurrentIndex() {
+        if (uiState.value.mediaItems.size > 1){
+            Log.v("MainViewModel", "mediaItems before shuffle: ${uiState.value.mediaItems.map { it.type }}")
+            val indecesRangeAfterCurrentIndex = uiState.value.currentIndex + 1..uiState.value.mediaItems.lastIndex
+            uiState.value.mediaItems.subList(indecesRangeAfterCurrentIndex.first, indecesRangeAfterCurrentIndex.last)
+                .shuffle()
+            Log.v("MainViewModel", "mediaItems after shuffle: ${uiState.value.mediaItems.map { it.type }}")
+        }
+    }
 
-        /* Update database only if keeping/unsetting the photo. Only marked as DELETE when confirmed and the file is deleted */
-        if (status == PhotoStatus.SNOOZE) {
+    fun markItem(status: MediaStatus, index: Int = uiState.value.currentIndex) {
+        // Set the status
+        val mediaToMark = _uiState.value.mediaItems[index]
+        _uiState.value.mediaItems[index].status = status
+
+        /* Update database only if keeping/unsetting the media. Only marked as DELETE when confirmed and the file is deleted */
+        if (status == MediaStatus.SNOOZE) {
             val snoozeLength = dataStoreInterface.getLongSettingValue(
-                setting = LongPreference.snooze_length.toString()
+                setting = LongPreference.SNOOZE_LENGTH.setting
             )
             CoroutineScope(Dispatchers.IO).launch {
                 val snoozeEndDate = Calendar.getInstance().timeInMillis + snoozeLength.first()
                 mediaStatusDao.update(
-                    photo.getMediaStatusEntity().copy(
+                    mediaToMark.getMediaStatusEntity().copy(
                         snoozedUntil = snoozeEndDate
                     )
                 )
@@ -186,73 +224,91 @@ class MainViewModel (
                     "Hidden for ${snoozeLength.first().milliseconds.inWholeDays} days"
                 )
             }
-        }
-            else if (status != PhotoStatus.DELETE)
-                CoroutineScope(Dispatchers.IO).launch {
-                mediaStatusDao.update(photo.getMediaStatusEntity())
-        }
+        } else if (status != MediaStatus.DELETE)
+            CoroutineScope(Dispatchers.IO).launch {
+                mediaStatusDao.update(mediaToMark.getMediaStatusEntity())
+            }
 
-        /* If photo being marked as UNSET (e.g. in the review screen), update the unset count & set the index to the first UNSET photo */
-        Log.d("Photo marking", "Photo at index $index marked as ${photo.status}")
-        if (status == PhotoStatus.UNSET)
+        /* If item being marked as UNSET (e.g. in the review screen), update the unset count & set the index to the first UNSET item */
+        Log.d("Media marking", "Media at index $index marked as ${mediaToMark.status}")
+        if (status == MediaStatus.UNSET) {
+            seekToUnsetItemOrFalse()
             _uiState.update { currentState ->
                 currentState.copy(
-                    currentPhotoIndex = currentState.photos.indexOfFirst { it.status == PhotoStatus.UNSET },
                     numUnset = currentState.numUnset + 1,
                 )
             }
-    }
-
-    fun nextPhoto() {
-        // Increment currentPhotoIndex
-        _uiState.update { currentState ->
-            currentState.copy(
-                currentPhotoIndex = currentState.currentPhotoIndex + 1,
-                numUnset = currentState.numUnset - 1,
-            )
         }
-        Log.v("MainViewModel","Seeking to next photo, new index = ${uiState.value.currentPhotoIndex}/${uiState.value.photos.size - 1}")
-        Log.v("MainViewModel","Photos left to swipe on = ${uiState.value.numUnset}")
-    }
-
-    fun seekToUnsetPhotoOrFalse(): Boolean {
-        val unsetPhotoIndex = uiState.value.photos.indexOfFirst { it.status == PhotoStatus.UNSET }
-        if (unsetPhotoIndex != -1) {
+        else {
             _uiState.update { currentState ->
                 currentState.copy(
-                    currentPhotoIndex = unsetPhotoIndex
+                    numUnset = currentState.numUnset - 1,
                 )
             }
+        }
+    }
+
+    fun next() {
+        if (getCurrentMedia()?.type == MediaType.VIDEO)
+            player.pause()
+        // Increment currentIndex
+        _uiState.update { currentState ->
+            currentState.copy(
+                currentIndex = currentState.currentIndex + 1,
+                mediaBuffering = true
+            )
+        }
+        if (getCurrentMedia()?.type == MediaType.VIDEO)
+            onCurrentMediaIsVideo()
+        Log.v(
+            "MainViewModel",
+            "Seeking to next media item, new index = ${uiState.value.currentIndex}/${uiState.value.mediaItems.size}"
+        )
+        Log.v("MainViewModel", "Media items left to swipe on = ${uiState.value.numUnset}")
+    }
+
+    fun seekToUnsetItemOrFalse(): Boolean {
+        val unsetItemIndex = uiState.value.mediaItems.indexOfFirst { it.status == MediaStatus.UNSET }
+        if (unsetItemIndex != -1) {
+            _uiState.update { currentState ->
+                currentState.copy(
+                    currentIndex = unsetItemIndex,
+                    mediaBuffering = true
+                )
+            }
+            if (getCurrentMedia()?.type == MediaType.VIDEO)
+                onCurrentMediaIsVideo()
             return true
         }
         else return false
     }
 
-    fun undo(coroutineScope: CoroutineScope): Boolean {
-        if (uiState.value.currentPhotoIndex > 0) { // First check if there is an action to undo
+    fun undo(): Boolean {
+        if (uiState.value.currentIndex > 0) { // First check if there is an action to undo
             viewModelScope.launch {
-                exitImage(coroutineScope)
+                exitImage()
                 delay(100)
-                if (uiState.value.currentPhotoIndex > 0) { // Check if undo valid again, after the above delay
-                val latestSwipedPhotoIndex = uiState.value.currentPhotoIndex - 1
-                // Unset the status
-                _uiState.value.photos[latestSwipedPhotoIndex].status = PhotoStatus.UNSET
+                if (uiState.value.currentIndex > 0) { // Check if undo valid again, after the above delay
+                    val latestSwipedMediaIndex = uiState.value.currentIndex - 1
+                    // Unset the status
+                    _uiState.value.mediaItems[latestSwipedMediaIndex].status = MediaStatus.UNSET
 
-                // Decrement currentPhotoIndex
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        currentPhotoIndex = latestSwipedPhotoIndex,
-                        numUnset = currentState.numUnset + 1
-                    )
+                    // Decrement currentIndex
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            currentIndex = latestSwipedMediaIndex,
+                            numUnset = currentState.numUnset + 1,
+                            mediaBuffering = true
+                        )
+                    }
+                    if (getCurrentMedia()?.type == MediaType.VIDEO)
+                        onCurrentMediaIsVideo()
+                    /* Update database  */
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val mediaItem = _uiState.value.mediaItems[latestSwipedMediaIndex]
+                        mediaStatusDao.update(mediaItem.getMediaStatusEntity())
+                    }
                 }
-                /* Update database  */
-                CoroutineScope(Dispatchers.IO).launch {
-                    val photo = _uiState.value.photos[latestSwipedPhotoIndex]
-                    mediaStatusDao.update(photo.getMediaStatusEntity())
-                }
-                enterImage(coroutineScope)
-                }
-                else enterImage(coroutineScope)
             }
             return true
         }
@@ -262,49 +318,47 @@ class MainViewModel (
         }
     }
 
-    fun deletePhotos() {
-        val photosToDelete = getPhotosToDelete()
-        if(photosToDelete.isNotEmpty()) {
+    fun confirmDeletion() {
+        val mediaToDelete = getMediaToDelete()
+        // Delete the media in user's storage
+        if(mediaToDelete.isNotEmpty()) {
             CoroutineScope(Dispatchers.IO).launch {
-                contentResolverInterface.deletePhotos(
-                    photosToDelete.map { it.uri },
+                contentResolverInterface.deleteMedia(
+                    mediaToDelete.map { it.uri },
                     onDelete = {
-                        CoroutineScope(Dispatchers.Main).launch { onDeletePhotos(it) }
+                        CoroutineScope(Dispatchers.Main).launch { onDeletion(it) }
                     }
-                ) // Delete the photo in user's storage
+                )
             }
 
 
         }
-        /* If user cancels deletion of all photos */
+        // If user cancels deletion of all items
         else {
-            makeToast("No photos were deleted")
+            makeToast("No items were deleted")
             dismissReviewDialog()
         }
     }
 
-    suspend fun onDeletePhotos(deletedPhotoUris: List<Uri>, deletionCancelled: Boolean = false) {
-        /* If at least one photo was successfully deleted and android version != 10 */
-        if (deletedPhotoUris.size > 0) {
+    suspend fun onDeletion(deletedMediaUris: List<Uri>, deletionCancelled: Boolean = false) {
+        /* If at least one media item was successfully deleted and android version != 10 */
+        if (deletedMediaUris.isNotEmpty()) {
             if (Build.VERSION.SDK_INT != Build.VERSION_CODES.Q) { // Prevents spam of Toasts to user
-                makeToast("${deletedPhotoUris.size}/${getPhotosToDelete().size} photos successfully deleted")
-            } else if (deletedPhotoUris.size == getPhotosToDelete().size)
-                    makeToast("All selected photos deleted")
-            /* Update database & hide photo in UI*/
-            deletedPhotoUris.forEach { deletedPhotoUri ->
-                val deletedPhoto = uiState.value.photos.find { it.uri == deletedPhotoUri }
-                if (deletedPhoto != null) {
+                makeToast("${deletedMediaUris.size}/${getMediaToDelete().size} items successfully deleted")
+            } else if (deletedMediaUris.size == getMediaToDelete().size)
+                    makeToast("All selected items deleted")
+            /* Update database & hide media in UI*/
+            deletedMediaUris.forEach { deletedMediaUri ->
+                val deletedMedia = uiState.value.mediaItems.find { it.uri == deletedMediaUri }
+                if (deletedMedia != null) {
                     CoroutineScope(Dispatchers.IO).launch {
-                        mediaStatusDao.update(deletedPhoto.getMediaStatusEntity())
+                        mediaStatusDao.update(deletedMedia.getMediaStatusEntity())
                     }
                     _uiState.update { currentState ->
-                        val newPhotos = currentState.photos
-                        newPhotos.set(
-                            uiState.value.photos.indexOf(deletedPhoto),
-                            deletedPhoto.copy(status = PhotoStatus.KEEP) // Hides the photo/video
-                        )
+                        val newMediaItems = currentState.mediaItems
+                        newMediaItems[uiState.value.mediaItems.indexOf(deletedMedia)] = deletedMedia.copy(status = MediaStatus.KEEP)
                         return@update currentState.copy(
-                            photos = newPhotos
+                            mediaItems = newMediaItems
                         )
                     }
                 }
@@ -316,16 +370,16 @@ class MainViewModel (
                 )
             }
 
-            if (getPhotosToDelete().isEmpty()) {
+            if (getMediaToDelete().isEmpty()) {
                 dismissReviewDialog()
                 if (uiState.value.numUnset <= 0)
-                    CoroutineScope(Dispatchers.IO).launch { getNewPhotos() } // FIXME("Check permissions before getting photos (cannot use checkPermissionsAndGetPhotos() as no access to context)")
+                    CoroutineScope(Dispatchers.IO).launch { resetAndGetNewMediaItems() } // FIXME("Check permissions before getting media (cannot use checkPermissionsAndGetMedia() as no access to context)")
             }
         }
         else {
             if (deletionCancelled) {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q)
-                    makeToast("Please click 'Allow' on each popup to delete the selected photos")
+                    makeToast("Please click 'Allow' on each popup to delete the selected items")
                 else
                     makeToast("Deletion cancelled")
             }
@@ -356,10 +410,10 @@ class MainViewModel (
         }
     }
 
-    fun toggleInfoRowSize() {
+    fun toggleInfoRowExpanded() {
         // Update user preference
         CoroutineScope(Dispatchers.IO).launch {
-            val infoRowExpandedSetting = BooleanPreference.info_row_expanded.toString()
+            val infoRowExpandedSetting = BooleanPreference.INFO_ROW_EXPANDED.setting
             dataStoreInterface.setBooleanSettingValue(
                 newValue = !(dataStoreInterface.getBooleanSettingValue(infoRowExpandedSetting).first()),
                 setting = infoRowExpandedSetting
@@ -367,24 +421,31 @@ class MainViewModel (
         }
     }
 
-    fun toggleInfoAndActionButtons() {
+    fun toggleInfoAndFloatingActionsRow() {
         _uiState.update { currentState ->
             currentState.copy(
-                showInfoAndFloatingActions = !currentState.showInfoAndFloatingActions
+                showInfoAndFloatingActionsRow = !currentState.showInfoAndFloatingActionsRow
+            )
+        }
+    }
+    fun toggleInfo() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showInfo = !currentState.showInfo
             )
         }
     }
 
-    fun openLocationInMapsApp(photo: Photo? = getCurrentPhoto()) {
-        val uri = "geo:${photo?.location?.get(0)},${photo?.location?.get(1)}"
+    fun openLocationInMapsApp(media: Media? = getCurrentMedia()) {
+        val uri = "geo:${media?.location?.get(0)},${media?.location?.get(1)}"
         val intent = Intent(Intent.ACTION_VIEW, uri.toUri())
         try { startActivity(intent) }
         catch (_: ActivityNotFoundException) {
             makeToast("No suitable app found")
         }
     }
-    fun openPhotoInGalleryApp(photo: Photo? = getCurrentPhoto()) {
-        val uri = photo?.uri
+    fun openInGalleryApp(media: Media? = getCurrentMedia()) {
+        val uri = media?.uri
         val intent = Intent(Intent.ACTION_VIEW, uri)
         try { startActivity(intent) }
         catch (_: ActivityNotFoundException) {
@@ -392,12 +453,12 @@ class MainViewModel (
         }
     }
 
-    fun sharePhoto(photo: Photo? = _uiState.value.photos[uiState.value.currentPhotoIndex]) {
-        if (photo != null) {
+    fun share(media: Media? = _uiState.value.mediaItems[uiState.value.currentIndex]) {
+        if (media != null) {
             val shareIntent: Intent = Intent().apply {
                 action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_STREAM, photo.uri)
-                type = contentResolverInterface.getMediaType(photo.uri)
+                putExtra(Intent.EXTRA_STREAM, media.uri)
+                type = contentResolverInterface.getMediaType(media.uri)
             }
             startActivity(Intent.createChooser(shareIntent, null))
         }
@@ -437,10 +498,10 @@ class MainViewModel (
         return mediaStatusDao.getDeletedBetweenDates(firstDateInTimeFrame, currentDate).sumOf { it.size }
     }
 
-    fun toggleIsLoading(newState: Boolean = !uiState.value.isLoading) {
+    fun toggleIsLoading(newState: Boolean = !uiState.value.fetchingMedia) {
         _uiState.update { currentState ->
             currentState.copy(
-                isLoading = newState
+                fetchingMedia = newState
             )
         }
     }
@@ -468,9 +529,36 @@ class MainViewModel (
     fun updateSnoozeLengthMillis(newSnoozeLength: Long) {
         CoroutineScope(Dispatchers.IO).launch {
             dataStoreInterface.setLongSettingValue(
-                setting = LongPreference.snooze_length.toString(),
+                setting = LongPreference.SNOOZE_LENGTH.setting,
                 newValue = newSnoozeLength
             )
         }
     }
+
+    /* Functions for playing video */
+    private fun onCurrentMediaIsVideo() {
+        uiCoroutineScope.launch {
+            player.clearMediaItems()
+            player.setMediaItem(
+                MediaItem.fromUri(
+                    getCurrentMedia()?.uri
+                        ?: "android.resource://com.example.photoswooper/drawable/file_not_found_cat".toUri()
+                )
+            )
+            player.play()
+            _uiState.update { currentState ->
+                currentState.copy(
+                    showInfoAndFloatingActionsRow = true
+                )
+            }
+        }
+    }
+    fun updateIsPlaying(newState: Boolean = player.isPlaying) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                isPlaying = newState
+            )
+        }
+    }
+
 }

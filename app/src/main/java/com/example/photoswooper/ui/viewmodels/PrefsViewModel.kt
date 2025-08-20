@@ -26,7 +26,7 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
         CoroutineScope(Dispatchers.IO).launch {
             _uiState.update { currentState ->
                 currentState.copy(
-                    numPhotosPerStackTextInput = dataStoreInterface.getIntSettingValue(IntPreference.num_photos_per_stack.toString()).first().toString()
+                    numPhotosPerStackTextInput = dataStoreInterface.getIntSettingValue(IntPreference.NUM_PHOTOS_PER_STACK.setting).first().toString()
                 )
             }
         }
@@ -38,7 +38,7 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
             (inputAsInt != null) -> {
                 if (inputAsInt in 1..100) { // Separate if statements so user doesn't see error message when inputting 0
                     updatePhotosPerStackInput(input)
-                    updateIntPreference(IntPreference.num_photos_per_stack.toString(), inputAsInt)
+                    updateIntPreference(IntPreference.NUM_PHOTOS_PER_STACK.setting, inputAsInt)
                 }
             }
             (input == "") -> updatePhotosPerStackInput(input)

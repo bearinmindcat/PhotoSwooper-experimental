@@ -21,14 +21,14 @@ import com.example.photoswooper.utils.DataStoreInterface
 
 @Composable
 fun AnimatedExpandCollapseIcon(
+    modifier: Modifier = Modifier,
     expanded: Boolean,
     onClick: (() -> Unit)? = null,
     contentDescription: String?,
-    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val reduceAnimations = DataStoreInterface(context.dataStore)
-        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val caretRotation = animateFloatAsState(
         if (expanded) 180f else 0f,
         animationSpec = spring(

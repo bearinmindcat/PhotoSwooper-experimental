@@ -17,4 +17,15 @@
     <string name="dynamic_theme_desc">Use colours, typically chosen from your wallpaper, in PhotoSwooper</string>
     <string name="reduce_animations_desc">Reduce the use of animations in PhotoSwooper, such as photos zooming in and bouncing when entering the screen</string>
     <string name="reduce_animations">Reduce animations</string>
+    <string name="pause_current_video">Pause the current video</string>
+    <string name="rewind">Rewind a configured number of seconds</string>
+    <string name="fast_forward">Fast forward by a configured number of seconds</string>
+    <string name="show_info">Show info about the current photo</string>
+    <string name="info">Info</string>
+    <string name="snooze_desc">Snooze the photo</string>
+    <string name="snooze">Snooze</string>
+    <string name="share_desc">Share the current photo or video</string>
+    <string name="share">Share</string>
+    <string name="open_externally_desc">Open in an external application</string>
+    <string name="open_externally_title">Open</string>
 </resources>

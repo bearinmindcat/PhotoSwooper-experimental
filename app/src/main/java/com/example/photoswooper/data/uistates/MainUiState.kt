@@ -1,7 +1,7 @@
 package com.example.photoswooper.data.uistates
 
 import com.example.photoswooper.R
-import com.example.photoswooper.data.models.Photo
+import com.example.photoswooper.data.models.Media
 
 enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
     DAY(86400000, R.drawable.calendar_dot),
@@ -13,15 +13,19 @@ enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
 }
 
 data class MainUiState(
-    val photos: MutableList<Photo> = mutableListOf(),
     val permissionsGranted: Boolean? = null,
-    val isLoading: Boolean = true,
-    val currentPhotoIndex: Int = 0,
+    val fetchingMedia: Boolean = true,
+    val mediaBuffering: Boolean = true,
+    val isPlaying: Boolean,
+
+    val mediaItems: MutableList<Media> = mutableListOf(),
+    val currentIndex: Int = 0,
     val numUnset: Int = 0,
     val showReviewDialog: Boolean = false,
-    val reviewDialogEnabled: Boolean = true, // Whether to show review dialog, or just delete photos
-    val showInfoAndFloatingActions: Boolean = false,
+    val reviewDialogEnabled: Boolean = true, // Whether to show review dialog, or just delete immediately
+    val showInfoAndFloatingActionsRow: Boolean = false,
+    val showInfo: Boolean = false,
 
     val currentStorageStatsTimeFrame: TimeFrame = TimeFrame.WEEK,
-    val spaceSavedInTimeFrame: Long = 0
+    val spaceSavedInTimeFrame: Long = 0,
 )

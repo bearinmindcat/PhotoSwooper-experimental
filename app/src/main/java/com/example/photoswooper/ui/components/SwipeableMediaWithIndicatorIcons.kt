@@ -15,13 +15,14 @@ import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
-import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -56,10 +57,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
-import com.example.photoswooper.data.models.Photo
+import com.example.photoswooper.data.models.Media
+import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.view.DragAnchors
@@ -74,12 +78,12 @@ import kotlin.math.roundToInt
 /**
  * Composable function containing a swipeable & zoomable image, with icons behind it showing what each swipe does
  *
- * @param photo The [Photo] to be displayed.
+ * @param media The [Media] to be displayed.
  * @param anchoredDraggableState The [AnchoredDraggableState] object for handling swipe gestures.
  */
 @Composable
-fun SwipeableAsyncImageWithIndicatorIcons(
-    photo: Photo,
+fun SwipeableMediaWithIndicatorIcons(
+    media: Media,
     viewModel: MainViewModel,
     imageLoader: ImageLoader,
     anchoredDraggableState: AnchoredDraggableState<DragAnchors>,
@@ -88,10 +92,13 @@ fun SwipeableAsyncImageWithIndicatorIcons(
     val view = LocalView.current
     val coroutineScope = rememberCoroutineScope()
     val reduceAnimations = DataStoreInterface(LocalContext.current.dataStore)
-        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
+    val uiState by viewModel.uiState.collectAsState()
 
-    var imageAlpha by remember { mutableStateOf(1f) }
-    var indicatorIconsAlpha by remember { mutableStateOf(0f) }
+    // TODO("Add SwipeableMediaUiState")
+    var videoAspectRatio by remember { mutableFloatStateOf(1f) }
+    var alphaValue by remember { mutableFloatStateOf(1f) }
+    var indicatorIconsAlpha by remember { mutableFloatStateOf(0f) }
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -102,19 +109,43 @@ fun SwipeableAsyncImageWithIndicatorIcons(
     // Animated for smooth transitions
     val animatableOffsetX = animateFloatAsState(targetValue = offset.x)
     val animatableOffsetY = animateFloatAsState(targetValue = offset.y)
-    val animatableScale = animateFloatAsState(
-        targetValue = scale,
-        animationSpec = viewModel.defaultEntryAnimationSpec
-    )
+    val animatableScale = animateFloatAsState(targetValue = scale)
+
+    /* Animate image entry  */
+    LaunchedEffect(uiState.mediaBuffering) {
+        if (uiState.mediaBuffering) {
+//            delay(1000)
+//            showBufferingIndicator = true TODO("buffering indicator")
+        }
+        else {
+            coroutineScope.launch {
+//                viewModel.animatedImageScaleEntry.snapTo(0f)
+                // Set video aspect ratio
+                if (media.type == MediaType.VIDEO)
+                    videoAspectRatio =  if (viewModel.player.videoSize.height != 0) {
+                        viewModel.player.videoSize.width / viewModel.player.videoSize.height.toFloat()
+                    } else {
+                        1f
+                    }
+                // Animate entry
+                anchoredDraggableState.snapTo(DragAnchors.Center)
+                viewModel.enterImage()
+                view.performHapticFeedback(
+                    HapticFeedbackConstants.CLOCK_TICK
+                )
+            }
+        }
+    }
 
     /* Animate image depending on how far the user has swiped */
     LaunchedEffect(anchoredDraggableState.requireOffset()) {
         if (!reduceAnimations.value) {
-            viewModel.animatedImageScaleEntry.snapTo(
-                ((1.25f - (anchoredDraggableState.requireOffset().absoluteValue) / DragAnchors.Right.offset / 2f))
-                    .coerceIn(0.8f, 1f),
-            )
-            imageAlpha = 3 * (1f - anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
+            if (!uiState.mediaBuffering) // This prevents interference with entry animation
+                viewModel.animatedImageScaleEntry.snapTo(
+                    ((1.25f - (anchoredDraggableState.requireOffset().absoluteValue) / DragAnchors.Right.offset / 2f))
+                        .coerceIn(0.8f, 1f),
+                )
+            alphaValue = 3 * (1f - anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
                 .coerceIn(0f, 1f)
         }
             indicatorIconsAlpha = 2*(anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
@@ -152,27 +183,12 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                 modifier = Modifier.alpha(indicatorIconsAlpha)
             )
         }
-        AsyncImage(
-            model = photo.uri,
-            imageLoader = imageLoader,
-            contentDescription = null,
-            onSuccess = {
-                /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
-                coroutineScope.launch {
-                    anchoredDraggableState.animateTo(
-                        DragAnchors.Center,
-                        tween(0)
-                    )
-                    viewModel.enterImage(coroutineScope)
-                    view.performHapticFeedback(
-                        HapticFeedbackConstants.CLOCK_TICK
-                    )
-                }
-            },
-            contentScale = ContentScale.FillWidth,
+        /* Swipeable box containing video or image */
+        Box (
+            contentAlignment = Alignment.Center,
             modifier = modifier
-                .fillMaxSize()
-                .alpha(imageAlpha)
+                .fillMaxSize() // Expands bounds of swiping outside actual media
+                .alpha(alphaValue)
                 // Allow panning to be visible outside original bounds
                 .clipToBounds()
                 // Double-tap to toggle zoom
@@ -185,12 +201,12 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                                 scale = 2f
                                 offset = it.copy(
                                     x = -it.x - Resources.getSystem().displayMetrics.widthPixels.toFloat() / 25,
-                                    y = -it.y + (photo.resolution?.substringAfterLast("×")?.toFloat()
+                                    y = -it.y + (media.resolution?.substringAfterLast("×")?.toFloat()
                                         ?: 0f) / 25,
                                 )
                             }
                         },
-                        onTap = { viewModel.toggleInfoAndActionButtons() }
+                        onTap = { viewModel.toggleInfoAndFloatingActionsRow() }
                     )
                 }
                 .then(
@@ -211,7 +227,6 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                                     y = 0
                                 )
                             }
-                            .scale(viewModel.animatedImageScaleEntry.value)
                     } else {
                         Modifier
                             // Detect zoom & pan using transformable
@@ -235,12 +250,39 @@ fun SwipeableAsyncImageWithIndicatorIcons(
                             }
                     }
                 )
-        )
+
+        ){
+            when (media.type) {
+                MediaType.PHOTO -> {
+                    AsyncImage(
+                        model = media.uri,
+                        imageLoader = imageLoader,
+                        contentDescription = null,
+                        onSuccess = {
+                            /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
+                            viewModel.onMediaLoaded()
+                        },
+                        contentScale = ContentScale.FillWidth,
+                        modifier = Modifier
+                            .scale(viewModel.animatedImageScaleEntry.value)
+                    )
+                }
+                MediaType.VIDEO -> {
+                    PlayerSurface(
+                        player = viewModel.player,
+                        surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+                        modifier = Modifier
+                            .aspectRatio(videoAspectRatio)
+                            .scale(viewModel.animatedImageScaleEntry.value)
+                    )
+                }
+            }
+        }
     }
 }
 
-/** Row of two icons intended to be shown behind the photo.
- * These icons show the user if they are marking the photo as "delete" or "keep"
+/** Row of two icons intended to be shown behind the photo/video.
+ * These icons show the user if they are marking the item as "delete" or "keep"
  *
  * @param currentAnchor The anchor the user is currently dragging to (left to delete, right to keep)
  */
@@ -293,7 +335,7 @@ private fun IndicatorIconRow(
                 label = "keepHint"
             ) {
                 Text(
-                    text = "Release to keep this photo",
+                    text = "Release to keep",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
@@ -338,7 +380,7 @@ private fun IndicatorIconRow(
                 label = "deleteHint"
             ) {
                 Text(
-                    text = "Release to delete this photo",
+                    text = "Release to mark for deletion",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,

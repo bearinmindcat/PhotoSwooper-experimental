@@ -27,18 +27,27 @@ import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
+import androidx.media3.common.C.USAGE_MEDIA
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
+import coil3.video.VideoFrameDecoder
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
@@ -60,6 +69,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaStatusDao: MediaStatusDao
     private lateinit var mainViewModel: MainViewModel
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,10 +88,33 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     add(GifDecoder.Factory())
                 }
+                add(VideoFrameDecoder.Factory())
             }
             .memoryCache(null)
-            .diskCache(null) // Disable cache so animation is called every time in AsyncPhoto (needs an onSuccess call)
+            .diskCache(null) // Disable cache so animation is called every time in AsyncImage (needs an onSuccess call)
             .build()
+        val player: ExoPlayer = ExoPlayer.Builder(this)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(AUDIO_CONTENT_TYPE_MOVIE)
+                    .setUsage(USAGE_MEDIA)
+                    .build(),
+                false // TODO("Add preference 'Pause music when playing video'")
+            )
+            .build()
+        player.prepare()
+        player.addListener(
+            object : Player.Listener {
+                override fun onRenderedFirstFrame() {
+                    super.onRenderedFirstFrame()
+                    mainViewModel.onMediaLoaded()
+                }
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    super.onIsPlayingChanged(isPlaying)
+                    mainViewModel.updateIsPlaying(isPlaying)
+                }
+            }
+        )
 
         val contentResolverInterface = ContentResolverInterface(
             dao = mediaStatusDao,
@@ -111,15 +144,18 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Main).launch {
             checkPermissions(
                 context = this@MainActivity,
-                onPermissionsGranted = { mainViewModel.getNewPhotos() }
+                onPermissionsGranted = { mainViewModel.resetAndGetNewMediaItems() }
             )
         }
 
         setContent {
+            val coroutineScope = rememberCoroutineScope()
             val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
             mainViewModel = remember { MainViewModel(
                 contentResolverInterface = contentResolverInterface,
                 mediaStatusDao = mediaStatusDao,
+                player = player,
+                uiCoroutineScope = coroutineScope,
                 bottomSheetScaffoldState = bottomSheetScaffoldState,
                 dataStoreInterface = dataStoreInterface,
                 makeToast = {
@@ -131,8 +167,8 @@ class MainActivity : AppCompatActivity() {
                 },
                 startActivity = { this.startActivity(it) }
             ) }
-            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.system_font.toString()).collectAsState(!BooleanPreference.system_font.default)
-            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.dynamic_theme.toString()).collectAsState(BooleanPreference.dynamic_theme.default)
+            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting).collectAsState(!BooleanPreference.SYSTEM_FONT.default)
+            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting).collectAsState(BooleanPreference.DYNAMIC_THEME.default)
             PhotoSwooperTheme(
                 systemFont = systemFont,
                 dynamicColor = dynamicTheme
@@ -181,7 +217,7 @@ class MainActivity : AppCompatActivity() {
 
         Log.i("Permissions", "Permissions granted = ${readAccess && writeAccess}")
 
-        /* If permissions denied, notify user. Else, get photos from storage */
+        /* If permissions denied, notify user. Else, get media from storage */
         if (!readAccess || !writeAccess) {
             if (!readAccess) {
                 Toast.makeText(
@@ -201,7 +237,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             mainViewModel.updatePermissionsGranted(true)
-            CoroutineScope(Dispatchers.Main).launch { mainViewModel.getNewPhotos() }
+            CoroutineScope(Dispatchers.Main).launch { mainViewModel.resetAndGetNewMediaItems() }
         }
     }
 
@@ -213,21 +249,21 @@ class MainActivity : AppCompatActivity() {
                 if (resultCode != RESULT_CANCELED) {
                         if (SDK_INT >= Build.VERSION_CODES.R)
                             CoroutineScope(Dispatchers.Main).launch {
-                                mainViewModel.onDeletePhotos(mainViewModel.getPhotosToDelete().map { it.uri })
+                                mainViewModel.onDeletion(mainViewModel.getMediaToDelete().map { it.uri })
                             }
                         else
                             CoroutineScope(Dispatchers.Main).launch {
-                                mainViewModel.deletePhotos() // Delete the rest of the photos if on lower android versions
+                                mainViewModel.confirmDeletion() // Delete the rest if on lower android versions
                             }
                     }
                 else
                     if (SDK_INT >= Build.VERSION_CODES.R)
                         CoroutineScope(Dispatchers.Main).launch {
-                            mainViewModel.onDeletePhotos(listOf(), true)
+                            mainViewModel.onDeletion(listOf(), true)
                         }
                     else
                         CoroutineScope(Dispatchers.Main).launch {
-                            mainViewModel.onDeletePhotos(listOf(), true)
+                            mainViewModel.onDeletion(listOf(), true)
                         }
             }
         }
@@ -257,7 +293,8 @@ fun checkPermissions(
     if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         permissionsToRequest.add(READ_MEDIA_VISUAL_USER_SELECTED)
 
-    // TODO("Add button in app to reselect photos, rather than prompting reselection on each app launch")
+    // TODO("Reselect media only on app start & at end of photos given read permission to, rather than prompting
+    //  reselection on each app launch")
 
     /* Check write permissions if android version doesn't support MediaStore delete/trash requests */
     if (SDK_INT < Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(context, WRITE_EXTERNAL_STORAGE) != PERMISSION_GRANTED)

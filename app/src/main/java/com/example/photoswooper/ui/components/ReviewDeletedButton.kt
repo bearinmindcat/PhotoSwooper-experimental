@@ -35,7 +35,7 @@ fun ReviewDeletedButton(
                     viewModel.showReviewDialog()
                 else
                     CoroutineScope(Dispatchers.Main).launch {
-                        viewModel.deletePhotos()
+                        viewModel.confirmDeletion()
                     }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -53,7 +53,7 @@ fun ReviewDeletedButton(
                 modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
             )
             Text(
-                text = "Delete $numToDelete photos",
+                text = "Review",
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
             )

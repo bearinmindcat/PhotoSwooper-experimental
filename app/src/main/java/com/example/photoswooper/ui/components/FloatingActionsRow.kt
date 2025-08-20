@@ -1,28 +1,39 @@
 package com.example.photoswooper.ui.components
 
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,16 +42,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.photoswooper.R
-import com.example.photoswooper.data.models.Photo
-import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.models.Media
+import com.example.photoswooper.data.models.MediaStatus
+import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -50,10 +64,15 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FloatingActionsRow(
-    currentPhoto: Photo?,
+    currentMedia: Media?,
     viewModel: MainViewModel
 ) {
     val view = LocalView.current
+    val uiState by viewModel.uiState.collectAsState()
+    // player position used in bottom slider
+    var displayedPlayerPosition by remember { mutableFloatStateOf(viewModel.player.currentPosition.toFloat()) }
+    fun endOfVideo() = viewModel.player.currentPosition >= viewModel.player.duration
+
     var showChangeSnoozeLengthDialog by remember {mutableStateOf(false)}
     if (showChangeSnoozeLengthDialog)
         ChangeSnoozeLengthDialog(
@@ -63,81 +82,228 @@ fun FloatingActionsRow(
                 viewModel.updateSnoozeLengthMillis(it)
             }
         )
-    
-    Row(
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.dropShadow(
-            shape = MaterialTheme.shapes.medium,
-            shadow = Shadow(96.dp)
-        )
-    ) {
-        FloatingAction(
-            drawableIconId = R.drawable.hourglass_high_bold,
-            actionTitle = "Snooze",
-            actionDescription = "Snooze the photo",
-            onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                viewModel.markPhoto(PhotoStatus.SNOOZE)
-                viewModel.nextPhoto()
-                // TODO("Show a tip dialog on first click, showing how a tap + hold lets the user change the snooze length")
-            },
-            onLongPress = {
-                showChangeSnoozeLengthDialog = true
+
+    val showVideoPlaybackControls = currentMedia?.type == MediaType.VIDEO
+
+    Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+                .pointerInput(null) {} // Prevents accidental swipes/taps
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .dropShadow(
+                        shape = MaterialTheme.shapes.medium,
+                        shadow = Shadow(96.dp)
+                    )
+                    .fillMaxWidth()
+                    .padding(horizontal = dimensionResource(R.dimen.padding_small))
+            ) {
+
+                Row {
+                    FloatingAction(
+                        drawableIconId = R.drawable.hourglass_high,
+                        actionTitle = stringResource(R.string.snooze),
+                        actionDescription = stringResource(R.string.snooze_desc),
+                        onClick = {
+                            if (SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            viewModel.markItem(MediaStatus.SNOOZE)
+                            viewModel.next()
+                            // TODO("Show a tip dialog on first click, showing how a tap + hold lets the user change the snooze length")
+                        },
+                        onLongPress = {
+                            showChangeSnoozeLengthDialog = true
+                        }
+                    )
+                    FloatingAction(
+                        drawableIconId = R.drawable.info,
+                        actionTitle = stringResource(R.string.info),
+                        checked = uiState.showInfo,
+                        actionDescription = stringResource(R.string.show_info),
+                        onClick = {
+                            if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) view.performHapticFeedback(
+                                if (uiState.showInfo) HapticFeedbackConstants.TOGGLE_OFF
+                                else HapticFeedbackConstants.TOGGLE_ON
+                            )
+                            viewModel.toggleInfo()
+                        },
+                    )
+                }
+                AnimatedVisibility (
+                    visible = showVideoPlaybackControls,
+                    enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+                    exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
+                ) {
+                    Row {
+                        FloatingAction(
+                            drawableIconId = R.drawable.rewind,
+                            actionTitle = null,
+                            actionDescription = stringResource(R.string.rewind),
+                            onClick = {
+                                viewModel.player.seekBack()
+                            },
+//                            onLongPress = { TODO("Configurable rewind amount") }
+                        )
+                        FloatingAction(
+                            drawableIconId =
+                                when {
+                                    (uiState.isPlaying) -> R.drawable.pause
+                                    (endOfVideo()) -> R.drawable.arrow_counter_clockwise // FIXME("Restart icon not showing on drag to end")
+                                    else -> R.drawable.play
+                                },
+                            actionTitle = null,
+                            actionDescription = stringResource(R.string.pause_current_video),
+                            onClick = {
+                                when {
+                                    (viewModel.player.isPlaying) -> viewModel.player.pause()
+                                    (endOfVideo()) -> {
+                                        viewModel.player.seekTo(0)
+                                        viewModel.player.play()
+                                    }
+                                    else -> viewModel.player.play()
+                                }
+                                if (SDK_INT >= Build.VERSION_CODES.R)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            },
+                        )
+                        FloatingAction(
+                            drawableIconId = R.drawable.fast_forward,
+                            actionTitle = null,
+                            actionDescription = stringResource(R.string.fast_forward),
+                            onClick = {
+                                viewModel.player.seekForward()
+                            },
+//                            onLongPress = { TODO("Configurable fast forward amount") }
+                        )
+                    }
+                }
+                Row {
+                    FloatingAction(
+                        drawableIconId = R.drawable.share_network,
+                        actionTitle = stringResource(R.string.share),
+                        actionDescription = stringResource(R.string.share_desc),
+                        onClick = { viewModel.share() }
+                    )
+                    FloatingAction(
+                        drawableIconId = R.drawable.arrow_square_out,
+                        actionTitle = stringResource(R.string.open_externally_title),
+                        actionDescription = stringResource(R.string.open_externally_desc),
+                        onClick = {
+                            viewModel.openInGalleryApp()
+                        }
+                    )
+                }
             }
-        )
-        // TODO("If current mediaToSwipe is video, show play/pause, rewind & skip")
-        FloatingAction(
-            drawableIconId = R.drawable.share_network,
-            actionTitle = "Share",
-            actionDescription = "Share photo",
-            onClick = { viewModel.sharePhoto() }
-        )
-        FloatingAction(
-            drawableIconId = R.drawable.arrow_square_out_bold,
-            actionTitle = "Open",
-            actionDescription = "Open externally",
-            onClick = {
-                viewModel.openPhotoInGalleryApp()
+        AnimatedVisibility(showVideoPlaybackControls) {
+            var userDragging by remember { mutableStateOf(false) }
+            LaunchedEffect(null) { // When either of these two values (keys) change:
+                while (true) {
+                    delay(50) // Only update every 100 milliseconds
+                    if (!userDragging)
+                        displayedPlayerPosition = viewModel.player.currentPosition.toFloat()
+                    else
+                        viewModel.player.seekTo(displayedPlayerPosition.toLong())
+                }
             }
-        )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .padding(horizontal = dimensionResource(R.dimen.padding_small))
+                    .fillMaxWidth()
+            ) {
+                DurationText(
+                    displayedPlayerPosition,
+                    Modifier
+                        .width(32.dp)
+                )
+                androidx.compose.material.Slider(
+                    value = displayedPlayerPosition,
+                    valueRange = 0f..if (viewModel.player.duration > 0L) viewModel.player.duration.toFloat() else Float.MAX_VALUE,
+                    onValueChange = {
+                        viewModel.player.pause()
+                        userDragging = true
+                        displayedPlayerPosition = it
+                    },
+                    onValueChangeFinished = {
+                        viewModel.player.seekTo(displayedPlayerPosition.toLong())
+                        if (!endOfVideo()) // Prevents play/pause button going wack as play -> immediate pause as end of video
+                            viewModel.player.play()
+                        if (SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                        userDragging = false
+                    },
+                    colors = androidx.compose.material.SliderDefaults.colors(
+                        activeTrackColor = SliderDefaults.colors().activeTrackColor,
+                        thumbColor = SliderDefaults.colors().thumbColor,
+                        disabledThumbColor = SliderDefaults.colors().disabledThumbColor,
+                        inactiveTrackColor = SliderDefaults.colors().inactiveTrackColor,
+                        disabledActiveTrackColor = SliderDefaults.colors().disabledActiveTrackColor,
+                        disabledInactiveTrackColor = SliderDefaults.colors().disabledInactiveTrackColor,
+                        activeTickColor = SliderDefaults.colors().activeTickColor,
+                        inactiveTickColor = SliderDefaults.colors().inactiveTickColor,
+                        disabledActiveTickColor = SliderDefaults.colors().disabledActiveTickColor,
+                        disabledInactiveTickColor = SliderDefaults.colors().disabledInactiveTickColor
+                    ),
+                    modifier = Modifier.weight(0.7f)
+                )
+                DurationText(
+                    if (viewModel.player.duration > 0L) viewModel.player.duration else 0,
+                    Modifier
+                        .width(32.dp)
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun FloatingAction(
+    modifier: Modifier = Modifier,
     @DrawableRes drawableIconId: Int,
-    actionTitle: String,
+    actionTitle: String?,
     actionDescription: String?,
+    checked: Boolean? = null,
     onClick: () -> Unit,
     onLongPress: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
-    val view = LocalView.current
-    var showTextHint by remember { mutableStateOf(true) }
-    LaunchedEffect(null) {
-        delay(1000)
-        showTextHint = false
-    }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
+    val contentColor =
+        if (checked ?: false) IconButtonDefaults.iconToggleButtonColors().checkedContentColor
+        else IconButtonDefaults.iconToggleButtonColors().contentColor
+
+    Box(
+        modifier
             .clip(MaterialTheme.shapes.large)
-            .padding(dimensionResource(R.dimen.padding_small))
             .combinedClickable(
                 onClick = { onClick() },
                 onLongClick = { onLongPress?.invoke() },
                 hapticFeedbackEnabled = true,
             )
     ) {
-        Icon(
-            painter = painterResource(drawableIconId),
-            contentDescription = actionDescription,
-            modifier = Modifier
-                .size(dimensionResource(R.dimen.small_icon))
-        )
-        Text(actionTitle, style = MaterialTheme.typography.labelLarge)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = modifier
+                .padding(dimensionResource(R.dimen.padding_small))
+        ) {
+            Icon(
+                painter = painterResource(drawableIconId),
+                contentDescription = actionDescription,
+                tint = contentColor,
+                modifier = Modifier
+                    .size(dimensionResource(R.dimen.small_icon))
+            )
+            if (actionTitle != null)
+                Text(
+                    actionTitle,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = contentColor
+//                    textDecoration = if (onLongPress != null) TextDecoration.Underline else TextDecoration.None
+                )
+        }
     }
 }
 
@@ -163,7 +329,7 @@ private fun ChangeSnoozeLengthDialog(
                         if (input.toLongOrNull() != null || input == "")
                             displayedSnoozeLength = input
                     },
-                    label = { Text("Snooze photos for:") },
+                    label = { Text("Snooze photos/videos for:") },
                     singleLine = true,
                     suffix = { Text("Days") },
                     keyboardOptions = KeyboardOptions.Default.copy(
@@ -212,4 +378,21 @@ private fun ChangeSnoozeLengthDialog(
             }
         }
     }
+}
+
+@Composable
+private fun DurationText(duration: Number, modifier: Modifier = Modifier) {
+    Text(
+        text = formatDuration(duration),
+        style = MaterialTheme.typography.labelMedium,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+    )
+}
+
+// TODO("Format durations > 1hr")
+private fun formatDuration(numToConvert: Number): String { // Parameter is the minutes in milliseconds
+    val minutes = numToConvert.toLong().floorDiv(60000) // Get the minutes and round down
+    val seconds = numToConvert.toLong().mod(60000).floorDiv(1000) // Get the seconds remaining from the division
+    return "%d:%02d".format(minutes, seconds) // Combine the results
 }

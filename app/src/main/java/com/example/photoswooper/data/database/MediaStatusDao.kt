@@ -6,7 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.models.MediaStatus
 
 /**
  * Database Access Object that provides the functions to interact with the database
@@ -15,23 +15,23 @@ import com.example.photoswooper.data.models.PhotoStatus
 interface MediaStatusDao {
 
     @Query("SELECT * FROM mediaStatus WHERE (status = :status) AND (dateModified BETWEEN :firstDate AND :secondDate)")
-    suspend fun getDeletedBetweenDates(firstDate: Long, secondDate: Long, status: PhotoStatus = PhotoStatus.DELETE): List<MediaStatus>
+    suspend fun getDeletedBetweenDates(firstDate: Long, secondDate: Long, status: MediaStatus = MediaStatus.DELETE): List<MediaEntity>
 
     @Query("SELECT * FROM mediaStatus WHERE (status != :status) AND (dateModified BETWEEN :firstDate AND :secondDate)")
-    suspend fun getSwipedMediaBetweenDates(firstDate: Long, secondDate: Long, status: PhotoStatus = PhotoStatus.UNSET): List<MediaStatus>
+    suspend fun getSwipedMediaBetweenDates(firstDate: Long, secondDate: Long, status: MediaStatus = MediaStatus.UNSET): List<MediaEntity>
 
-    @Query("SELECT * FROM mediaStatus WHERE fileHash = :hash LIMIT 1")
-    suspend fun findByHash(hash: String): MediaStatus?
+    @Query("SELECT * FROM mediaStatus WHERE fileHash = :hash")
+    suspend fun findByHash(hash: String): MediaEntity?
 
-    @Query("SELECT * FROM mediaStatus WHERE mediaStoreId = :id LIMIT 1")
-    suspend fun findByMediaStoreId(id: Long): MediaStatus?
+    @Query("SELECT * FROM mediaStatus WHERE mediaStoreId = :id")
+    suspend fun findByMediaStoreId(id: Long): MediaEntity?
 
     @Update
-    suspend fun update(vararg mediaStatus: MediaStatus)
+    suspend fun update(vararg mediaEntities: MediaEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(vararg mediaStatus: MediaStatus)
+    suspend fun insert(vararg mediaEntities: MediaEntity)
 
     @Delete
-    suspend fun delete(mediaStatusList: MediaStatus)
+    suspend fun delete(mediaEntityList: MediaEntity)
 }

@@ -75,7 +75,7 @@ fun DropdownFilterChip(
             },
             onClick = {
                 expanded = !expanded
-                if (SDK_INT >= Build.VERSION_CODES.R)
+                if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                     view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
                       },
             colors =
@@ -94,7 +94,7 @@ fun DropdownFilterChip(
             expanded = expanded,
             onDismissRequest = {
                 expanded = false
-                if (SDK_INT >= Build.VERSION_CODES.R)
+                if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                     view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
                                },
             border = FilterChipDefaults.filterChipBorder(true, false),

@@ -10,8 +10,8 @@ import androidx.room.RoomDatabase
  * Database class with a singleton Instance object.
  */
 @Database(
-    entities = [MediaStatus::class],
-    version = 2,
+    entities = [MediaEntity::class],
+    version = 3,
     autoMigrations = [
         AutoMigration (from = 1, to = 2)
     ]
@@ -28,10 +28,10 @@ abstract class MediaStatusDatabase : RoomDatabase() {
             // if the Instance is not null, return it, otherwise create a new database instance.
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, MediaStatusDatabase::class.java, "mediaStatusDatabase")
+                    .addMigrations(MIGRATION_2_3)
                     .build()
                     .also { Instance = it }
             }
         }
     }
-
 }

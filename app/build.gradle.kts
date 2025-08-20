@@ -48,6 +48,11 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
+    // For testing database migrations
+    sourceSets {
+        // Adds exported schema location as test app assets.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
 }
 
 dependencies {
@@ -66,13 +71,20 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     implementation(libs.coil.compose) // For loading images
     implementation(libs.coil.gif) // For animated GIFs
+    implementation(libs.coil.video) // For video thumbnails
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx) // for database
     implementation(libs.koalaplot.core) // For plotting graphs for stats
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.junit.ktx)
+    implementation(libs.androidx.room.testing.android)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.media3.exoplayer) // For video playback
+    implementation(libs.androidx.media3.ui.compose) // For video playback UI
+    implementation(libs.wavy.slider) // Provides android-like slider composable
 
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 

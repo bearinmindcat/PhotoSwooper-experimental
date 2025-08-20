@@ -3,30 +3,36 @@ package com.example.photoswooper.data.models
 import android.net.Uri
 import android.os.Build
 import android.text.format.DateFormat
-import com.example.photoswooper.data.database.MediaStatus
+import com.example.photoswooper.data.database.MediaEntity
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-enum class PhotoStatus {
+enum class MediaType {
+    PHOTO,
+    VIDEO
+}
+
+enum class MediaStatus {
     UNSET,
     DELETE,
     KEEP,
     SNOOZE
 }
 
-data class Photo (
+data class Media (
     val id: Long,
     val uri: Uri,
     val fileHash: String,
     val dateTaken: Long?,
     val size: Long,
+    val type: MediaType,
     val location: DoubleArray?,
     val album: String?,
     val description: String?,
     val title: String?,
     val resolution: String?,
-    var status: PhotoStatus
+    var status: MediaStatus
 ) {
     fun getFormattedDate(): String {
         return if (dateTaken != null) {
@@ -43,11 +49,12 @@ data class Photo (
 
     fun getFormattedLocation() = location?.joinToString(", ") { it.toString().substring(0, 8) }
 
-    fun getMediaStatusEntity(): MediaStatus {
-        return MediaStatus(
+    fun getMediaStatusEntity(): MediaEntity {
+        return MediaEntity(
             fileHash = fileHash,
             mediaStoreId = id,
             status = status,
+            type = type,
             size = size,
             dateModified = System.currentTimeMillis(),
         )
@@ -58,7 +65,7 @@ data class Photo (
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as Photo
+        other as Media
 
         if (id != other.id) return false
         if (dateTaken != other.dateTaken) return false

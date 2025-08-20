@@ -1,14 +1,16 @@
-package com.example.photoswooper
+package com.example.photoswooper.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import com.example.photoswooper.R
 
 val bodyFontFamily = FontFamily(
-    androidx.compose.ui.text.font.Font(R.font.baloo)
+    Font(R.font.baloo)
 )
 
 val displayFontFamily = FontFamily(
-    androidx.compose.ui.text.font.Font(R.font.baloo)
+    Font(R.font.baloo)
 )
 
 // Default Material 3 typography values

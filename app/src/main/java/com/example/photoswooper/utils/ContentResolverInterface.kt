@@ -12,8 +12,9 @@ import android.util.Log
 import androidx.core.app.ActivityCompat.startIntentSenderForResult
 import androidx.exifinterface.media.ExifInterface
 import com.example.photoswooper.data.database.MediaStatusDao
-import com.example.photoswooper.data.models.Photo
-import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.models.Media
+import com.example.photoswooper.data.models.MediaStatus
+import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,40 +33,94 @@ class ContentResolverInterface(
     private val activity: Activity, // For delete/trash intent
 ) {
 
-    /**
-     * Get new photos from the MediaStore and each  into [onAddPhoto] (this is usually a function to add them to [com.example.photoswooper.data.uistates.MainUiState]
+    /** Calls [getMediaOfTypeFromMediaStore] twice - once for photos and once for videos
      *
-     * @param photosAdded Photos already added to [com.example.photoswooper.data.uistates.MainUiState] to compare new ones to
-     * @param numPhotos The number of photos to be passed into [onAddPhoto]
+     * If [targetNumVideos] of videos could not be found, add the number missing to the number of photos to fetch -
+     * and vice versa with [targetNumPhotos] to try and preserve total number of photos & videos added
+     * */
+    suspend fun getAllMediaFromMediaStore(
+        mediaAdded: MutableSet<Media> = mutableSetOf(),
+        targetNumVideos: Int,
+        targetNumPhotos: Int,
+        onAddMedia: (Media) -> Unit
+    ) {
+        // Get videos and save remaining number of videos to add as variable (user's device may not have the desired number)
+        val numVideosNotFound = getMediaOfTypeFromMediaStore(
+            mediaAdded = mediaAdded,
+            onAddMedia = {
+                onAddMedia(it)
+            },
+            numToAdd = targetNumVideos,
+            type = MediaType.VIDEO
+        )
+        val adjustedNumPhotosToAdd = targetNumPhotos + numVideosNotFound
+        // Get photos
+        val numPhotosNotFound = getMediaOfTypeFromMediaStore(
+            mediaAdded = mediaAdded,
+            onAddMedia = {
+                onAddMedia(it)
+            },
+            numToAdd = adjustedNumPhotosToAdd,
+            type = MediaType.PHOTO
+        )
+        // If more videos can be added to account for missing photos, add them
+        if (numVideosNotFound == 0) {
+            getMediaOfTypeFromMediaStore(
+                mediaAdded = mediaAdded,
+                onAddMedia = {
+                    onAddMedia(it)
+                },
+                numToAdd = numPhotosNotFound,
+                type = MediaType.VIDEO
+            )
+        }
+    }
+
+    /**
+     * Get new media of type [type] from the MediaStore and each  into [onAddMedia] (this is usually a function to add
+     * them to [com.example.photoswooper.data.uistates.MainUiState]
+     *
+     * @param mediaAdded Media already added to [com.example.photoswooper.data.uistates.MainUiState] to compare new ones to
+     * @param numToAdd The number of media items to be passed into [onAddMedia]
+     *
+     * @return The difference between the number of items actually added, and numToAdd
      */
     @OptIn(ExperimentalStdlibApi::class) // For .toHexString()
-    suspend fun getPhotos(
-        photosAdded: MutableSet<Photo> = mutableSetOf(),
-        numPhotos: Int,
-        onAddPhoto: (Photo) -> Unit
-    ) {
-        // TODO("Change so that MediaStore.Images changes to MediaStore.Videos for video types")
-        // TODO("Automatically add unset photos from app database before fetching from MediaStore")
+    private suspend fun getMediaOfTypeFromMediaStore(
+        mediaAdded: MutableSet<Media> = mutableSetOf(),
+        type: MediaType,
+        numToAdd: Int,
+        onAddMedia: (Media) -> Unit
+    ): Int {
+        // TODO("Automatically add unset media from app database before fetching from MediaStore")
+        var numAdded = 0
 
-        val mediaStoreUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        val mediaStoreUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // Might not need the when statements? Needs testing
+            when (type) {
+                MediaType.PHOTO -> MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                MediaType.VIDEO -> MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            }
         } else {
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            when (type) {
+                MediaType.PHOTO -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                MediaType.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            }
         }
         val projection = mutableListOf(
-            MediaStore.Images.Media._ID,
-            MediaStore.Images.Media.DATE_TAKEN,
-            MediaStore.Images.Media.SIZE,
-            MediaStore.Images.Media.DESCRIPTION,
-            MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.DATA,
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DATE_TAKEN,
+            MediaStore.MediaColumns.SIZE,
+            if (type == MediaType.PHOTO) MediaStore.Images.ImageColumns.DESCRIPTION
+            else MediaStore.Video.VideoColumns.DESCRIPTION,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.DATA,
         ) // The columns (metadata types) we want to retrieve from the MediaStore
 
         /* Add extra columns supported by recent android versions */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             projection.addAll(listOf(
-                MediaStore.Images.Media.ALBUM,
-                MediaStore.Images.Media.RESOLUTION,
+                MediaStore.MediaColumns.ALBUM,
+                MediaStore.MediaColumns.RESOLUTION,
             ))
 
         Log.i("MediaStore", "Querying MediaStore database")
@@ -73,20 +128,20 @@ class ContentResolverInterface(
             mediaStoreUri,
             projection.toTypedArray(), // The columns (metadata types) we want to retrieve from the MediaStore
             null, // selection parameter
-            null, // (selectionArgs parameter) Fetch *all* image files
+            null, // (selectionArgs parameter) Fetch *all* files
             "RANDOM()", // sortOrder parameter
         ) ?.use { cursor ->
 
-            val idColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-            val dateTakenColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
-            val sizeColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
-            val albumColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(MediaStore.Images.Media.ALBUM)
+            val idColumnIndex = cursor.getColumnIndexOrThrow(projection[0])
+            val dateTakenColumnIndex = cursor.getColumnIndexOrThrow(projection[1])
+            val sizeColumnIndex = cursor.getColumnIndexOrThrow(projection[2])
+            val descriptionColumnIndex = cursor.getColumnIndexOrThrow(projection[3])
+            val displayNameColumnIndex = cursor.getColumnIndexOrThrow(projection[4])
+            val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(projection[5])
+            val albumColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[6])
                 else 0 // 0 value not used
-            val resolutionColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RESOLUTION)
+            val resolutionColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[7])
                 else 0 // 0 value not used
-            val descriptionColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DESCRIPTION)
-            val displayNameColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-            val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
 
             /* add these values to the list of tracks */
             Log.d("MediaStore", "Iterating over database output")
@@ -98,32 +153,48 @@ class ContentResolverInterface(
                 val fetchedResolution = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getString(resolutionColumnIndex) else null
                 val fetchedDescription = cursor.getString(descriptionColumnIndex)
                 val fetchedDisplayName = cursor.getString(displayNameColumnIndex)
-                val fetchedUri = ContentUris.withAppendedId(
+                val fetchedUri = when (type) {
+                    MediaType.PHOTO -> ContentUris.withAppendedId(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     fetchedId
                 )
+                    MediaType.VIDEO -> ContentUris.withAppendedId(
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                        fetchedId
+                    )
+                }
                 val fetchedAbsoluteFilePath = cursor.getString(absoluteFilePathColumnIndex)
 
                 val fileInputStream = contentResolver.openInputStream(fetchedUri)
                 val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
-                val fileHash = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val hash: ByteArray = digest.digest(fileInputStream?.readAllBytes()?: ByteArray(0))
-                    hash.toHexString()
-                }
+                val fileHash =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val byteArrayToHash =
+                            if (type == MediaType.PHOTO)
+                                fileInputStream?.readAllBytes() ?: ByteArray(0)
+                            else
+                                fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use TODO("Check if this is long enough")
+                        val hash: ByteArray = digest.digest(byteArrayToHash)
+                        hash.toHexString()
+                    }
                     else {
                         /* Based on https://stackoverflow.com/a/59049461 */
                         val fileData = ByteArray(fileInputStream?.available()?: 0)
                         val dataInputStream = DataInputStream(fileInputStream)
-                        dataInputStream.readFully(fileData)
+                        if (type == MediaType.PHOTO)
+                            dataInputStream.readFully(fileData)
+                        else
+                            dataInputStream.readFully(fileData, 0 ,  2056) // Read less of file for videos to reduce memory use
+
                         val hash: ByteArray = digest.digest(fileData)
                         hash.toHexString()
                     }
                 fileInputStream?.close()
 
-                if (photosAdded.size < numPhotos) {
+                if (numAdded < numToAdd) {
 
-                    /** Add photo to the UI's photo list and database */
-                    fun addPhoto() {
+                    /** Create Media data class, pass into [onAddMedia] & add to app database */
+                    fun addMedia() {
                         /* Decide which date to use */
                         val lastModified = File(fetchedAbsoluteFilePath).lastModified()
                         val date =
@@ -133,12 +204,12 @@ class ContentResolverInterface(
                                 lastModified
                             else null
 
-                        /* Find location of photo using EXIF */
+                        /* Find embedded lat/long of media using EXIF */
                         var latLong: DoubleArray? = null
                         val fileInputStream2 = contentResolver.openInputStream(fetchedUri)
                         if (fileInputStream2 != null){
                             val exifInterface = ExifInterface(fileInputStream2)
-                            latLong = exifInterface.latLong // Location the photo was taken at
+                            latLong = exifInterface.latLong
                             fileInputStream2.close()
                         }
 
@@ -146,72 +217,79 @@ class ContentResolverInterface(
                         val album =
                             fetchedAlbum ?: fetchedAbsoluteFilePath.substringBeforeLast("/").substringAfterLast("/")
 
-                        val photoToAdd = Photo(
+                        val mediaClassToAdd = Media(
                             id = fetchedId,
                             uri = fetchedUri,
                             dateTaken = date,
                             size = fetchedSize,
+                            type = type,
                             location = latLong,
                             album = album,
                             description = fetchedDescription,
                             title = fetchedDisplayName,
                             resolution = fetchedResolution,
-                            status = PhotoStatus.UNSET,
-                            fileHash = fileHash
+                            status = MediaStatus.UNSET,
+                            fileHash = fileHash,
                         )
 
-                        photosAdded.add(photoToAdd)
-                        onAddPhoto(photoToAdd)
-                        Log.d("MediaStore", "Added photo with id $fetchedId")
+                        mediaAdded.add(mediaClassToAdd)
+                        numAdded ++
+                        onAddMedia(mediaClassToAdd)
+                        Log.d("MediaStore", "Added media with uri $fetchedUri")
                         CoroutineScope(Dispatchers.IO).launch {
-                            dao.insert(photoToAdd.getMediaStatusEntity()) // Add to database
+                            dao.insert(mediaClassToAdd.getMediaStatusEntity()) // Add to database
                         }
                     }
 
                     val currentDate = Calendar.getInstance().timeInMillis
 
-                    val findPhotoByHash = dao.findByHash(fileHash)
-                    val findPhotoById = dao.findByMediaStoreId(fetchedId)
-                    val photoInDatabaseHasBeenSwiped = listOf(PhotoStatus.DELETE, PhotoStatus.KEEP).contains(findPhotoById?.status)
-                    val photoFoundInSession = photosAdded.find { it.id == fetchedId } != null
+//                    val findPhotoByHash = dao.findByHash(fileHash) TODO("Duplicate files feature: user can configure auto-delete or show both duplicates")
+                    val findById = dao.findByMediaStoreId(fetchedId)
+                    val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
+                        findById.status
+                    )
+                    /** True when: media is not snoozed, or the snoozeUntil date has passed */
+                    val snoozeHasPassed = findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate
+                    val foundInSession = mediaAdded.find { it.id == fetchedId } != null
 
-                    when {
-                        /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
-                        ((photoFoundInSession || photoInDatabaseHasBeenSwiped)) -> {  }
-                        /* Photo is in the database but its MediaStore ID has changed.
-                        * This will therefore 1. update the MediaStore ID. 2. if the status is UNSET, add the photo */
-                        (findPhotoByHash != null) -> {
-                            Log.v("MediaStore", "Photo hash has been found in database, updating id to $fetchedId")
-                            // TODO("This case is almost always true, so should remove the Id from the database, and use hash as primary key")
-                            /* Update database */
-                            CoroutineScope(Dispatchers.IO).launch {
-                                dao.update(findPhotoByHash.copy(mediaStoreId = fetchedId, dateModified = currentDate))
-                            }
-                            /* Add photo if unset */
-                            if (findPhotoByHash.status == PhotoStatus.UNSET)
-                                addPhoto()
-                            else if (findPhotoByHash.snoozedUntil != null && findPhotoByHash.snoozedUntil <= currentDate)
-                                addPhoto()
-                        }
-                        /* Photo has not been swiped */
-                        else -> {
-                            if (findPhotoById?.snoozedUntil == null || findPhotoById.snoozedUntil <= currentDate)
-                                addPhoto()
-                        }
-                    }
+                    if (!foundInSession && !hasBeenSwiped && snoozeHasPassed) addMedia()
+//                    when {
+//                        /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
+//                        ((photoFoundInSession || photoInDatabaseAndSwiped)) -> {  }
+//                        /* Media is in the database but its MediaStore ID has changed.
+//                        * This will therefore 1. update the MediaStore ID. 2. if the status is UNSET, add the media */
+////                        (findPhotoByHash != null) -> {
+////                            Log.v("MediaStore", "Media hash has been found in database, updating id to $fetchedId")
+////                            /* Update database */
+////                            CoroutineScope(Dispatchers.IO).launch {
+////                                dao.update(findPhotoByHash.copy(mediaStoreId = fetchedId, dateModified = currentDate))
+////                            }
+////                            /* Add media if unset */
+////                            if (findPhotoByHash.status == MediaStatus.UNSET)
+////                                addMedia()
+////                            else if (findPhotoByHash.snoozedUntil != null && findPhotoByHash.snoozedUntil <= currentDate)
+////                                addMedia()
+////                        }
+//                        /* Media has not been swiped */
+//                        else -> {
+//                            if (findPhotoById?.snoozedUntil == null || findPhotoById.snoozedUntil <= currentDate)
+//                                addMedia()
+//                        }
+//                    }
                 } else {
-                    return
+                    return 0
                 }
             }
         }
+        return numToAdd - numAdded
 }
 
-    suspend fun deletePhotos(
+    suspend fun deleteMedia(
         uris: List<Uri>,
         onDelete: (List<Uri>) -> Unit
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val permanentlyDelete = dataStoreInterface.getBooleanSettingValue(BooleanPreference.permanently_delete.toString()).first()
+            val permanentlyDelete = dataStoreInterface.getBooleanSettingValue(BooleanPreference.PERMANENTLY_DELETE.setting).first()
 
             val editPendingIntent =
                 if (permanentlyDelete)
@@ -267,10 +345,10 @@ class ContentResolverInterface(
 
                 /* If deletion fails, exit. onActivityResult will run this function again when required permissions are granted */
                 if (outputtedRows == 0) {
-                    Log.e("deletePhotos", "Could not delete $uri :(")
+                    Log.e("deleteMedia", "Could not delete $uri :(")
                     return
                 } else {
-                    Log.d("deletePhotos", "Deleted $uri ^_^")
+                    Log.d("deleteMedia", "Deleted $uri ^_^")
                     deletedMediaUris.add(uri)
                     if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
                         onDelete(listOf(uri))

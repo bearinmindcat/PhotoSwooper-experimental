@@ -41,22 +41,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
-import com.example.photoswooper.data.models.Photo
+import com.example.photoswooper.data.models.Media
 
 @Composable
 fun ReviewDialog(
-    photosToDelete: List<Photo>,
+    mediaItemsToDelete: List<Media>,
     onDismissRequest: () -> Unit,
     onCancellation: () -> Unit,
-    onUnsetPhoto: (Photo) -> Unit,
+    onUnsetMediaItem: (Media) -> Unit,
     onConfirmation: () -> Unit,
     onDisableReviewDialog: () -> Unit,
 ) {
     var disableReviewDialog by remember { mutableStateOf(false) } // Whether to show this review dialog next time
     // TODO("Make disable review dialog persistent")
 
-    LaunchedEffect(photosToDelete) {
-        if (photosToDelete.isEmpty()) {
+    LaunchedEffect(mediaItemsToDelete) {
+        if (mediaItemsToDelete.isEmpty()) {
             onDismissRequest()
         }
     }
@@ -81,9 +81,9 @@ fun ReviewDialog(
                         .horizontalScroll(rememberScrollState())
                         .padding(dimensionResource(R.dimen.padding_medium))
                 ) {
-                    photosToDelete.forEach { photo ->
+                    mediaItemsToDelete.forEach { media ->
                         AnimatedVisibility(
-                            visible = photo in photosToDelete,
+                            visible = media in mediaItemsToDelete,
                             enter = expandIn(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
@@ -103,13 +103,14 @@ fun ReviewDialog(
                                     .padding(horizontal = 4.dp)
                             ) {
                                 AsyncImage(
-                                    model = photo.uri,
+                                    model = media.uri,
                                     contentDescription = null,
                                     contentScale = ContentScale.FillHeight,
                                     alignment = Alignment.Center,
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                                 IconButton(
-                                    onClick = { onUnsetPhoto(photo) },
+                                    onClick = { onUnsetMediaItem(media) },
                                     modifier = Modifier
                                         .background(
                                             shape = CircleShape,
@@ -120,7 +121,7 @@ fun ReviewDialog(
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.x),
-                                        contentDescription = "Cancel deletion of this photo",
+                                        contentDescription = "Cancel deletion of this media",
                                         tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier
                                             .padding(dimensionResource(R.dimen.padding_xsmall))

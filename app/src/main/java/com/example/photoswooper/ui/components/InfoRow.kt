@@ -44,7 +44,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
-import com.example.photoswooper.data.models.Photo
+import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
@@ -61,54 +61,54 @@ data class InfoData(
 @Composable
 fun InfoRow(
     viewModel: MainViewModel,
-    currentPhoto: Photo?,
+    currentMedia: Media?,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val reduceAnimations = DataStoreInterface(context.dataStore)
-        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
 
     val expanded = DataStoreInterface(context.dataStore)
-        .getBooleanSettingValue(BooleanPreference.info_row_expanded.toString()).collectAsState(false)
+        .getBooleanSettingValue(BooleanPreference.INFO_ROW_EXPANDED.setting).collectAsState(false)
 
     val arrayOfInfo = arrayOf(
         InfoData(
             "Date",
             R.drawable.calendar,
-            currentPhoto?.getFormattedDate()
+            currentMedia?.getFormattedDate()
         ),
         InfoData(
             "Size",
             R.drawable.hard_drives,
-            formatShortFileSize(context, currentPhoto?.size ?: 0)
+            formatShortFileSize(context, currentMedia?.size ?: 0)
         ),
         InfoData(
             "Location",
             R.drawable.map,
-            currentPhoto?.getFormattedLocation(),
-            { viewModel.openLocationInMapsApp(currentPhoto) }
+            currentMedia?.getFormattedLocation(),
+            { viewModel.openLocationInMapsApp(currentMedia) }
         ),
         InfoData(
             "Album",
             iconPainterId = R.drawable.books,
-            value = currentPhoto?.album,
+            value = currentMedia?.album,
         ),
         InfoData(
             "Resolution",
             R.drawable.frame_corners,
-            currentPhoto?.resolution
+            currentMedia?.resolution
         )
     )
 
     Box(modifier = modifier.pointerInput(null) {}) { // empty pointerInput prevents image receiving taps accidentally
         IconButton(
             onClick = {
-                if (SDK_INT >= Build.VERSION_CODES.R) view.performHapticFeedback(
+                if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) view.performHapticFeedback(
                     if (expanded.value) HapticFeedbackConstants.TOGGLE_OFF
                     else HapticFeedbackConstants.TOGGLE_ON
                 )
-                viewModel.toggleInfoRowSize()
+                viewModel.toggleInfoRowExpanded()
             },
             modifier = Modifier.align(Alignment.TopEnd)
         ) {
@@ -124,7 +124,7 @@ fun InfoRow(
                 .fillMaxWidth()
         ) {
             Text(
-                text = currentPhoto?.title ?: "Title",
+                text = currentMedia?.title ?: "Title",
                 maxLines = if (expanded.value) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleMedium,
@@ -136,9 +136,9 @@ fun InfoRow(
                         bottom = dimensionResource(R.dimen.padding_small)
                     )
             )
-            if (currentPhoto?.description != null)
+            if (currentMedia?.description != null)
                 Text(
-                    text = currentPhoto.description,
+                    text = currentMedia.description,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -272,7 +272,6 @@ fun Info(
                     TextDecoration.None,
             maxLines = 1,
             overflow = TextOverflow.MiddleEllipsis,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier =
                 if (action != null && value != null) Modifier.clickable { action() }
                 else Modifier

@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,7 +67,7 @@ fun ActionBar(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val reduceAnimations = DataStoreInterface(context.dataStore)
-        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val extraSmallIconSize = dimensionResource(R.dimen.xsmall_icon)
     val expandedIconSize = extraSmallIconSize * 1.25f
 
@@ -78,7 +79,7 @@ fun ActionBar(
             dampingRatio = Spring.DampingRatioLowBouncy,
         )
     )
-    var shuffleIconRotation by remember { mutableStateOf(0f) }
+    var shuffleIconRotation by remember { mutableFloatStateOf(0f) }
     val animatedShuffleIconRotation = animateFloatAsState(
         targetValue =  shuffleIconRotation,
         animationSpec = spring(
@@ -117,7 +118,7 @@ fun ActionBar(
                 /* Undo button TODO("Add rotation animation when clicked")*/
                 FilledIconButton(
                     onClick = {
-                        val undoResult = viewModel.undo(coroutineScope)
+                        val undoResult = viewModel.undo()
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             if (undoResult)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -137,7 +138,6 @@ fun ActionBar(
                         modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
                     )
                 }
-                /* Review deleted photos button */
                 ReviewDeletedButton(
                     view = view,
                     viewModel = viewModel,
@@ -165,7 +165,7 @@ fun ActionBar(
                         .weight(0.2f)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.funnel_bold),
+                        painter = painterResource(R.drawable.funnel),
                         contentDescription = "Filter/sort the photos & videos",
                         modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
                     )

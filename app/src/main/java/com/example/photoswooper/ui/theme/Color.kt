@@ -1,4 +1,4 @@
-package com.example.photoswooper
+package com.example.photoswooper.ui.theme
 import androidx.compose.ui.graphics.Color
 val primaryLight = Color(0xFF216A4D)
 val onPrimaryLight = Color(0xFFFFFFFF)

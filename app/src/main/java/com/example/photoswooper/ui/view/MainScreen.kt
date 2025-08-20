@@ -13,8 +13,10 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -66,7 +68,7 @@ import androidx.core.content.ContextCompat.checkSelfPermission
 import coil3.ImageLoader
 import com.example.photoswooper.R
 import com.example.photoswooper.checkPermissions
-import com.example.photoswooper.data.models.PhotoStatus
+import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.ActionBar
@@ -74,7 +76,7 @@ import com.example.photoswooper.ui.components.FloatingActionsRow
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.ReviewDialog
-import com.example.photoswooper.ui.components.SwipeableAsyncImageWithIndicatorIcons
+import com.example.photoswooper.ui.components.SwipeableMediaWithIndicatorIcons
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
@@ -102,17 +104,17 @@ fun MainScreen(
     val density = LocalDensity.current
 
     val reduceAnimations = DataStoreInterface(context.dataStore)
-        .getBooleanSettingValue(BooleanPreference.reduce_animations.toString()).collectAsState(false)
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val limitedPhotoAccess = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
             && (checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PERMISSION_GRANTED)
             && (checkSelfPermission(context, READ_MEDIA_IMAGES) == PERMISSION_DENIED)
 
 
     val uiState by mainViewModel.uiState.collectAsState()
-    val numToDelete = uiState.photos.count { it.status == PhotoStatus.DELETE }
-    val currentPhoto =
+    val numToDelete = uiState.mediaItems.count { it.status == MediaStatus.DELETE }
+    val currentMediaItem =
         try {
-            uiState.photos[uiState.currentPhotoIndex]
+            uiState.mediaItems[uiState.currentIndex]
         } catch (_: IndexOutOfBoundsException) {
             null
         }
@@ -125,7 +127,7 @@ fun MainScreen(
         )
     )
 
-    /* For anchored draggable (photo swiping left/right) */
+    /* For anchored draggable (dragging photo/video left/right) */
 
     val anchoredDraggableState = remember {
         AnchoredDraggableState(
@@ -152,15 +154,17 @@ fun MainScreen(
             .collectLatest { position ->
                 when (position) {
                     DragAnchors.Left -> {
-                        mainViewModel.markPhoto(PhotoStatus.DELETE)
-                        mainViewModel.nextPhoto()
+                        mainViewModel.markItem(MediaStatus.DELETE)
+                        mainViewModel.animatedImageScaleEntry.snapTo(0f)
+                        mainViewModel.next()
                         anchoredDraggableState.snapTo(
                             DragAnchors.Center,
                         )
                     }
                     DragAnchors.Right -> {
-                        mainViewModel.markPhoto(PhotoStatus.KEEP)
-                        mainViewModel.nextPhoto()
+                        mainViewModel.markItem(MediaStatus.KEEP)
+                        mainViewModel.animatedImageScaleEntry.snapTo(0f)
+                        mainViewModel.next()
                         anchoredDraggableState.snapTo(
                             DragAnchors.Center
                         )
@@ -174,15 +178,15 @@ fun MainScreen(
 
     if (uiState.showReviewDialog) {
         ReviewDialog(
-            photosToDelete = mainViewModel.getPhotosToDelete(),
+            mediaItemsToDelete = mainViewModel.getMediaToDelete(),
             onDismissRequest = { mainViewModel.dismissReviewDialog() },
             onCancellation = {
-                for (photo in mainViewModel.getPhotosToDelete()) {
-                    mainViewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(photo))
+                for (photo in mainViewModel.getMediaToDelete()) {
+                    mainViewModel.markItem(MediaStatus.UNSET, uiState.mediaItems.indexOf(photo))
                 }
             },
-            onUnsetPhoto = { mainViewModel.markPhoto(PhotoStatus.UNSET, uiState.photos.indexOf(it)) },
-            onConfirmation = { CoroutineScope(Dispatchers.Main).launch { mainViewModel.deletePhotos() } },
+            onUnsetMediaItem = { mainViewModel.markItem(MediaStatus.UNSET, uiState.mediaItems.indexOf(it)) },
+            onConfirmation = { CoroutineScope(Dispatchers.Main).launch { mainViewModel.confirmDeletion() } },
             onDisableReviewDialog = { mainViewModel.disableReviewDialog() },
         )
     }
@@ -240,7 +244,7 @@ fun MainScreen(
                                                 onPermissionsGranted = {
                                                     CoroutineScope(Dispatchers.Main).launch {
                                                         mainViewModel.updatePermissionsGranted(true)
-                                                        mainViewModel.getNewPhotos()
+                                                        mainViewModel.resetAndGetNewMediaItems()
                                                     }
                                                 }
                                             )
@@ -258,7 +262,7 @@ fun MainScreen(
                             }}
                     }
                     /* When loading new photos */
-                    (uiState.isLoading) -> {
+                    (uiState.fetchingMedia) -> {
                         if (reduceAnimations.value) Text(
                             text = "Loading...",
                             style = MaterialTheme.typography.titleLarge,
@@ -272,16 +276,16 @@ fun MainScreen(
                                 )
                     }
 
-                    (currentPhoto != null && currentPhoto.status == PhotoStatus.UNSET) -> {
-                        SwipeableAsyncImageWithIndicatorIcons(
-                            currentPhoto,
+                    (currentMediaItem != null && currentMediaItem.status == MediaStatus.UNSET) -> {
+                        SwipeableMediaWithIndicatorIcons(
+                            currentMediaItem,
                             mainViewModel,
                             imageLoader,
                             anchoredDraggableState,
                         )
                     }
 
-                    (uiState.photos.isEmpty()) -> {// TODO("Check if this is the last round of photos then show this, instead of checking of scanning list is empty. Can add another UiState edited in [MainViewModel.getNewPhotos()]")
+                    (uiState.mediaItems.isEmpty()) -> {// TODO("Check if this is the last round of photos then show this, instead of checking of scanning list is empty. Can add another UiState edited in [MainViewModel.getNewPhotos()]")
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
@@ -295,7 +299,7 @@ fun MainScreen(
                                     .padding(bottom = dimensionResource(R.dimen.padding_medium))
                             )
                             Text(
-                                "You have swiped on all of your photos, congrats! :D \uD83C\uDF89",
+                                "You have swiped on all of your photos & videos, congrats! :D \uD83C\uDF89",
                                 style = MaterialTheme.typography.titleLarge,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.secondary,
@@ -305,36 +309,36 @@ fun MainScreen(
                                     CoroutineScope(Dispatchers.IO).launch {
                                         checkPermissions(
                                             context = context,
-                                            onPermissionsGranted = { mainViewModel.getNewPhotos() }
+                                            onPermissionsGranted = { mainViewModel.resetAndGetNewMediaItems() }
                                         )
                                     }
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 }) {
-                                    Text(if (limitedPhotoAccess) "Select more photos" else "Scan again")
+                                    Text(if (limitedPhotoAccess) "Select more photos & videos" else "Scan again")
                                 }
                         }
                     }
 
-                    (!mainViewModel.seekToUnsetPhotoOrFalse()) -> { // If there are no unset photos in the list, ask the user to delete the photos selected
+                    (!mainViewModel.seekToUnsetItemOrFalse()) -> { // If there are no unset photos in the list, ask the user to delete the photos selected
                         if (numToDelete > 0)
                             ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
                         else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                             Button(onClick = {
                                 checkPermissions(
                                     context = context,
-                                    onPermissionsGranted = { mainViewModel.getNewPhotos() }
+                                    onPermissionsGranted = { mainViewModel.resetAndGetNewMediaItems() }
                                 )
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             }) {
-                                Text("Fetch more photos")
+                                Text("Fetch more photos/videos")
                             }
                     }
                 }
                 /* Column of floating actions & info drawer */
                 AnimatedVisibility(
-                    visible = uiState.showInfoAndFloatingActions && currentPhoto != null,
+                    visible = uiState.showInfoAndFloatingActionsRow && currentMediaItem != null,
                     enter =
                         if (reduceAnimations.value) fadeIn()
                         else slideInVertically(
@@ -363,42 +367,41 @@ fun MainScreen(
                         delayedShowFloatingActions = true
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FloatingActionsRow(
+                            currentMedia = currentMediaItem,
+                            viewModel = mainViewModel
+                        )
                         AnimatedVisibility(
-                            delayedShowFloatingActions,
-                            enter = slideInVertically(
+                            uiState.showInfo,
+                            enter = fadeIn() + expandVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
-                                initialOffsetY = { it }
                             ),
-                            exit = slideOutVertically(
+                            exit = fadeOut() + shrinkVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
-                                targetOffsetY = { it }
                             ),
                         ){
-                            FloatingActionsRow(
-                                currentPhoto = currentPhoto,
-                                viewModel = mainViewModel
+                            InfoRow(
+                                viewModel = mainViewModel,
+                                currentMedia = currentMediaItem,
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f),
+                                        MaterialTheme.shapes.medium
+                                    )
+                                    .sizeIn(maxWidth = 380.dp)
                             )
                         }
-                        InfoRow(
-                            viewModel = mainViewModel,
-                            currentPhoto = currentPhoto,
-                            modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
-                                    MaterialTheme.shapes.medium
-                                )
-                                .sizeIn(maxWidth = 380.dp)
-                        )
                     }
                 }
             }
         },
+        topBar = {},
         sheetContent = {
             ActionBar(
                 numToDelete = numToDelete,
