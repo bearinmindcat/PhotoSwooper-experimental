@@ -189,6 +189,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /* Pause video if the user leaves the app */
+    override fun onPause() {
+        super.onPause()
+        try {
+            mainViewModel.safePause()
+        } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */}
+    }
+
+    /* Unpause the video when the user opens the app from the background */
+    override fun onResume() {
+        super.onResume()
+        try {
+            mainViewModel.safePlay()
+        } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */}
+    }
+
     /* Handle permission request result */
     override fun onRequestPermissionsResult(
         requestCode: Int,

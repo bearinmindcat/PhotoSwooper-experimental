@@ -553,6 +553,15 @@ class MainViewModel (
             }
         }
     }
+
+    /* Ensures video is being shown before playing */
+    fun safePlay() {
+        if (getCurrentMedia()?.type == MediaType.VIDEO) player.play()
+    }
+    /* Ensures video is being shown before pausing */
+    fun safePause() {
+        if (getCurrentMedia()?.type == MediaType.VIDEO) player.pause()
+    }
     fun updateIsPlaying(newState: Boolean = player.isPlaying) {
         _uiState.update { currentState ->
             currentState.copy(
