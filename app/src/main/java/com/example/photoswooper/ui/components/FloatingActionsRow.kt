@@ -22,7 +22,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -41,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
@@ -65,7 +65,8 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun FloatingActionsRow(
     currentMedia: Media?,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
     val uiState by viewModel.uiState.collectAsState()
@@ -86,7 +87,7 @@ fun FloatingActionsRow(
     val showVideoPlaybackControls = currentMedia?.type == MediaType.VIDEO
 
     Column(
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .padding(horizontal = dimensionResource(R.dimen.padding_medium))
                 .pointerInput(null) {} // Prevents accidental swipes/taps
@@ -95,11 +96,14 @@ fun FloatingActionsRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
+                    .fillMaxWidth()
                     .dropShadow(
                         shape = MaterialTheme.shapes.medium,
-                        shadow = Shadow(96.dp)
+                        shadow = Shadow(
+                            radius = 128.dp,
+                            alpha = 0.9f
+                        )
                     )
-                    .fillMaxWidth()
                     .padding(horizontal = dimensionResource(R.dimen.padding_small))
             ) {
 
@@ -159,12 +163,12 @@ fun FloatingActionsRow(
                             actionDescription = stringResource(R.string.pause_current_video),
                             onClick = {
                                 when {
-                                    (viewModel.player.isPlaying) -> viewModel.player.pause()
+                                    (viewModel.player.isPlaying) -> viewModel.safePause()
                                     (endOfVideo()) -> {
                                         viewModel.player.seekTo(0)
-                                        viewModel.player.play()
+                                        viewModel.safePlay()
                                     }
-                                    else -> viewModel.player.play()
+                                    else -> viewModel.safePlay()
                                 }
                                 if (SDK_INT >= Build.VERSION_CODES.R)
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -218,6 +222,7 @@ fun FloatingActionsRow(
             ) {
                 DurationText(
                     displayedPlayerPosition,
+                    Color.White,
                     Modifier
                         .width(32.dp)
                 )
@@ -253,6 +258,7 @@ fun FloatingActionsRow(
                 )
                 DurationText(
                     if (viewModel.player.duration > 0L) viewModel.player.duration else 0,
+                    Color.White,
                     Modifier
                         .width(32.dp)
                 )
@@ -272,8 +278,8 @@ private fun FloatingAction(
     onLongPress: (() -> Unit)? = null,
 ) {
     val contentColor =
-        if (checked ?: false) IconButtonDefaults.iconToggleButtonColors().checkedContentColor
-        else IconButtonDefaults.iconToggleButtonColors().contentColor
+        if (checked ?: false) MaterialTheme.colorScheme.primary
+        else Color.White
 
     Box(
         modifier
@@ -381,9 +387,14 @@ private fun ChangeSnoozeLengthDialog(
 }
 
 @Composable
-private fun DurationText(duration: Number, modifier: Modifier = Modifier) {
+private fun DurationText(
+    duration: Number,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    modifier: Modifier = Modifier
+) {
     Text(
         text = formatDuration(duration),
+        color = color,
         style = MaterialTheme.typography.labelMedium,
         textAlign = TextAlign.Center,
         modifier = modifier

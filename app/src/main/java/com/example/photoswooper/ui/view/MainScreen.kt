@@ -24,6 +24,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.snapTo
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,7 +37,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
@@ -82,7 +82,6 @@ import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -358,28 +357,28 @@ fun MainScreen(
                             targetOffsetY = { it }
                         ),
                     modifier = Modifier
-                        .wrapContentHeight()
+                        .fillMaxSize()
                         .align(Alignment.BottomCenter)
                 ) {
-                    var delayedShowFloatingActions by remember { mutableStateOf(false) }
-                    LaunchedEffect(null) {
-                        delay(200)
-                        delayedShowFloatingActions = true
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom
+                    ) {
                         FloatingActionsRow(
                             currentMedia = currentMediaItem,
-                            viewModel = mainViewModel
+                            viewModel = mainViewModel,
                         )
                         AnimatedVisibility(
                             uiState.showInfo,
-                            enter = fadeIn() + expandVertically(
+                            enter = if (reduceAnimations.value) fadeIn()
+                                    else fadeIn() + expandVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
                             ),
-                            exit = fadeOut() + shrinkVertically(
+                            exit = if (reduceAnimations.value) fadeOut()
+                            else fadeOut() +  shrinkVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
