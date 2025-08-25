@@ -562,6 +562,22 @@ class MainViewModel (
     fun safePause() {
         if (getCurrentMedia()?.type == MediaType.VIDEO) player.pause()
     }
+    /** Saves the current isPlaying state to [MainUiState.previousIsPlaying] for use in [revertIsPlayingToBeforeTempPause]
+     * then pauses the current video if the current media being shown is a video
+     */
+    fun tempPause() {
+        if (getCurrentMedia()?.type == MediaType.VIDEO && !uiState.value.showFilterDialog) {
+            _uiState.update { currentState ->
+                currentState.copy(previousIsPlaying = currentState.isPlaying)
+            }
+            player.pause()
+        }
+    }
+    fun revertIsPlayingToBeforeTempPause() {
+        if (getCurrentMedia()?.type == MediaType.VIDEO && !uiState.value.showFilterDialog) {
+            if (uiState.value.previousIsPlaying) player.play()
+        }
+    }
     fun updateIsPlaying(newState: Boolean = player.isPlaying) {
         _uiState.update { currentState ->
             currentState.copy(

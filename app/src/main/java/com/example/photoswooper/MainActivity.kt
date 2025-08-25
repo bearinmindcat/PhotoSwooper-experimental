@@ -193,7 +193,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         try {
-            mainViewModel.safePause()
+            mainViewModel.tempPause()
         } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */}
     }
 
@@ -201,7 +201,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         try {
-            mainViewModel.safePlay()
+            mainViewModel.revertIsPlayingToBeforeTempPause()
         } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */}
     }
 
