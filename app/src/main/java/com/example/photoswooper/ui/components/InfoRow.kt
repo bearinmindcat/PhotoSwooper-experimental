@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Loowiz <loowiz@envs.net>
+ *
+ *  SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.example.photoswooper.ui.components
 
 import android.os.Build

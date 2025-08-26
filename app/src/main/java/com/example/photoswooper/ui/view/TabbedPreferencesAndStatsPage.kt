@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Loowiz <loowiz@envs.net>
+ *
+ *  SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.example.photoswooper.ui.view
 
 import android.os.Build
@@ -49,6 +55,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,7 +112,7 @@ fun TabbedPreferencesAndStatsPage(
 
     val uiState by statsViewModel.uiState.collectAsState()
 
-    var tabIndex by remember { mutableIntStateOf(TabIndex.STATS.ordinal) }
+    var tabIndex by rememberSaveable { mutableIntStateOf(TabIndex.STATS.ordinal) }
     var tabIndicatorWidth by remember { mutableStateOf(24.dp) }
     val animatedTabIndicatorWidth = animateDpAsState(
         tabIndicatorWidth,

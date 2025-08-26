@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Loowiz <loowiz@envs.net>
+ *
+ *  SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.example.photoswooper
 
 import android.Manifest.permission.ACCESS_MEDIA_LOCATION
@@ -26,7 +32,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
@@ -154,7 +159,7 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val coroutineScope = rememberCoroutineScope()
             val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
-            mainViewModel = remember { MainViewModel(
+            mainViewModel = MainViewModel(
                 contentResolverInterface = contentResolverInterface,
                 mediaStatusDao = mediaStatusDao,
                 player = player,
@@ -169,7 +174,7 @@ class MainActivity : AppCompatActivity() {
                     ).show()
                 },
                 startActivity = { this.startActivity(it) }
-            ) }
+            )
             val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting).collectAsState(!BooleanPreference.SYSTEM_FONT.default)
             val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting).collectAsState(BooleanPreference.DYNAMIC_THEME.default)
             PhotoSwooperTheme(

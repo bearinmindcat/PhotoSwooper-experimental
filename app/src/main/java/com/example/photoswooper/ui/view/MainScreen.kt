@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2025 Loowiz <loowiz@envs.net>
+ *
+ *  SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.example.photoswooper.ui.view
 
 import android.Manifest.permission.READ_MEDIA_IMAGES
@@ -355,7 +361,7 @@ fun MainScreen(
                     visible = uiState.showInfoAndFloatingActionsRow && currentMediaItem != null,
                     enter =
                         if (reduceAnimations.value) fadeIn()
-                        else slideInVertically(
+                        else fadeIn() + slideInVertically(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,
                                 dampingRatio = Spring.DampingRatioLowBouncy,
@@ -364,7 +370,7 @@ fun MainScreen(
                         ),
                     exit =
                         if (reduceAnimations.value) fadeOut()
-                        else slideOutVertically(
+                        else fadeOut() + slideOutVertically(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,
                                 dampingRatio = Spring.DampingRatioLowBouncy,
