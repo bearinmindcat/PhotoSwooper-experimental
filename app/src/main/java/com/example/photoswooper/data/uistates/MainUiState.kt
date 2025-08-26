@@ -17,14 +17,16 @@ data class MainUiState(
     val fetchingMedia: Boolean = true,
     val mediaBuffering: Boolean = true,
     val isPlaying: Boolean,
-
+    val previousIsPlaying: Boolean = false,
     val mediaItems: MutableList<Media> = mutableListOf(),
     val currentIndex: Int = 0,
     val numUnset: Int = 0,
+
     val showReviewDialog: Boolean = false,
     val reviewDialogEnabled: Boolean = true, // Whether to show review dialog, or just delete immediately
     val showInfoAndFloatingActionsRow: Boolean = false,
     val showInfo: Boolean = false,
+    val showFilterDialog: Boolean = false,
 
     val currentStorageStatsTimeFrame: TimeFrame = TimeFrame.WEEK,
     val spaceSavedInTimeFrame: Long = 0,

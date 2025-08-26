@@ -144,7 +144,10 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Main).launch {
             checkPermissions(
                 context = this@MainActivity,
-                onPermissionsGranted = { mainViewModel.resetAndGetNewMediaItems() }
+                onPermissionsGranted = {
+                    mainViewModel.updateMediaFiltersFromDataStore()
+                    mainViewModel.resetAndGetNewMediaItems()
+                }
             )
         }
 
@@ -253,7 +256,10 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             mainViewModel.updatePermissionsGranted(true)
-            CoroutineScope(Dispatchers.Main).launch { mainViewModel.resetAndGetNewMediaItems() }
+            CoroutineScope(Dispatchers.Main).launch {
+                mainViewModel.updateMediaFiltersFromDataStore() // Update on first launch as filters
+                mainViewModel.resetAndGetNewMediaItems()
+            }
         }
     }
 

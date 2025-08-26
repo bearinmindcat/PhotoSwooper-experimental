@@ -17,13 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -160,16 +161,15 @@ fun ReviewDialog(
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = { onDismissRequest(); onCancellation();  },
                         modifier = Modifier.padding(8.dp),
                     ) {
                         Text(
-                            stringResource(R.string.cancel_delete),
-                            color = MaterialTheme.colorScheme.secondary
+                            stringResource(R.string.cancel),
                         )
                     }
-                    TextButton(
+                    Button(
                         onClick = {
                             onConfirmation()
                             if(disableReviewDialog) onDisableReviewDialog() // TODO("Haptic feedback in Review dialog")
@@ -178,7 +178,6 @@ fun ReviewDialog(
                     ) {
                         Text(
                             stringResource(R.string.confirm),
-                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }

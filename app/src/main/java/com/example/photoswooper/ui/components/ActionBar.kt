@@ -29,7 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +43,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import com.example.photoswooper.R
 import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.utils.DataStoreInterface
@@ -59,18 +57,17 @@ import kotlinx.coroutines.launch
 @Composable
 fun ActionBar(
     numToDelete: Int,
-    uiState: MainUiState,
     viewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val reduceAnimations = DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
+    val uiState by viewModel.uiState.collectAsState()
+
     val extraSmallIconSize = dimensionResource(R.dimen.xsmall_icon)
     val expandedIconSize = extraSmallIconSize * 1.25f
-
     var shuffleIconSize by remember { mutableStateOf(extraSmallIconSize) }
     val animatedShuffleIconSize = animateDpAsState(
         targetValue = shuffleIconSize,
@@ -80,7 +77,7 @@ fun ActionBar(
         )
     )
     var shuffleIconRotation by remember { mutableFloatStateOf(0f) }
-    val animatedShuffleIconRotation = animateFloatAsState(
+    val animatedShuffleIconRotation by animateFloatAsState(
         targetValue =  shuffleIconRotation,
         animationSpec = spring(
             stiffness = Spring.StiffnessMediumLow,
@@ -100,6 +97,7 @@ fun ActionBar(
             shuffleIconRotation = 0f
         }
     }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -147,16 +145,24 @@ fun ActionBar(
                         horizontal = dimensionResource(R.dimen.padding_small),
                     )
                 )
-                /* Info button */
+                /* Filter button */
                 FilledTonalIconButton(
                     onClick = {
-                        Toast.makeText(
-                            context,
-                            "Filtering not implemented yet",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                        if (viewModel.getMediaToDelete().isEmpty()) {
+                            viewModel.tempPause()
+                            viewModel.toggleFilterDialog()
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        }
+                        else {
+                            Toast.makeText(
+                                context,
+                                "Review media marked for deletion first",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                        }
                     },
                     modifier = Modifier
                         .padding(
@@ -205,7 +211,7 @@ fun ActionBar(
                 contentDescription = null,
                 modifier = Modifier
                     .size(animatedShuffleIconSize.value)
-                    .rotate(animatedShuffleIconRotation.value)
+                    .rotate(animatedShuffleIconRotation)
             )
             Text(
                 text = buildAnnotatedString {

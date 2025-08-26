@@ -5,7 +5,6 @@ import android.os.Build.VERSION.SDK_INT
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -22,12 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 
@@ -36,6 +31,7 @@ import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 fun DropdownFilterChip(
     leadingIconPainter: Painter,
     currentSelection: String,
+    selected: Boolean = false,
     menuItemsDescription: String,
     menuItems: Array<String>,
     menuItemIcons: Array<Painter> = emptyArray(),
@@ -44,19 +40,16 @@ fun DropdownFilterChip(
     fun getDisplayedString(menuItem: String): String = menuItem.replace("_", " ").replaceFirstChar { it.uppercase() }
 
     val view = LocalView.current
-    val density = LocalDensity.current
     var expanded by remember { mutableStateOf(false) }
-    var filterChipWidth: Dp by remember { mutableStateOf(0.dp) }
-
 
     Column(Modifier.wrapContentWidth(unbounded = true)) {
         FilterChip(
-            selected = false,
+            selected = selected,
             leadingIcon = {
                 Icon(
                     leadingIconPainter,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
                 )
             },
@@ -64,7 +57,6 @@ fun DropdownFilterChip(
                 Text(
                     getDisplayedString(currentSelection),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             trailingIcon = {
@@ -77,18 +69,13 @@ fun DropdownFilterChip(
                 expanded = !expanded
                 if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                     view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
-                      },
+            },
             colors =
-                FilterChipDefaults.filterChipColors().copy(
-                    containerColor =
-                        if (expanded) MaterialTheme.colorScheme.surfaceContainer
-                        else MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-            modifier = Modifier.onGloballyPositioned { coordinates ->
-                with (density) {
-                    filterChipWidth = coordinates.size.width.toDp()
-                }
-            }
+                if (expanded)
+                    FilterChipDefaults.filterChipColors().copy(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
+                else FilterChipDefaults.filterChipColors(),
         )
         DropdownMenu(
             expanded = expanded,
@@ -100,7 +87,6 @@ fun DropdownFilterChip(
             border = FilterChipDefaults.filterChipBorder(true, false),
             shape = FilterChipDefaults.shape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.width(filterChipWidth)
         ) {
             menuItems.forEach { menuItem ->
                 val menuItemIndex = menuItems.indexOf(menuItem)

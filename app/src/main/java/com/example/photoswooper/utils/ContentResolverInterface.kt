@@ -6,6 +6,7 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.net.Uri
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -13,6 +14,8 @@ import androidx.core.app.ActivityCompat.startIntentSenderForResult
 import androidx.exifinterface.media.ExifInterface
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Media
+import com.example.photoswooper.data.models.MediaFilter
+import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
@@ -42,36 +45,44 @@ class ContentResolverInterface(
         mediaAdded: MutableSet<Media> = mutableSetOf(),
         targetNumVideos: Int,
         targetNumPhotos: Int,
+        mediaFilter: MediaFilter,
         onAddMedia: (Media) -> Unit
     ) {
+        var numVideosNotFound = 0
+        var numPhotosNotFound = 0
         // Get videos and save remaining number of videos to add as variable (user's device may not have the desired number)
-        val numVideosNotFound = getMediaOfTypeFromMediaStore(
-            mediaAdded = mediaAdded,
-            onAddMedia = {
-                onAddMedia(it)
-            },
-            numToAdd = targetNumVideos,
-            type = MediaType.VIDEO
-        )
-        val adjustedNumPhotosToAdd = targetNumPhotos + numVideosNotFound
-        // Get photos
-        val numPhotosNotFound = getMediaOfTypeFromMediaStore(
-            mediaAdded = mediaAdded,
-            onAddMedia = {
-                onAddMedia(it)
-            },
-            numToAdd = adjustedNumPhotosToAdd,
-            type = MediaType.PHOTO
-        )
+        if (mediaFilter.mediaTypes.contains(MediaType.VIDEO))
+            numVideosNotFound = getMediaOfTypeFromMediaStore(
+                mediaAdded = mediaAdded,
+                onAddMedia = {
+                    onAddMedia(it)
+                },
+                numToAdd = targetNumVideos,
+                type = MediaType.VIDEO,
+                mediaFilter = mediaFilter
+            )
+        if (mediaFilter.mediaTypes.contains(MediaType.PHOTO)) {
+            // Get photos
+            numPhotosNotFound = getMediaOfTypeFromMediaStore(
+                mediaAdded = mediaAdded,
+                onAddMedia = {
+                    onAddMedia(it)
+                },
+                numToAdd = targetNumPhotos + numVideosNotFound,
+                type = MediaType.PHOTO,
+                mediaFilter = mediaFilter
+            )
+        }
         // If more videos can be added to account for missing photos, add them
-        if (numVideosNotFound == 0) {
+        if (numVideosNotFound == 0 && mediaFilter.mediaTypes.contains(MediaType.VIDEO)) {
             getMediaOfTypeFromMediaStore(
                 mediaAdded = mediaAdded,
                 onAddMedia = {
                     onAddMedia(it)
                 },
                 numToAdd = numPhotosNotFound,
-                type = MediaType.VIDEO
+                type = MediaType.VIDEO,
+                mediaFilter = mediaFilter
             )
         }
     }
@@ -89,13 +100,14 @@ class ContentResolverInterface(
     private suspend fun getMediaOfTypeFromMediaStore(
         mediaAdded: MutableSet<Media> = mutableSetOf(),
         type: MediaType,
+        mediaFilter: MediaFilter,
         numToAdd: Int,
         onAddMedia: (Media) -> Unit
     ): Int {
         // TODO("Automatically add unset media from app database before fetching from MediaStore")
         var numAdded = 0
 
-        val mediaStoreUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // Might not need the when statements? Needs testing
+        val mediaStoreUri = if (SDK_INT >= Build.VERSION_CODES.Q) { // Might not need the when statements? Needs testing
             when (type) {
                 MediaType.PHOTO -> MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
                 MediaType.VIDEO -> MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
@@ -108,7 +120,8 @@ class ContentResolverInterface(
         }
         val projection = mutableListOf(
             MediaStore.MediaColumns._ID,
-            MediaStore.MediaColumns.DATE_TAKEN,
+            if (SDK_INT >= Build.VERSION_CODES.BAKLAVA) MediaStore.MediaColumns.INFERRED_DATE
+            else MediaStore.MediaColumns.DATE_TAKEN,
             MediaStore.MediaColumns.SIZE,
             if (type == MediaType.PHOTO) MediaStore.Images.ImageColumns.DESCRIPTION
             else MediaStore.Video.VideoColumns.DESCRIPTION,
@@ -117,19 +130,26 @@ class ContentResolverInterface(
         ) // The columns (metadata types) we want to retrieve from the MediaStore
 
         /* Add extra columns supported by recent android versions */
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+        if (SDK_INT >= Build.VERSION_CODES.R)
             projection.addAll(listOf(
                 MediaStore.MediaColumns.ALBUM,
                 MediaStore.MediaColumns.RESOLUTION,
             ))
 
+
+        val sortField = mediaFilter.sortField.sortOrderString
+        val sortDirection =
+            if (mediaFilter.sortField == MediaSortField.RANDOM) ""
+            else if (mediaFilter.sortAscending) "ASC"
+            else "DESC"
+
         Log.i("MediaStore", "Querying MediaStore database")
         contentResolver.query(
-            mediaStoreUri,
-            projection.toTypedArray(), // The columns (metadata types) we want to retrieve from the MediaStore
-            null, // selection parameter
-            null, // (selectionArgs parameter) Fetch *all* files
-            "RANDOM()", // sortOrder parameter
+            /* uri = */ mediaStoreUri,
+            /* projection = */ projection.toTypedArray(), // The columns (metadata types) we want to retrieve from the MediaStore
+            /* selection = */ null,
+            /* selectionArgs = */ null,
+            /* sortOrder = */ "$sortField $sortDirection",
         ) ?.use { cursor ->
 
             val idColumnIndex = cursor.getColumnIndexOrThrow(projection[0])
@@ -138,9 +158,9 @@ class ContentResolverInterface(
             val descriptionColumnIndex = cursor.getColumnIndexOrThrow(projection[3])
             val displayNameColumnIndex = cursor.getColumnIndexOrThrow(projection[4])
             val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(projection[5])
-            val albumColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[6])
+            val albumColumnIndex = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[6])
                 else 0 // 0 value not used
-            val resolutionColumnIndex = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[7])
+            val resolutionColumnIndex = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[7])
                 else 0 // 0 value not used
 
             /* add these values to the list of tracks */
@@ -149,8 +169,8 @@ class ContentResolverInterface(
                 val fetchedId = cursor.getLong(idColumnIndex)
                 val fetchedDateTaken = cursor.getLong(dateTakenColumnIndex)
                 val fetchedSize = cursor.getLong(sizeColumnIndex)
-                val fetchedAlbum = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getString(albumColumnIndex) else null
-                val fetchedResolution = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) cursor.getString(resolutionColumnIndex) else null
+                val fetchedAlbum = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getString(albumColumnIndex) else null
+                val fetchedResolution = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getString(resolutionColumnIndex) else null
                 val fetchedDescription = cursor.getString(descriptionColumnIndex)
                 val fetchedDisplayName = cursor.getString(displayNameColumnIndex)
                 val fetchedUri = when (type) {
@@ -168,13 +188,13 @@ class ContentResolverInterface(
                 val fileInputStream = contentResolver.openInputStream(fetchedUri)
                 val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
                 val fileHash =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         val byteArrayToHash =
                             if (type == MediaType.PHOTO)
-                                fileInputStream?.readAllBytes() ?: ByteArray(0)
+                                fileInputStream?.readAllBytes()
                             else
                                 fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use TODO("Check if this is long enough")
-                        val hash: ByteArray = digest.digest(byteArrayToHash)
+                        val hash: ByteArray = digest.digest(byteArrayToHash ?: ByteArray(0))
                         hash.toHexString()
                     }
                     else {
@@ -192,6 +212,9 @@ class ContentResolverInterface(
                 fileInputStream?.close()
 
                 if (numAdded < numToAdd) {
+                    /* Decide album to use */
+                    val album =
+                        fetchedAlbum ?: fetchedAbsoluteFilePath.substringBeforeLast("/").substringAfterLast("/")
 
                     /** Create Media data class, pass into [onAddMedia] & add to app database */
                     fun addMedia() {
@@ -212,10 +235,6 @@ class ContentResolverInterface(
                             latLong = exifInterface.latLong
                             fileInputStream2.close()
                         }
-
-                        /* Decide album to use */
-                        val album =
-                            fetchedAlbum ?: fetchedAbsoluteFilePath.substringBeforeLast("/").substringAfterLast("/")
 
                         val mediaClassToAdd = Media(
                             id = fetchedId,
@@ -243,6 +262,11 @@ class ContentResolverInterface(
 
                     val currentDate = Calendar.getInstance().timeInMillis
 
+                    val mediaSatisfiesFilters =
+                        fetchedAbsoluteFilePath.contains(mediaFilter.directory)
+                                && (fetchedDescription?.contains(mediaFilter.containsText)?: false
+                                    || fetchedDisplayName.contains(mediaFilter.containsText))
+                                && fetchedSize in mediaFilter.sizeRange
 //                    val findPhotoByHash = dao.findByHash(fileHash) TODO("Duplicate files feature: user can configure auto-delete or show both duplicates")
                     val findById = dao.findByMediaStoreId(fetchedId)
                     val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
@@ -252,7 +276,7 @@ class ContentResolverInterface(
                     val snoozeHasPassed = findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate
                     val foundInSession = mediaAdded.find { it.id == fetchedId } != null
 
-                    if (!foundInSession && !hasBeenSwiped && snoozeHasPassed) addMedia()
+                    if (!foundInSession && !hasBeenSwiped && snoozeHasPassed && mediaSatisfiesFilters) addMedia()
 //                    when {
 //                        /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
 //                        ((photoFoundInSession || photoInDatabaseAndSwiped)) -> {  }
@@ -288,7 +312,7 @@ class ContentResolverInterface(
         uris: List<Uri>,
         onDelete: (List<Uri>) -> Unit
     ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (SDK_INT >= Build.VERSION_CODES.R) {
             val permanentlyDelete = dataStoreInterface.getBooleanSettingValue(BooleanPreference.PERMANENTLY_DELETE.setting).first()
 
             val editPendingIntent =
@@ -317,7 +341,7 @@ class ContentResolverInterface(
                         uri, null, null
                     )
                 } catch (securityException: SecurityException) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (SDK_INT >= Build.VERSION_CODES.Q) {
                         val recoverableSecurityException =
                             securityException as? RecoverableSecurityException ?: throw RuntimeException(
                                 securityException.message,
@@ -350,7 +374,7 @@ class ContentResolverInterface(
                 } else {
                     Log.d("deleteMedia", "Deleted $uri ^_^")
                     deletedMediaUris.add(uri)
-                    if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
+                    if (SDK_INT == Build.VERSION_CODES.Q)
                         onDelete(listOf(uri))
                 }
 

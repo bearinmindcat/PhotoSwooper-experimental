@@ -2,7 +2,6 @@
     <string name="app_name">PhotoSwooper</string>
     <string name="confirm_delete">Are you sure you want to delete these photos?</string>
     <string name="confirm">Confirm</string>
-    <string name="cancel_delete">Cancel deletion</string>
     <string name="show_review_dialog_again">Don\'t show this screen again</string>
     <string name="show_stats">Show statistics screen</string>
     <string name="show_settings">Show settings screen</string>
@@ -28,4 +27,7 @@
     <string name="share">Share</string>
     <string name="open_externally_desc">Open in an external application</string>
     <string name="open_externally_title">Open</string>
+    <string name="cancel">Cancel</string>
+    <string name="media_permission_request"><![CDATA[Please grant PhotoSwooper access to your photos & videos]]></string>
+    <string name="use_filter_by_default">Use this filter by default</string>
 </resources>

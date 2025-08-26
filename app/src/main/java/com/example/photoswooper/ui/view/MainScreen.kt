@@ -62,6 +62,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.checkSelfPermission
@@ -72,11 +73,13 @@ import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.ActionBar
+import com.example.photoswooper.ui.components.FilterDialog
 import com.example.photoswooper.ui.components.FloatingActionsRow
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.ReviewDialog
 import com.example.photoswooper.ui.components.SwipeableMediaWithIndicatorIcons
+import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
@@ -189,6 +192,18 @@ fun MainScreen(
             onDisableReviewDialog = { mainViewModel.disableReviewDialog() },
         )
     }
+    else if (uiState.showFilterDialog)
+        FilterDialog(
+            onDismiss = {
+                mainViewModel.toggleFilterDialog(false)
+                mainViewModel.revertIsPlayingToBeforeTempPause()
+                        },
+            onConfirm = { newFilter, setFilterAsDefault ->
+                mainViewModel.toggleFilterDialog(false)
+                mainViewModel.updateMediaFilter(newFilter, setFilterAsDefault)
+                              },
+            filterDialogViewModel = FilterDialogViewModel(mainViewModel.mediaFilter.collectAsState().value),
+        )
 
     BottomSheetScaffold(
         content = { paddingValues ->
@@ -214,7 +229,7 @@ fun MainScreen(
                                     .padding(bottom = dimensionResource(R.dimen.padding_medium))
                             )
                             Text(
-                                "Please grant PhotoSwooper access to your photos",
+                                stringResource(R.string.media_permission_request),
                                 style = MaterialTheme.typography.titleLarge,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.error,
@@ -404,7 +419,6 @@ fun MainScreen(
         sheetContent = {
             ActionBar(
                 numToDelete = numToDelete,
-                uiState,
                 mainViewModel,
                 modifier = Modifier.onGloballyPositioned { coordinates ->
                     with (density) {
