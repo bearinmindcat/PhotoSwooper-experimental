@@ -34,8 +34,7 @@ class FilterDialogViewModel(initialFilter: MediaFilter) {
                     mediaTypes = newMediaTypes
                 )
             }
-        }
-        else
+        } else
             onError()
     }
 
@@ -46,6 +45,7 @@ class FilterDialogViewModel(initialFilter: MediaFilter) {
             )
         }
     }
+
     fun toggleSortAscending(newValue: Boolean = !_newFilters.value.sortAscending) {
         _newFilters.update { currentFilters ->
             currentFilters.copy(

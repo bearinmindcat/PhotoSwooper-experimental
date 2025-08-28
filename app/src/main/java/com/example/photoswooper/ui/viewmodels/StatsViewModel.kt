@@ -29,12 +29,12 @@ class StatsViewModel(
     val mediaStatusDao: MediaStatusDao,
     val formatDateTime: (millis: Long, flags: Int) -> String,
     val formatDateTimeRange: (startMillis: Long, endMillis: Long, flags: Int) -> String
-): ViewModel() {
+) : ViewModel() {
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState = _uiState.asStateFlow()
 
-    val daysOfTheWeek = listOf("Sun","Mon","Tue","Wed","Thu","Fri","Sat")
-    val monthsOfTheYear = listOf("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+    val daysOfTheWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    val monthsOfTheYear = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
     fun getXAxisRange(): IntRange {
         return when (uiState.value.timeFrame) {
@@ -63,14 +63,17 @@ class StatsViewModel(
         Log.i("Stats", "Updating stats data")
 
         val currentTimeFrame = uiState.value.timeFrame
+
         /** milliseconds to increment by to get next set of data */
         val intervalMilliseconds: Long
 
 
         /** Calendar field to zero & max e.g. Calendar.HOUR_OF_DAY to get the start & end of each day for the week timeframe */
         val fieldToZeroAndMaxOnIteration: Int
+
         /** Calendar field to zero & max to find the start & end of the current time frame */
         val fieldToZeroAndMaxForTimeFrame: Int
+
         /** The current x-axis value for the data being fetched e.g. when fetching data for 2am, currentXValue would be 2.*/
         var currentXValue: Int
 
@@ -102,11 +105,20 @@ class StatsViewModel(
 
         suspend fun getDataFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Float {
             return when (uiState.value.dataType) {
-                StatsData.SWIPE_COUNT -> mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis).size.toFloat()
-                StatsData.DELETED_COUNT -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis).size.toFloat()
+                StatsData.SWIPE_COUNT -> mediaStatusDao.getSwipedMediaBetweenDates(
+                    firstDateMillis,
+                    secondDateMillis
+                ).size.toFloat()
+
+                StatsData.DELETED_COUNT -> mediaStatusDao.getDeletedBetweenDates(
+                    firstDateMillis,
+                    secondDateMillis
+                ).size.toFloat()
+
                 StatsData.SPACE_SAVED -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis)
                     .sumOf { it.size }.toInt().div(1000000f)
-                    .toBigDecimal().setScale(2, RoundingMode.HALF_UP).toFloat() // div 1000000 to convert to MB TODO("May need to adjust depending on max  value")
+                    .toBigDecimal().setScale(2, RoundingMode.HALF_UP)
+                    .toFloat() // div 1000000 to convert to MB TODO("May need to adjust depending on max  value")
             }
         }
 
@@ -118,7 +130,8 @@ class StatsViewModel(
         ).timeInMillis
         var secondDateMillis = getCalendarAtZero(
             finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
-            dateMillisToZero = firstDateMillis + intervalMilliseconds.times(1.5f).roundToLong() // zeroed time of next date = max time of this date
+            dateMillisToZero = firstDateMillis + intervalMilliseconds.times(1.5f)
+                .roundToLong() // zeroed time of next date = max time of this date
         ).timeInMillis
         val finalTimeInMillis = getCalendarAtZero(
             finalZeroedJavaTime = fieldToZeroAndMaxForTimeFrame,
@@ -137,14 +150,16 @@ class StatsViewModel(
             )
 
             /* Increment values */
-            currentXValue ++
+            currentXValue++
 
-            firstDateMillis = getCalendarAtZero( // Must be zeroed each time as months have varying numbers of days/milliseconds.
+            firstDateMillis = getCalendarAtZero(
+                // Must be zeroed each time as months have varying numbers of days/milliseconds.
                 dateMillisToZero = firstDateMillis + intervalMilliseconds.times(1.5f).roundToLong(),
                 finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
             ).timeInMillis
 
-            secondDateMillis = getCalendarAtZero( // Must be zeroed each time as months have varying numbers of days/milliseconds.
+            secondDateMillis = getCalendarAtZero(
+                // Must be zeroed each time as months have varying numbers of days/milliseconds.
                 dateMillisToZero = secondDateMillis + intervalMilliseconds.times(1.5f).roundToLong(),
                 finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
             ).timeInMillis
@@ -165,15 +180,16 @@ class StatsViewModel(
         val calendarToZero = Calendar.getInstance()
         calendarToZero.timeInMillis = dateMillisToZero
 
-        val selectedJavaTimeFrames = listOf( // These time frames, when all minimised (zeroed), is exactly 00:00 on the first day of the year
-            Calendar.DAY_OF_YEAR, // This is used to find the final day to fetch data for when the selected time frame is week
-            Calendar.DAY_OF_MONTH,
-            Calendar.DAY_OF_WEEK, // This is used to find the final day to fetch data for when the selected time frame is week
-            Calendar.HOUR_OF_DAY,
-            Calendar.MINUTE,
-            Calendar.SECOND,
-            Calendar.MILLISECOND
-        )
+        val selectedJavaTimeFrames =
+            listOf( // These time frames, when all minimised (zeroed), is exactly 00:00 on the first day of the year
+                Calendar.DAY_OF_YEAR, // This is used to find the final day to fetch data for when the selected time frame is week
+                Calendar.DAY_OF_MONTH,
+                Calendar.DAY_OF_WEEK, // This is used to find the final day to fetch data for when the selected time frame is week
+                Calendar.HOUR_OF_DAY,
+                Calendar.MINUTE,
+                Calendar.SECOND,
+                Calendar.MILLISECOND
+            )
         val finalZeroedJavaTimeIndex = selectedJavaTimeFrames.indexOf(finalZeroedJavaTime)
 
         var timeFrameIndex = selectedJavaTimeFrames.lastIndex
@@ -184,7 +200,7 @@ class StatsViewModel(
                 currentJavaTimeFrame,
                 calendarToZero.getMinimum(currentJavaTimeFrame)
             )
-            timeFrameIndex --
+            timeFrameIndex--
         }
         return calendarToZero
     }
@@ -221,8 +237,7 @@ class StatsViewModel(
             }
             checkCurrentDateShown()
             return true
-        }
-        else return false
+        } else return false
     }
     /* Move date to fetch stats data to the current date */
     /** Changes date to fetch data from to current date,
@@ -251,8 +266,9 @@ class StatsViewModel(
         when (val currentTimeFrame = uiState.value.timeFrame) {
             TimeFrame.DAY -> {
                 return formatDateTime(dateToFetchFromMillis, DateUtils.FORMAT_SHOW_WEEKDAY) + ", " +
-                            formatDateTime(dateToFetchFromMillis, DateUtils.FORMAT_SHOW_DATE)
+                        formatDateTime(dateToFetchFromMillis, DateUtils.FORMAT_SHOW_DATE)
             }
+
             TimeFrame.WEEK -> {
                 val startOfWeekMillis = getCalendarAtZero(Calendar.DAY_OF_WEEK).timeInMillis
                 val endOfWeekMillis = getCalendarAtZero(
@@ -266,6 +282,7 @@ class StatsViewModel(
                     0
                 )
             }
+
             else -> { // TimeFrame.YEAR ->
                 val calendar = Calendar.getInstance()
                 calendar.timeInMillis = dateToFetchFromMillis

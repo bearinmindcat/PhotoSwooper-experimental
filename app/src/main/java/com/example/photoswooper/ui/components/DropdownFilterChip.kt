@@ -89,7 +89,7 @@ fun DropdownFilterChip(
                 expanded = false
                 if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                     view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
-                               },
+            },
             border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false),
             shape = FilterChipDefaults.shape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -104,11 +104,13 @@ fun DropdownFilterChip(
                                 contentDescription = null,
                                 modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
                             )
-                                  },
-                    text = { Text(
-                        getDisplayedString(menuItem),
-                        style = MaterialTheme.typography.labelLarge,
-                    ) },
+                    },
+                    text = {
+                        Text(
+                            getDisplayedString(menuItem),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    },
                     onClick = {
                         expanded = !expanded
                         onSelectionChange(menuItem)

@@ -21,10 +21,18 @@ import com.example.photoswooper.data.models.MediaStatus
 interface MediaStatusDao {
 
     @Query("SELECT * FROM mediaStatus WHERE (status = :status) AND (dateModified BETWEEN :firstDate AND :secondDate)")
-    suspend fun getDeletedBetweenDates(firstDate: Long, secondDate: Long, status: MediaStatus = MediaStatus.DELETE): List<MediaEntity>
+    suspend fun getDeletedBetweenDates(
+        firstDate: Long,
+        secondDate: Long,
+        status: MediaStatus = MediaStatus.DELETE
+    ): List<MediaEntity>
 
     @Query("SELECT * FROM mediaStatus WHERE (status != :status) AND (dateModified BETWEEN :firstDate AND :secondDate)")
-    suspend fun getSwipedMediaBetweenDates(firstDate: Long, secondDate: Long, status: MediaStatus = MediaStatus.UNSET): List<MediaEntity>
+    suspend fun getSwipedMediaBetweenDates(
+        firstDate: Long,
+        secondDate: Long,
+        status: MediaStatus = MediaStatus.UNSET
+    ): List<MediaEntity>
 
     @Query("SELECT * FROM mediaStatus WHERE fileHash = :hash")
     suspend fun findByHash(hash: String): MediaEntity?

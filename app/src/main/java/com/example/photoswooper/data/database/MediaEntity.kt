@@ -30,30 +30,32 @@ data class MediaEntity(
 )
 
 /* This migration changes primary key from fileHash -> mediaStoreId and changes index from mediaStoreId -> fileHash */
-val MIGRATION_2_3 = object : Migration(2, 3){
+val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         // Create new table
-        db.execSQL("CREATE TABLE `media_status_ver_3`(`fileHash` TEXT NOT NULL," +
-                " `mediaStoreId` INTEGER NOT NULL," +
-                " `status` TEXT NOT NULL," +
-                " `type` TEXT NOT NULL," +
-                " `size` INTEGER NOT NULL," +
-                " `dateModified` INTEGER NOT NULL," +
-                " `snoozedUntil` INTEGER," +
-                " PRIMARY KEY(`mediaStoreId`) )"
+        db.execSQL(
+            "CREATE TABLE `media_status_ver_3`(`fileHash` TEXT NOT NULL," +
+                    " `mediaStoreId` INTEGER NOT NULL," +
+                    " `status` TEXT NOT NULL," +
+                    " `type` TEXT NOT NULL," +
+                    " `size` INTEGER NOT NULL," +
+                    " `dateModified` INTEGER NOT NULL," +
+                    " `snoozedUntil` INTEGER," +
+                    " PRIMARY KEY(`mediaStoreId`) )"
         )
         // Add fileHash as an index
         db.execSQL("CREATE INDEX index_mediaStatus_fileHash ON  media_status_ver_3 (fileHash)")
 
         //insert data from old table into new table
-        db.execSQL("INSERT INTO media_status_ver_3(fileHash," +
-                " mediaStoreId," +
-                " status," +
-                " type," +
-                " size," +
-                " dateModified," +
-                " snoozedUntil)" +
-                " SELECT fileHash, mediaStoreId, status, 'PHOTO', size, dateModified, snoozedUntil  FROM mediaStatus"
+        db.execSQL(
+            "INSERT INTO media_status_ver_3(fileHash," +
+                    " mediaStoreId," +
+                    " status," +
+                    " type," +
+                    " size," +
+                    " dateModified," +
+                    " snoozedUntil)" +
+                    " SELECT fileHash, mediaStoreId, status, 'PHOTO', size, dateModified, snoozedUntil  FROM mediaStatus"
         )
         //drop old table
         db.execSQL("DROP TABLE mediaStatus")

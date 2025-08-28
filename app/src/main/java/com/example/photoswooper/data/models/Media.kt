@@ -28,7 +28,7 @@ enum class MediaStatus(@param:DrawableRes val iconDrawableId: Int) {
     SNOOZE(R.drawable.hourglass_high)
 }
 
-data class Media (
+data class Media(
     val id: Long,
     val uri: Uri,
     val fileHash: String,
@@ -88,7 +88,7 @@ data class Media (
         if (status != other.status) return false
 
         return true
-        }
+    }
 
     /* Recommended override: location is an Array so contentEquals should be used for that, not just equals */
     override fun hashCode(): Int {

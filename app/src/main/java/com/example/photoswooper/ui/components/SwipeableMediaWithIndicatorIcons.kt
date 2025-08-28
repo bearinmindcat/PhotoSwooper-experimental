@@ -123,13 +123,12 @@ fun SwipeableMediaWithIndicatorIcons(
         if (uiState.mediaBuffering) {
 //            delay(1000)
 //            showBufferingIndicator = true TODO("buffering indicator")
-        }
-        else {
+        } else {
             coroutineScope.launch {
 //                viewModel.animatedImageScaleEntry.snapTo(0f)
                 // Set video aspect ratio
                 if (media.type == MediaType.VIDEO)
-                    videoAspectRatio =  if (viewModel.player.videoSize.height != 0) {
+                    videoAspectRatio = if (viewModel.player.videoSize.height != 0) {
                         viewModel.player.videoSize.width / viewModel.player.videoSize.height.toFloat()
                     } else {
                         1f
@@ -155,8 +154,8 @@ fun SwipeableMediaWithIndicatorIcons(
             alphaValue = 3 * (1f - anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
                 .coerceIn(0f, 1f)
         }
-            indicatorIconsAlpha = 2*(anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
-                    .coerceIn(0f, 1f)
+        indicatorIconsAlpha = 2 * (anchoredDraggableState.requireOffset().absoluteValue / DragAnchors.Right.offset)
+            .coerceIn(0f, 1f)
     }
 
     LaunchedEffect(scale) {
@@ -169,10 +168,12 @@ fun SwipeableMediaWithIndicatorIcons(
                 delay(1000)
                 displayDeleteHint = true
             }
+
             DragAnchors.Right -> {
                 delay(1000)
                 displayKeepHint = true
             }
+
             DragAnchors.Center -> {
                 displayKeepHint = false
                 displayDeleteHint = false
@@ -191,7 +192,7 @@ fun SwipeableMediaWithIndicatorIcons(
             )
         }
         /* Swipeable box containing video or image */
-        Box (
+        Box(
             contentAlignment = Alignment.Center,
             modifier = modifier
                 .fillMaxSize() // Expands bounds of swiping outside actual media
@@ -258,7 +259,7 @@ fun SwipeableMediaWithIndicatorIcons(
                     }
                 )
 
-        ){
+        ) {
             when (media.type) {
                 MediaType.PHOTO -> {
                     AsyncImage(
@@ -274,6 +275,7 @@ fun SwipeableMediaWithIndicatorIcons(
                             .scale(viewModel.animatedImageScaleEntry.value)
                     )
                 }
+
                 MediaType.VIDEO -> {
                     PlayerSurface(
                         player = viewModel.player,

@@ -80,7 +80,7 @@ fun FloatingActionsRow(
     var displayedPlayerPosition by remember { mutableFloatStateOf(viewModel.player.currentPosition.toFloat()) }
     fun endOfVideo() = viewModel.player.currentPosition >= viewModel.player.duration
 
-    var showChangeSnoozeLengthDialog by remember {mutableStateOf(false)}
+    var showChangeSnoozeLengthDialog by remember { mutableStateOf(false) }
     if (showChangeSnoozeLengthDialog)
         ChangeSnoozeLengthDialog(
             currentSnoozeLength = viewModel.snoozeLengthMillis.collectAsState(0).value,
@@ -93,121 +93,122 @@ fun FloatingActionsRow(
     val showVideoPlaybackControls = currentMedia?.type == MediaType.VIDEO
 
     Column(
-            modifier
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+            .pointerInput(null) {} // Prevents accidental swipes/taps
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = dimensionResource(R.dimen.padding_medium))
-                .pointerInput(null) {} // Prevents accidental swipes/taps
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .dropShadow(
-                        shape = MaterialTheme.shapes.medium,
-                        shadow = Shadow(
-                            radius = 128.dp,
-                            alpha = 0.9f
-                        )
+                .dropShadow(
+                    shape = MaterialTheme.shapes.medium,
+                    shadow = Shadow(
+                        radius = 128.dp,
+                        alpha = 0.9f
                     )
-                    .padding(horizontal = dimensionResource(R.dimen.padding_small))
-            ) {
+                )
+                .padding(horizontal = dimensionResource(R.dimen.padding_small))
+        ) {
 
+            Row {
+                FloatingAction(
+                    drawableIconId = R.drawable.hourglass_high,
+                    actionTitle = stringResource(R.string.snooze),
+                    actionDescription = stringResource(R.string.snooze_desc),
+                    onClick = {
+                        if (SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        viewModel.markItem(MediaStatus.SNOOZE)
+                        viewModel.next()
+                        // TODO("Show a tip dialog on first click, showing how a tap + hold lets the user change the snooze length")
+                    },
+                    onLongPress = {
+                        showChangeSnoozeLengthDialog = true
+                    }
+                )
+                FloatingAction(
+                    drawableIconId = R.drawable.info,
+                    actionTitle = stringResource(R.string.info),
+                    checked = uiState.showInfo,
+                    actionDescription = stringResource(R.string.show_info),
+                    onClick = {
+                        if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) view.performHapticFeedback(
+                            if (uiState.showInfo) HapticFeedbackConstants.TOGGLE_OFF
+                            else HapticFeedbackConstants.TOGGLE_ON
+                        )
+                        viewModel.toggleInfo()
+                    },
+                )
+            }
+            AnimatedVisibility(
+                visible = showVideoPlaybackControls,
+                enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
+            ) {
                 Row {
                     FloatingAction(
-                        drawableIconId = R.drawable.hourglass_high,
-                        actionTitle = stringResource(R.string.snooze),
-                        actionDescription = stringResource(R.string.snooze_desc),
+                        drawableIconId = R.drawable.rewind,
+                        actionTitle = null,
+                        actionDescription = stringResource(R.string.rewind),
                         onClick = {
+                            viewModel.player.seekBack()
+                        },
+//                            onLongPress = { TODO("Configurable rewind amount") }
+                    )
+                    FloatingAction(
+                        drawableIconId =
+                            when {
+                                (uiState.isPlaying) -> R.drawable.pause
+                                (endOfVideo()) -> R.drawable.arrow_counter_clockwise // FIXME("Restart icon not showing on drag to end")
+                                else -> R.drawable.play
+                            },
+                        actionTitle = null,
+                        actionDescription = stringResource(R.string.pause_current_video),
+                        onClick = {
+                            when {
+                                (viewModel.player.isPlaying) -> viewModel.safePause()
+                                (endOfVideo()) -> {
+                                    viewModel.player.seekTo(0)
+                                    viewModel.safePlay()
+                                }
+
+                                else -> viewModel.safePlay()
+                            }
                             if (SDK_INT >= Build.VERSION_CODES.R)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.markItem(MediaStatus.SNOOZE)
-                            viewModel.next()
-                            // TODO("Show a tip dialog on first click, showing how a tap + hold lets the user change the snooze length")
                         },
-                        onLongPress = {
-                            showChangeSnoozeLengthDialog = true
-                        }
                     )
                     FloatingAction(
-                        drawableIconId = R.drawable.info,
-                        actionTitle = stringResource(R.string.info),
-                        checked = uiState.showInfo,
-                        actionDescription = stringResource(R.string.show_info),
+                        drawableIconId = R.drawable.fast_forward,
+                        actionTitle = null,
+                        actionDescription = stringResource(R.string.fast_forward),
                         onClick = {
-                            if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) view.performHapticFeedback(
-                                if (uiState.showInfo) HapticFeedbackConstants.TOGGLE_OFF
-                                else HapticFeedbackConstants.TOGGLE_ON
-                            )
-                            viewModel.toggleInfo()
+                            viewModel.player.seekForward()
                         },
-                    )
-                }
-                AnimatedVisibility (
-                    visible = showVideoPlaybackControls,
-                    enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
-                    exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
-                ) {
-                    Row {
-                        FloatingAction(
-                            drawableIconId = R.drawable.rewind,
-                            actionTitle = null,
-                            actionDescription = stringResource(R.string.rewind),
-                            onClick = {
-                                viewModel.player.seekBack()
-                            },
-//                            onLongPress = { TODO("Configurable rewind amount") }
-                        )
-                        FloatingAction(
-                            drawableIconId =
-                                when {
-                                    (uiState.isPlaying) -> R.drawable.pause
-                                    (endOfVideo()) -> R.drawable.arrow_counter_clockwise // FIXME("Restart icon not showing on drag to end")
-                                    else -> R.drawable.play
-                                },
-                            actionTitle = null,
-                            actionDescription = stringResource(R.string.pause_current_video),
-                            onClick = {
-                                when {
-                                    (viewModel.player.isPlaying) -> viewModel.safePause()
-                                    (endOfVideo()) -> {
-                                        viewModel.player.seekTo(0)
-                                        viewModel.safePlay()
-                                    }
-                                    else -> viewModel.safePlay()
-                                }
-                                if (SDK_INT >= Build.VERSION_CODES.R)
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            },
-                        )
-                        FloatingAction(
-                            drawableIconId = R.drawable.fast_forward,
-                            actionTitle = null,
-                            actionDescription = stringResource(R.string.fast_forward),
-                            onClick = {
-                                viewModel.player.seekForward()
-                            },
 //                            onLongPress = { TODO("Configurable fast forward amount") }
-                        )
-                    }
-                }
-                Row {
-                    FloatingAction(
-                        drawableIconId = R.drawable.share_network,
-                        actionTitle = stringResource(R.string.share),
-                        actionDescription = stringResource(R.string.share_desc),
-                        onClick = { viewModel.share() }
-                    )
-                    FloatingAction(
-                        drawableIconId = R.drawable.arrow_square_out,
-                        actionTitle = stringResource(R.string.open_externally_title),
-                        actionDescription = stringResource(R.string.open_externally_desc),
-                        onClick = {
-                            viewModel.openInGalleryApp()
-                        }
                     )
                 }
             }
+            Row {
+                FloatingAction(
+                    drawableIconId = R.drawable.share_network,
+                    actionTitle = stringResource(R.string.share),
+                    actionDescription = stringResource(R.string.share_desc),
+                    onClick = { viewModel.share() }
+                )
+                FloatingAction(
+                    drawableIconId = R.drawable.arrow_square_out,
+                    actionTitle = stringResource(R.string.open_externally_title),
+                    actionDescription = stringResource(R.string.open_externally_desc),
+                    onClick = {
+                        viewModel.openInGalleryApp()
+                    }
+                )
+            }
+        }
         AnimatedVisibility(showVideoPlaybackControls) {
             var userDragging by remember { mutableStateOf(false) }
             LaunchedEffect(null) { // When either of these two values (keys) change:
@@ -333,7 +334,8 @@ private fun ChangeSnoozeLengthDialog(
             mutableStateOf(currentSnoozeLength.milliseconds.inWholeDays.toString())
         }
         Card(shape = MaterialTheme.shapes.large) {
-            Column(Modifier.padding(dimensionResource(R.dimen.padding_medium))
+            Column(
+                Modifier.padding(dimensionResource(R.dimen.padding_medium))
             ) {
                 OutlinedTextField(
                     value = displayedSnoozeLength,

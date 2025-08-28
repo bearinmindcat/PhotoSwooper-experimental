@@ -87,17 +87,23 @@ fun FilterDialog(
 
     val newFilters by filterDialogViewModel.newFilters.collectAsState()
     var setFilterAsDefault by remember { mutableStateOf(false) }
-    var currentSizeMultiplier by remember { mutableStateOf(when {
-        newFilters.sizeRange.first/ FileSize.GB.multiplier > 1 -> FileSize.GB
-        newFilters.sizeRange.first/ FileSize.MB.multiplier > 1 -> FileSize.MB
-        else -> FileSize.KB
-    }) }
+    var currentSizeMultiplier by remember {
+        mutableStateOf(
+            when {
+                newFilters.sizeRange.first / FileSize.GB.multiplier > 1 -> FileSize.GB
+                newFilters.sizeRange.first / FileSize.MB.multiplier > 1 -> FileSize.MB
+                else -> FileSize.KB
+            }
+        )
+    }
     var displayedMinSize by remember {
         mutableStateOf(
             newFilters.sizeRange.first.div(currentSizeMultiplier.multiplier).toString()
         )
     }
-    fun getMinSizeFromDisplayedString(string: String = displayedMinSize) = ((string.toFloatOrNull()?:0f)*(currentSizeMultiplier.multiplier))
+
+    fun getMinSizeFromDisplayedString(string: String = displayedMinSize) =
+        ((string.toFloatOrNull() ?: 0f) * (currentSizeMultiplier.multiplier))
 
     // Activity launcher to request user to select directory / album
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { result ->
@@ -129,7 +135,8 @@ fun FilterDialog(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .padding(bottom = dimensionResource(R.dimen.padding_medium))
-                        .fillMaxWidth()                ) {
+                        .fillMaxWidth()
+                ) {
                     Icon(
                         painter = painterResource(R.drawable.funnel),
                         contentDescription = null,
@@ -170,7 +177,8 @@ fun FilterDialog(
                                     mediaType.toString().lowercase().replaceFirstChar { it.uppercase() } + "s"
                                 )
                             },
-                            leadingIcon = {newFilters.sizeRange.first.div(currentSizeMultiplier.multiplier).toString()
+                            leadingIcon = {
+                                newFilters.sizeRange.first.div(currentSizeMultiplier.multiplier).toString()
                                 Icon(
                                     painterResource(if (mediaType == MediaType.VIDEO) R.drawable.video else R.drawable.image),
                                     contentDescription = null,
@@ -303,106 +311,108 @@ fun FilterDialog(
                 }
                 // File` larger than:
                 Text("Minimum file size:", style = titleStyle)
-                    OutlinedTextField(
-                        value = displayedMinSize,
-                        onValueChange = { input ->
-                            if ((input.toFloatOrNull() != null && getMinSizeFromDisplayedString(input) < 10f.pow(11) ) || input == "")
-                                displayedMinSize = input
-                        },
-                        leadingIcon = {
-                            Icon(
-                                painterResource(R.drawable.hard_drives),
-                                null,
-                                Modifier.size(dimensionResource(R.dimen.small_icon))
+                OutlinedTextField(
+                    value = displayedMinSize,
+                    onValueChange = { input ->
+                        if ((input.toFloatOrNull() != null && getMinSizeFromDisplayedString(input) < 10f.pow(11)) || input == "")
+                            displayedMinSize = input
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painterResource(R.drawable.hard_drives),
+                            null,
+                            Modifier.size(dimensionResource(R.dimen.small_icon))
+                        )
+                    },
+                    trailingIcon = {
+                        var showSizeMenu by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable { showSizeMenu = true }
+                                .padding(dimensionResource(R.dimen.padding_xsmall))
+                        ) {
+                            Text(
+                                text = currentSizeMultiplier.toString(),
+                                modifier = Modifier.padding(
+                                    start = dimensionResource(R.dimen.padding_xsmall),
+                                    top = dimensionResource(R.dimen.padding_xsmall),
+                                    end = 0.dp,
+                                    bottom = dimensionResource(R.dimen.padding_xsmall)
+                                )
                             )
-                        },
-                        trailingIcon = {
-                            var showSizeMenu by remember { mutableStateOf(false) }
-                            Row(
-                                modifier = Modifier
-                                    .clip(MaterialTheme.shapes.medium)
-                                    .clickable { showSizeMenu = true }
-                                    .padding(dimensionResource(R.dimen.padding_xsmall))
-                            ) {
-                                Text(
-                                    text = currentSizeMultiplier.toString(),
-                                    modifier = Modifier.padding(
-                                        start = dimensionResource(R.dimen.padding_xsmall),
-                                        top = dimensionResource(R.dimen.padding_xsmall),
-                                        end = 0.dp,
-                                        bottom = dimensionResource(R.dimen.padding_xsmall)
-                                    )
-                                )
-                                AnimatedExpandCollapseIcon(
-                                    expanded = showSizeMenu,
-                                    contentDescription = "${if (showSizeMenu) "Hide" else "Show"} other sizes",
-                                    modifier = Modifier.padding(
-                                        start = 0.dp,
-                                        top = dimensionResource(R.dimen.padding_xsmall),
-                                        end = dimensionResource(R.dimen.padding_xsmall),
-                                        bottom = dimensionResource(R.dimen.padding_xsmall)
-                                    )
-                                )
-                            }
-                            DropdownMenu(
+                            AnimatedExpandCollapseIcon(
                                 expanded = showSizeMenu,
-                                onDismissRequest = { showSizeMenu = false },
-                                border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false),
-                                shape = FilterChipDefaults.shape,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ) {
-                                for (size in FileSize.entries) {
-                                    DropdownMenuItem(
-                                        text = { Text(size.toString()) },
-                                        onClick = {
-                                            val previousSize = currentSizeMultiplier
-                                            currentSizeMultiplier = size
-                                            displayedMinSize = ((displayedMinSize.toFloatOrNull()?:0f) * (previousSize.multiplier/currentSizeMultiplier.multiplier) )
-                                                .toBigDecimal().setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-                                            showSizeMenu = false
-                                        },
-                                        enabled = currentSizeMultiplier != size
-                                    )
-                                }
+                                contentDescription = "${if (showSizeMenu) "Hide" else "Show"} other sizes",
+                                modifier = Modifier.padding(
+                                    start = 0.dp,
+                                    top = dimensionResource(R.dimen.padding_xsmall),
+                                    end = dimensionResource(R.dimen.padding_xsmall),
+                                    bottom = dimensionResource(R.dimen.padding_xsmall)
+                                )
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showSizeMenu,
+                            onDismissRequest = { showSizeMenu = false },
+                            border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false),
+                            shape = FilterChipDefaults.shape,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ) {
+                            for (size in FileSize.entries) {
+                                DropdownMenuItem(
+                                    text = { Text(size.toString()) },
+                                    onClick = {
+                                        val previousSize = currentSizeMultiplier
+                                        currentSizeMultiplier = size
+                                        displayedMinSize = ((displayedMinSize.toFloatOrNull()
+                                            ?: 0f) * (previousSize.multiplier / currentSizeMultiplier.multiplier))
+                                            .toBigDecimal().setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                                            .toPlainString()
+                                        showSizeMenu = false
+                                    },
+                                    enabled = currentSizeMultiplier != size
+                                )
                             }
-                        },
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        modifier = Modifier
-                            .padding(bottom = dimensionResource(R.dimen.padding_medium))
-                    )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    modifier = Modifier
+                        .padding(bottom = dimensionResource(R.dimen.padding_medium))
+                )
                 // Contains text:
                 Text("Text search:", style = titleStyle)
-                    OutlinedTextField(
-                        value = newFilters.containsText,
-                        onValueChange = { filterDialogViewModel.updateContainsText(it) },
-                        leadingIcon = {
-                            Icon(
-                                painterResource(R.drawable.magnifying_glass),
-                                null,
-                                Modifier.size(dimensionResource(R.dimen.small_icon))
-                            )
-                        },
-                        modifier = Modifier
-                            .padding(bottom = dimensionResource(R.dimen.padding_large))
+                OutlinedTextField(
+                    value = newFilters.containsText,
+                    onValueChange = { filterDialogViewModel.updateContainsText(it) },
+                    leadingIcon = {
+                        Icon(
+                            painterResource(R.drawable.magnifying_glass),
+                            null,
+                            Modifier.size(dimensionResource(R.dimen.small_icon))
+                        )
+                    },
+                    modifier = Modifier
+                        .padding(bottom = dimensionResource(R.dimen.padding_large))
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { setFilterAsDefault = !setFilterAsDefault }
+                ) {
+                    Checkbox(
+                        setFilterAsDefault,
+                        onCheckedChange = { setFilterAsDefault = it },
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clip(MaterialTheme.shapes.medium)
-                            .clickable { setFilterAsDefault = !setFilterAsDefault }
-                    ) {
-                        Checkbox(
-                            setFilterAsDefault,
-                            onCheckedChange = { setFilterAsDefault = it },
-                        )
-                        Text(
-                            stringResource(R.string.use_filter_by_default),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_small))
-                        )
-                    }
+                    Text(
+                        stringResource(R.string.use_filter_by_default),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_small))
+                    )
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth(),

@@ -53,7 +53,7 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
-class MainViewModel (
+class MainViewModel(
     private val contentResolverInterface: ContentResolverInterface,
     private val mediaStatusDao: MediaStatusDao,
     private val startActivity: (Intent) -> Unit,
@@ -62,9 +62,10 @@ class MainViewModel (
     private val uiCoroutineScope: CoroutineScope,
     val bottomSheetScaffoldState: BottomSheetScaffoldState,
     val player: ExoPlayer,
-): ViewModel() {
+) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying))
     val uiState = _uiState.asStateFlow()
+
     // Initialise mediaFilters (Updated with stored values when resetAndGetNewMediaItems() is first called in MainActivity)
     private val _mediaFilter = MutableStateFlow(
         MediaFilter(
@@ -153,7 +154,7 @@ class MainViewModel (
                 fetchingMedia = true
             )
         }
-        uiCoroutineScope.launch{ player.clearMediaItems() }
+        uiCoroutineScope.launch { player.clearMediaItems() }
         animatedImageScaleEntry.snapTo(0f)
         // Add the first media synchronously
         val maxMediaItemsToAddSynchronously = minOf(numPerStackPreference, 2)
@@ -241,6 +242,7 @@ class MainViewModel (
                 MediaSortField.SIZE ->
                     if (mediaFilter.value.sortAscending) mediaItemsToSort.sortBy { it.size }
                     else mediaItemsToSort.sortByDescending { it.size }
+
                 MediaSortField.DATE ->
                     if (mediaFilter.value.sortAscending) mediaItemsToSort.sortBy { it.dateTaken }
                     else mediaItemsToSort.sortByDescending { it.dateTaken }
@@ -585,10 +587,12 @@ class MainViewModel (
     fun safePlay() {
         if (getCurrentMedia()?.type == MediaType.VIDEO && !uiState.value.showFilterDialog) player.play()
     }
+
     /* Ensures video is being shown before pausing */
     fun safePause() {
         if (getCurrentMedia()?.type == MediaType.VIDEO && !uiState.value.showFilterDialog) player.pause()
     }
+
     /** Saves the current isPlaying state to [MainUiState.previousIsPlaying] for use in [revertIsPlayingToBeforeTempPause]
      * then pauses the current video if the current media being shown is a video
      */
@@ -600,11 +604,13 @@ class MainViewModel (
             player.pause()
         }
     }
+
     fun revertIsPlayingToBeforeTempPause() {
         if (getCurrentMedia()?.type == MediaType.VIDEO && !uiState.value.showFilterDialog) {
             if (uiState.value.previousIsPlaying) player.play()
         }
     }
+
     fun updateIsPlaying(newState: Boolean = player.isPlaying) {
         _uiState.update { currentState ->
             currentState.copy(

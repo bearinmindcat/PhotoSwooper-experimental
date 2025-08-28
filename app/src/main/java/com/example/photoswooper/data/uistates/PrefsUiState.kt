@@ -15,10 +15,11 @@ enum class BooleanPreference(val default: Boolean, val setting: String) {
     PERMANENTLY_DELETE(SDK_INT < Build.VERSION_CODES.R, "permanently_delete"),
 
     // UI
-    SYSTEM_FONT(false,"system_font"),
+    SYSTEM_FONT(false, "system_font"),
     DYNAMIC_THEME(SDK_INT >= Build.VERSION_CODES.S, "dynamic_theme"),
     REDUCE_ANIMATIONS(false, "reduce_animations"),
-    INFO_ROW_EXPANDED(false, "info_row_expanded"), // Save whether the user last set the info row to be in the expanded view, or single row
+    /** Whether the user last set the info row to be in the expanded view, or single row */
+    INFO_ROW_EXPANDED(false, "info_row_expanded"),
     /** false means navigate to review screen before deletion, true means immediately delete files */
     SKIP_REVIEW(false, "skip_review"),
 
@@ -36,12 +37,13 @@ enum class IntPreference(val default: Int, val setting: String) {
 
 enum class LongPreference(val default: Long, val setting: String) {
     // Functional
-    SNOOZE_LENGTH(2*TimeFrame.WEEK.milliseconds, "snooze_length"),
+    SNOOZE_LENGTH(2 * TimeFrame.WEEK.milliseconds, "snooze_length"),
 
     // Filtering
     FILTER_MIN_FILE_SIZE(0, "filter_min_file_size"),
     FILTER_MAX_FILE_SIZE(Long.MAX_VALUE, "filter_max_file_size"),
 }
+
 enum class StringPreference(val default: String, val setting: String) {
     // Filtering
     FILTER_DIRECTORIES("", "filter_directories"),
@@ -49,7 +51,7 @@ enum class StringPreference(val default: String, val setting: String) {
     FILTER_CONTAINS_TEXT("", "filter_contains_text")
 }
 
-data class PrefsUiState (
+data class PrefsUiState(
     /** Text input from user to be validated before committed to preferences */
     val numPhotosPerStackTextInput: String = IntPreference.NUM_PHOTOS_PER_STACK.default.toString()
-   )
+)

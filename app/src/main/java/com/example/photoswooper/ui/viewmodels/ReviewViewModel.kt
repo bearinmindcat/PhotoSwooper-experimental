@@ -35,8 +35,7 @@ class ReviewViewModel(/*val dataStoreInterface: DataStoreInterface*/) : ViewMode
                         if (newState != true)
                             currentState.selectedMedia.minus(mediaItem)
                         else currentState.selectedMedia
-                    }
-                    else if (newState != false) currentState.selectedMedia.plus(mediaItem)
+                    } else if (newState != false) currentState.selectedMedia.plus(mediaItem)
                     else currentState.selectedMedia,
             )
         }
@@ -47,6 +46,7 @@ class ReviewViewModel(/*val dataStoreInterface: DataStoreInterface*/) : ViewMode
             )
         }
     }
+
     fun cancelSelection() {
         _uiState.update { currentState ->
             currentState.copy(selectedMedia = listOf(), mediaSelectionEnabled = false)

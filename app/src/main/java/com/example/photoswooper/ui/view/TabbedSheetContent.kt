@@ -356,8 +356,7 @@ private fun ReviewScreen(
                                 onClick = {
                                     if (reviewUiState.mediaSelectionEnabled) {
                                         reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                    }
-                                    else
+                                    } else
                                         mainViewModel.openInGalleryApp(mediaItem)
                                 },
                                 onClickLabel =
@@ -366,8 +365,7 @@ private fun ReviewScreen(
                                 onLongClick = {
                                     if (reviewUiState.mediaSelectionEnabled) {
                                         reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                    }
-                                    else {
+                                    } else {
                                         reviewViewModel.toggleMediaSelectionEnabled()
                                         reviewViewModel.toggleMediaItemSelected(mediaItem)
                                     }
@@ -429,22 +427,22 @@ private fun ReviewScreen(
                         visible = reviewUiState.mediaSelectionEnabled,
                         enter =
                             if (reduceAnimations) fadeIn()
-                        else fadeIn() + slideInVertically(
-                            animationSpec = spring(
-                                stiffness = Spring.StiffnessMediumLow,
-                                dampingRatio = Spring.DampingRatioLowBouncy,
+                            else fadeIn() + slideInVertically(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                ),
+                                initialOffsetY = { it * 2 }
                             ),
-                            initialOffsetY = { it * 2 }
-                        ),
                         exit =
                             if (reduceAnimations) fadeOut()
                             else fadeOut() + slideOutVertically(
-                            animationSpec = spring(
-                                stiffness = Spring.StiffnessMediumLow,
-                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                ),
+                                targetOffsetY = { it * 2 }
                             ),
-                            targetOffsetY = { it * 2 }
-                        ),
                         label = "Selected photo actions",
                         modifier = Modifier.dropShadow(
                             shape = MaterialTheme.shapes.medium,
@@ -462,13 +460,13 @@ private fun ReviewScreen(
                                 onClick = { reviewViewModel.cancelSelection() },
                             )
                             FloatingAction(
-                                    drawableIconId = R.drawable.selection_all,
-                                    actionTitle = stringResource(R.string.select_all),
-                                    actionDescription = null,
-                                    onClick = {
-                                        mainUiState.mediaItems.forEach { reviewViewModel.toggleMediaItemSelected(it, true) }
-                                    },
-                    )
+                                drawableIconId = R.drawable.selection_all,
+                                actionTitle = stringResource(R.string.select_all),
+                                actionDescription = null,
+                                onClick = {
+                                    mainUiState.mediaItems.forEach { reviewViewModel.toggleMediaItemSelected(it, true) }
+                                },
+                            )
                             FloatingAction(
                                 drawableIconId = R.drawable.undo,
                                 actionTitle = stringResource(R.string.unswipe),
@@ -488,7 +486,7 @@ private fun ReviewScreen(
                         }
                     }
                     Spacer(Modifier)
-                    AnimatedVisibility (
+                    AnimatedVisibility(
                         visible = mainViewModel.getMediaToDelete().isNotEmpty()
                                 && !reviewUiState.mediaSelectionEnabled
                                 && reviewUiState.currentStatusFilter == MediaStatus.DELETE,
@@ -771,10 +769,10 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
     viewModel.updateStackTextInput()
     val uiState by viewModel.uiState.collectAsState()
     val permanentlyDelete by
-        viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.PERMANENTLY_DELETE.setting)
-            .collectAsState(false)
+    viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.PERMANENTLY_DELETE.setting)
+        .collectAsState(false)
     val systemFont by
-        viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting).collectAsState(false)
+    viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting).collectAsState(false)
     val dynamicTheme = viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting)
         .collectAsState(false)
     val reduceAnimations by viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)

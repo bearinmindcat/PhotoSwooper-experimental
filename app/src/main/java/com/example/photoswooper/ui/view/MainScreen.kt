@@ -191,6 +191,7 @@ fun MainScreen(
                             DragAnchors.Center,
                         )
                     }
+
                     DragAnchors.Right -> {
                         mainViewModel.markItem(MediaStatus.KEEP)
                         mainViewModel.animatedImageScaleEntry.snapTo(0f)
@@ -211,11 +212,11 @@ fun MainScreen(
             onDismiss = {
                 mainViewModel.toggleFilterDialog(false)
                 mainViewModel.revertIsPlayingToBeforeTempPause()
-                        },
+            },
             onConfirm = { newFilter, setFilterAsDefault ->
                 mainViewModel.toggleFilterDialog(false)
                 mainViewModel.updateMediaFilter(newFilter, setFilterAsDefault)
-                              },
+            },
             filterDialogViewModel = FilterDialogViewModel(mainViewModel.mediaFilter.collectAsState().value),
         )
 
@@ -244,7 +245,7 @@ fun MainScreen(
                                 modifier = Modifier.width(64.dp),
                                 color = MaterialTheme.colorScheme.secondary,
                                 trackColor = MaterialTheme.colorScheme.surfaceContainer,
-                                )
+                            )
                     }
 
                     (currentMediaItem != null && currentMediaItem.status == MediaStatus.UNSET) -> {
@@ -319,20 +320,20 @@ fun MainScreen(
                         AnimatedVisibility(
                             uiState.showInfo,
                             enter = if (reduceAnimations) fadeIn()
-                                    else fadeIn() + expandVertically(
+                            else fadeIn() + expandVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
                             ),
                             exit = if (reduceAnimations) fadeOut()
-                            else fadeOut() +  shrinkVertically(
+                            else fadeOut() + shrinkVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
                             ),
-                        ){
+                        ) {
                             InfoRow(
                                 viewModel = mainViewModel,
                                 currentMedia = currentMediaItem,
@@ -356,7 +357,7 @@ fun MainScreen(
                 navigateToReviewScreen = { navigateToReviewScreen() },
                 skipReview = skipReview,
                 modifier = Modifier.onGloballyPositioned { coordinates ->
-                    with (density) {
+                    with(density) {
                         actionBarHeight = coordinates.size.height.toDp()
                     }
                 }
@@ -372,7 +373,7 @@ fun MainScreen(
                     .windowInsetsPadding(WindowInsets.navigationBars),
             )
         },
-        sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp *3/4,
+        sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp * 3 / 4,
         scaffoldState = mainViewModel.bottomSheetScaffoldState,
     )
 }

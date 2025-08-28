@@ -137,10 +137,12 @@ class ContentResolverInterface(
 
         /* Add extra columns supported by recent android versions */
         if (SDK_INT >= Build.VERSION_CODES.R)
-            projection.addAll(listOf(
-                MediaStore.MediaColumns.ALBUM,
-                MediaStore.MediaColumns.RESOLUTION,
-            ))
+            projection.addAll(
+                listOf(
+                    MediaStore.MediaColumns.ALBUM,
+                    MediaStore.MediaColumns.RESOLUTION,
+                )
+            )
 
 
         val sortField = mediaFilter.sortField.sortOrderString
@@ -164,9 +166,11 @@ class ContentResolverInterface(
             val descriptionColumnIndex = cursor.getColumnIndexOrThrow(projection[3])
             val displayNameColumnIndex = cursor.getColumnIndexOrThrow(projection[4])
             val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(projection[5])
-            val albumColumnIndex = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[6])
+            val albumColumnIndex =
+                if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[6])
                 else 0 // 0 value not used
-            val resolutionColumnIndex = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[7])
+            val resolutionColumnIndex =
+                if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[7])
                 else 0 // 0 value not used
 
             /* add these values to the list of tracks */
@@ -176,14 +180,16 @@ class ContentResolverInterface(
                 val fetchedDateTaken = cursor.getLong(dateTakenColumnIndex)
                 val fetchedSize = cursor.getLong(sizeColumnIndex)
                 val fetchedAlbum = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getString(albumColumnIndex) else null
-                val fetchedResolution = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getString(resolutionColumnIndex) else null
+                val fetchedResolution =
+                    if (SDK_INT >= Build.VERSION_CODES.R) cursor.getString(resolutionColumnIndex) else null
                 val fetchedDescription = cursor.getString(descriptionColumnIndex)
                 val fetchedDisplayName = cursor.getString(displayNameColumnIndex)
                 val fetchedUri = when (type) {
                     MediaType.PHOTO -> ContentUris.withAppendedId(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    fetchedId
-                )
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        fetchedId
+                    )
+
                     MediaType.VIDEO -> ContentUris.withAppendedId(
                         MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                         fetchedId
@@ -202,15 +208,18 @@ class ContentResolverInterface(
                                 fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use TODO("Check if this is long enough")
                         val hash: ByteArray = digest.digest(byteArrayToHash ?: ByteArray(0))
                         hash.toHexString()
-                    }
-                    else {
+                    } else {
                         /* Based on https://stackoverflow.com/a/59049461 */
-                        val fileData = ByteArray(fileInputStream?.available()?: 0)
+                        val fileData = ByteArray(fileInputStream?.available() ?: 0)
                         val dataInputStream = DataInputStream(fileInputStream)
                         if (type == MediaType.PHOTO)
                             dataInputStream.readFully(fileData)
                         else
-                            dataInputStream.readFully(fileData, 0 ,  2056) // Read less of file for videos to reduce memory use
+                            dataInputStream.readFully(
+                                fileData,
+                                0,
+                                2056
+                            ) // Read less of file for videos to reduce memory use
 
                         val hash: ByteArray = digest.digest(fileData)
                         hash.toHexString()
@@ -236,7 +245,7 @@ class ContentResolverInterface(
                         /* Find embedded lat/long of media using EXIF */
                         var latLong: DoubleArray? = null
                         val fileInputStream2 = contentResolver.openInputStream(fetchedUri)
-                        if (fileInputStream2 != null){
+                        if (fileInputStream2 != null) {
                             val exifInterface = ExifInterface(fileInputStream2)
                             latLong = exifInterface.latLong
                             fileInputStream2.close()
@@ -258,7 +267,7 @@ class ContentResolverInterface(
                         )
 
                         mediaAdded.add(mediaClassToAdd)
-                        numAdded ++
+                        numAdded++
                         onAddMedia(mediaClassToAdd)
                         Log.d("MediaStore", "Added media with uri $fetchedUri")
                         CoroutineScope(Dispatchers.IO).launch {
@@ -270,14 +279,15 @@ class ContentResolverInterface(
 
                     val mediaSatisfiesFilters =
                         fetchedAbsoluteFilePath.contains(mediaFilter.directory)
-                                && (fetchedDescription?.contains(mediaFilter.containsText)?: false
-                                    || fetchedDisplayName.contains(mediaFilter.containsText))
+                                && (fetchedDescription?.contains(mediaFilter.containsText) ?: false
+                                || fetchedDisplayName.contains(mediaFilter.containsText))
                                 && fetchedSize in mediaFilter.sizeRange
 //                    val findPhotoByHash = dao.findByHash(fileHash) TODO("Duplicate files feature: user can configure auto-delete or show both duplicates")
                     val findById = dao.findByMediaStoreId(fetchedId)
                     val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
                         findById.status
                     )
+
                     /** True when: media is not snoozed, or the snoozeUntil date has passed */
                     val snoozeHasPassed = findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate
                     val foundInSession = mediaAdded.find { it.id == fetchedId } != null
@@ -312,14 +322,15 @@ class ContentResolverInterface(
             }
         }
         return numToAdd - numAdded
-}
+    }
 
     suspend fun deleteMedia(
         uris: List<Uri>,
         onDelete: (List<Uri>) -> Unit
     ) {
         if (SDK_INT >= Build.VERSION_CODES.R) {
-            val permanentlyDelete = dataStoreInterface.getBooleanSettingValue(BooleanPreference.PERMANENTLY_DELETE.setting).first()
+            val permanentlyDelete =
+                dataStoreInterface.getBooleanSettingValue(BooleanPreference.PERMANENTLY_DELETE.setting).first()
 
             val editPendingIntent =
                 if (permanentlyDelete)

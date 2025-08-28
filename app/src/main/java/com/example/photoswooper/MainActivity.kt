@@ -115,6 +115,7 @@ class MainActivity : AppCompatActivity() {
                     super.onRenderedFirstFrame()
                     mainViewModel.onMediaLoaded()
                 }
+
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     super.onIsPlayingChanged(isPlaying)
                     mainViewModel.updateIsPlaying(isPlaying)
@@ -135,9 +136,9 @@ class MainActivity : AppCompatActivity() {
                     this,
                     epochMillis,
                     flags
-                    )
+                )
             },
-            formatDateTimeRange = {startMillis, endMillis, flags ->
+            formatDateTimeRange = { startMillis, endMillis, flags ->
                 DateUtils.formatDateRange(
                     this,
                     startMillis,
@@ -178,8 +179,10 @@ class MainActivity : AppCompatActivity() {
                     startActivity = { this.startActivity(it) }
                 )
             }
-            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting).collectAsState(!BooleanPreference.SYSTEM_FONT.default)
-            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting).collectAsState(BooleanPreference.DYNAMIC_THEME.default)
+            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting)
+                .collectAsState(!BooleanPreference.SYSTEM_FONT.default)
+            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting)
+                .collectAsState(BooleanPreference.DYNAMIC_THEME.default)
             val skipReview by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SKIP_REVIEW.setting)
                 .collectAsState(BooleanPreference.SKIP_REVIEW.default)
             PhotoSwooperTheme(
@@ -208,7 +211,8 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         try {
             mainViewModel.tempPause()
-        } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */}
+        } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */
+        }
     }
 
     /* Unpause the video when the user opens the app from the background */
@@ -216,7 +220,8 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         try {
             mainViewModel.revertIsPlayingToBeforeTempPause()
-        } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */}
+        } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */
+        }
     }
 
     /* Handle permission request result */
@@ -231,7 +236,7 @@ class MainActivity : AppCompatActivity() {
         /* Write access is only needed for lower android versions (< 11) which don't support MediaStore trash/delete requests */
         val writeAccess = if (SDK_INT < Build.VERSION_CODES.Q)
             permissionMap[WRITE_EXTERNAL_STORAGE] == PERMISSION_GRANTED
-            else true
+        else true
 
         val fullReadAccess = permissionMap.filter {
             fullReadPermissions.contains(it.key)
@@ -280,16 +285,15 @@ class MainActivity : AppCompatActivity() {
         when (requestCode) {
             in 100..102 -> { // Delete/trash a file
                 if (resultCode != RESULT_CANCELED) {
-                        if (SDK_INT >= Build.VERSION_CODES.R)
-                            CoroutineScope(Dispatchers.Main).launch {
-                                mainViewModel.onDeletion(mainViewModel.getMediaToDelete().map { it.uri })
-                            }
-                        else
-                            CoroutineScope(Dispatchers.Main).launch {
-                                mainViewModel.confirmDeletion() // Delete the rest if on lower android versions
-                            }
-                    }
-                else
+                    if (SDK_INT >= Build.VERSION_CODES.R)
+                        CoroutineScope(Dispatchers.Main).launch {
+                            mainViewModel.onDeletion(mainViewModel.getMediaToDelete().map { it.uri })
+                        }
+                    else
+                        CoroutineScope(Dispatchers.Main).launch {
+                            mainViewModel.confirmDeletion() // Delete the rest if on lower android versions
+                        }
+                } else
                     if (SDK_INT >= Build.VERSION_CODES.R)
                         CoroutineScope(Dispatchers.Main).launch {
                             mainViewModel.onDeletion(listOf(), true)
@@ -305,7 +309,7 @@ class MainActivity : AppCompatActivity() {
 
 fun checkPermissions(
     context: Context,
-    onPermissionsGranted: suspend () -> Unit = {  }
+    onPermissionsGranted: suspend () -> Unit = { }
 ) {
     val permissionsToRequest = mutableListOf<String>()
     /* Permissions to check depending on the android version */
@@ -330,10 +334,18 @@ fun checkPermissions(
     //  reselection on each app launch")
 
     /* Check write permissions if android version doesn't support MediaStore delete/trash requests */
-    if (SDK_INT < Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(context, WRITE_EXTERNAL_STORAGE) != PERMISSION_GRANTED)
+    if (SDK_INT < Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(
+            context,
+            WRITE_EXTERNAL_STORAGE
+        ) != PERMISSION_GRANTED
+    )
         permissionsToRequest.add(WRITE_EXTERNAL_STORAGE)
 
-    if (SDK_INT >= Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(context, ACCESS_MEDIA_LOCATION) != PERMISSION_GRANTED) {
+    if (SDK_INT >= Build.VERSION_CODES.Q && ContextCompat.checkSelfPermission(
+            context,
+            ACCESS_MEDIA_LOCATION
+        ) != PERMISSION_GRANTED
+    ) {
         permissionsToRequest.add(ACCESS_MEDIA_LOCATION)
     }
 

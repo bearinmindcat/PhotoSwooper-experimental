@@ -28,11 +28,13 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
     init {
         updateStackTextInput()
     }
+
     fun updateStackTextInput() {
         CoroutineScope(Dispatchers.IO).launch {
             _uiState.update { currentState ->
                 currentState.copy(
-                    numPhotosPerStackTextInput = dataStoreInterface.getIntSettingValue(IntPreference.NUM_PHOTOS_PER_STACK.setting).first().toString()
+                    numPhotosPerStackTextInput = dataStoreInterface.getIntSettingValue(IntPreference.NUM_PHOTOS_PER_STACK.setting)
+                        .first().toString()
                 )
             }
         }
@@ -47,6 +49,7 @@ class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
                     updateIntPreference(IntPreference.NUM_PHOTOS_PER_STACK.setting, inputAsInt)
                 }
             }
+
             (input == "") -> updatePhotosPerStackInput(input)
             else -> return false
         }

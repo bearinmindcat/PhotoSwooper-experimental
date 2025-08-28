@@ -15,6 +15,7 @@ enum class StatsData(val extraInfo: String = "", val iconDrawableId: Int) {
     DELETED_COUNT(iconDrawableId = R.drawable.trash),
     SPACE_SAVED(extraInfo = "(MB)", iconDrawableId = R.drawable.hard_drives),
 }
+
 /**
  * The uiState used by the StatsCard function in [com.example.photoswooper.ui.view.TabbedSheetContent]
  *
@@ -23,7 +24,7 @@ enum class StatsData(val extraInfo: String = "", val iconDrawableId: Int) {
  * @property latestData The latest statistics data. keys: x-axis data (time), values: y-axis data  (no. of swipes)
  * @property currentDateShown A boolean for whether the data shown is of the current date & time
  */
-data class StatsUiState (
+data class StatsUiState(
     val dateToFetchFromMillis: Long = Calendar.getInstance().timeInMillis,
     val timeFrame: TimeFrame = TimeFrame.WEEK,
     val dataType: StatsData = StatsData.SWIPE_COUNT,

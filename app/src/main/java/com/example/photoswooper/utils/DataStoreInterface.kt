@@ -28,6 +28,7 @@ class DataStoreInterface(val dataStore: DataStore<Preferences>) {
                 preferences[settingKey] ?: BooleanPreference.valueOf(setting.uppercase()).default
             }
     }
+
     suspend fun setBooleanSettingValue(newValue: Boolean, setting: String) {
         dataStore.edit { settings ->
             val settingKey = booleanPreferencesKey(setting)
@@ -42,6 +43,7 @@ class DataStoreInterface(val dataStore: DataStore<Preferences>) {
                 preferences[settingKey] ?: IntPreference.valueOf(setting.uppercase()).default
             }
     }
+
     suspend fun setIntSettingValue(newValue: Int, setting: String) {
         dataStore.edit { settings ->
             val settingKey = intPreferencesKey(setting)
@@ -56,6 +58,7 @@ class DataStoreInterface(val dataStore: DataStore<Preferences>) {
                 preferences[settingKey] ?: LongPreference.valueOf(setting.uppercase()).default
             }
     }
+
     suspend fun setLongSettingValue(newValue: Long, setting: String) {
         dataStore.edit { settings ->
             val settingKey = longPreferencesKey(setting)
@@ -69,6 +72,7 @@ class DataStoreInterface(val dataStore: DataStore<Preferences>) {
             settings[settingKey] = newValue
         }
     }
+
     fun getStringSettingValue(setting: String): Flow<String> {
         val settingKey = stringPreferencesKey(setting)
         return dataStore.data

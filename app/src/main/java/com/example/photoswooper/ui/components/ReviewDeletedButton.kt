@@ -33,15 +33,14 @@ fun ReviewDeletedButton(
     val view = LocalView.current
     ElevatedButton(
         onClick = {
-            if(numToDelete > 0) {
+            if (numToDelete > 0) {
                 if (skipReview)
                     deleteMedia()
                 else
                     navigateToReviewScreen()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-            }
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                 view.performHapticFeedback(HapticFeedbackConstants.REJECT)
         },
         modifier = modifier

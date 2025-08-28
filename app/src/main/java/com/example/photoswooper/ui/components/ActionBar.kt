@@ -87,7 +87,7 @@ fun ActionBar(
     )
     var shuffleIconRotation by remember { mutableFloatStateOf(0f) }
     val animatedShuffleIconRotation by animateFloatAsState(
-        targetValue =  shuffleIconRotation,
+        targetValue = shuffleIconRotation,
         animationSpec = spring(
             stiffness = Spring.StiffnessMediumLow,
             dampingRatio = Spring.DampingRatioLowBouncy,
@@ -162,8 +162,7 @@ fun ActionBar(
                             viewModel.toggleFilterDialog()
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        }
-                        else {
+                        } else {
                             Toast.makeText(
                                 context,
                                 "Review media marked for deletion first",
