@@ -197,8 +197,8 @@ class MainViewModel (
                         onAddMedia = {
                             _uiState.value.mediaItems.add(it)
                         },
-                        targetNumPhotos = numPhotosToAddAsync,
-                        targetNumVideos = numPerStackPreference - numPhotosToAddAsync,
+                        targetNumPhotos = numPhotosToAddAsync - numPhotosToAddSynchronously,
+                        targetNumVideos = numPerStackPreference - numPhotosToAddAsync - (maxMediaItemsToAddSynchronously - numPhotosToAddSynchronously),
                         mediaAdded = uiState.value.mediaItems.toMutableSet(),
                         mediaFilter = mediaFilter.value
                     )
