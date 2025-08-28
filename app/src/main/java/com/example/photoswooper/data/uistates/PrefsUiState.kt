@@ -19,6 +19,8 @@ enum class BooleanPreference(val default: Boolean, val setting: String) {
     DYNAMIC_THEME(SDK_INT >= Build.VERSION_CODES.S, "dynamic_theme"),
     REDUCE_ANIMATIONS(false, "reduce_animations"),
     INFO_ROW_EXPANDED(false, "info_row_expanded"), // Save whether the user last set the info row to be in the expanded view, or single row
+    /** false means navigate to review screen before deletion, true means immediately delete files */
+    SKIP_REVIEW(false, "skip_review"),
 
     // Filtering
     FILTER_SHOW_ADVANCED(false, "filter_show_advanced"),

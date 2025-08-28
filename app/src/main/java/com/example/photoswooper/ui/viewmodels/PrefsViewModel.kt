@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The viewModel used by the `PreferencesCard` function in [com.example.photoswooper.ui.view.TabbedPreferencesAndStatsPage]
+ * The viewModel used by the `PreferencesScreen` function in [com.example.photoswooper.ui.view.TabbedSheetContent]
  */
 class PrefsViewModel(val dataStoreInterface: DataStoreInterface) : ViewModel() {
     private val _uiState = MutableStateFlow(PrefsUiState())

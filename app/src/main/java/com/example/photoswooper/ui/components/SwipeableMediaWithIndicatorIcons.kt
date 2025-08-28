@@ -69,6 +69,7 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Media
+import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
@@ -97,7 +98,7 @@ fun SwipeableMediaWithIndicatorIcons(
 ) {
     val view = LocalView.current
     val coroutineScope = rememberCoroutineScope()
-    val reduceAnimations = DataStoreInterface(LocalContext.current.dataStore)
+    val reduceAnimations by DataStoreInterface(LocalContext.current.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val uiState by viewModel.uiState.collectAsState()
 
@@ -145,7 +146,7 @@ fun SwipeableMediaWithIndicatorIcons(
 
     /* Animate image depending on how far the user has swiped */
     LaunchedEffect(anchoredDraggableState.requireOffset()) {
-        if (!reduceAnimations.value) {
+        if (!reduceAnimations) {
             if (!uiState.mediaBuffering) // This prevents interference with entry animation
                 viewModel.animatedImageScaleEntry.snapTo(
                     ((1.25f - (anchoredDraggableState.requireOffset().absoluteValue) / DragAnchors.Right.offset / 2f))
@@ -310,7 +311,7 @@ private fun IndicatorIconRow(
                 .widthIn(min = 96.dp)
         ) {
             Icon(
-                painter = painterResource(R.drawable.bookmark_simple),
+                painter = painterResource(MediaStatus.KEEP.iconDrawableId),
                 contentDescription = null,
                 tint = animateColorAsState(
                     when (currentAnchor) {
@@ -356,7 +357,7 @@ private fun IndicatorIconRow(
                 .widthIn(min = 96.dp)
         ) {
             Icon(
-                painter = painterResource(R.drawable.trash),
+                painter = painterResource(MediaStatus.DELETE.iconDrawableId),
                 contentDescription = null,
                 tint = animateColorAsState(
                     when (currentAnchor) {

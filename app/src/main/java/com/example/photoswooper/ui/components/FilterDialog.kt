@@ -82,7 +82,7 @@ fun FilterDialog(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
-    val reduceAnimations = DataStoreInterface(context.dataStore)
+    val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
 
     val newFilters by filterDialogViewModel.newFilters.collectAsState()
@@ -128,7 +128,7 @@ fun FilterDialog(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
-                        .padding(bottom = dimensionResource(R.dimen.padding_medium),)
+                        .padding(bottom = dimensionResource(R.dimen.padding_medium))
                         .fillMaxWidth()                ) {
                     Icon(
                         painter = painterResource(R.drawable.funnel),
@@ -205,8 +205,8 @@ fun FilterDialog(
                 ) {
                     DropdownFilterChip(
                         leadingIconPainter = painterResource(newFilters.sortField.iconDrawableId),
-                        currentSelection = newFilters.sortField.toString().lowercase(),
-                        selected = newFilters.sortField != MediaSortField.RANDOM,
+                        currentMenuItemSelection = newFilters.sortField.toString().lowercase(),
+                        filterChipSelected = newFilters.sortField != MediaSortField.RANDOM,
                         menuItemsDescription = "Fields to sort media by",
                         menuItems = MediaSortField.entries.map { it.toString().lowercase() }.toTypedArray(),
                         menuItemIcons = MediaSortField.entries.map { painterResource(it.iconDrawableId) }
@@ -217,14 +217,14 @@ fun FilterDialog(
                     )
                     AnimatedVisibility(
                         newFilters.sortField != MediaSortField.RANDOM,
-                        enter = if (reduceAnimations.value) fadeIn()
+                        enter = if (reduceAnimations) fadeIn()
                         else fadeIn() + expandHorizontally(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,
                                 dampingRatio = Spring.DampingRatioLowBouncy,
                             ),
                         ),
-                        exit = if (reduceAnimations.value) fadeOut()
+                        exit = if (reduceAnimations) fadeOut()
                         else fadeOut() + shrinkHorizontally(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,
@@ -347,7 +347,7 @@ fun FilterDialog(
                             DropdownMenu(
                                 expanded = showSizeMenu,
                                 onDismissRequest = { showSizeMenu = false },
-                                border = FilterChipDefaults.filterChipBorder(true, false),
+                                border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false),
                                 shape = FilterChipDefaults.shape,
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             ) {
@@ -423,7 +423,7 @@ fun FilterDialog(
                             onConfirm(
                                 newFilters.copy(
                                     sizeRange =
-                                        getMinSizeFromDisplayedString().toLong()..newFilters.sizeRange.endInclusive
+                                        getMinSizeFromDisplayedString().toLong()..newFilters.sizeRange.last
                                 ),
                                 setFilterAsDefault
                             )

@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
@@ -72,7 +73,7 @@ fun InfoRow(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
-    val reduceAnimations = DataStoreInterface(context.dataStore)
+    val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
 
     val expanded = DataStoreInterface(context.dataStore)
@@ -92,9 +93,8 @@ fun InfoRow(
         InfoData(
             "Location",
             R.drawable.map,
-            currentMedia?.getFormattedLocation(),
-            { viewModel.openLocationInMapsApp(currentMedia) }
-        ),
+            currentMedia?.getFormattedLocation()
+        ) { viewModel.openLocationInMapsApp(currentMedia) },
         InfoData(
             "Album",
             iconPainterId = R.drawable.books,
@@ -175,14 +175,14 @@ fun InfoRow(
                     enter = expandHorizontally(
                         animationSpec = spring(
                             viewModel.defaultEntryAnimationSpec.dampingRatio,
-                            if (reduceAnimations.value) 0f else viewModel.defaultEntryAnimationSpec.stiffness
+                            if (reduceAnimations) 0f else viewModel.defaultEntryAnimationSpec.stiffness
                         ),
                         expandFrom = Alignment.Start
                     ) + fadeIn(),
                     exit = shrinkHorizontally(
                         animationSpec = spring(
                             viewModel.defaultEntryAnimationSpec.dampingRatio,
-                            if (reduceAnimations.value) 0f else viewModel.defaultEntryAnimationSpec.stiffness
+                            if (reduceAnimations) 0f else viewModel.defaultEntryAnimationSpec.stiffness
                         ),
                         shrinkTowards = Alignment.End
                     ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessHigh)),
@@ -207,13 +207,13 @@ fun InfoRow(
                 enter = expandVertically(
                     animationSpec = spring(
                         viewModel.defaultEntryAnimationSpec.dampingRatio,
-                        if (reduceAnimations.value) 0f else viewModel.defaultEntryAnimationSpec.stiffness
+                        if (reduceAnimations) 0f else viewModel.defaultEntryAnimationSpec.stiffness
                     )
                 ) + fadeIn(),
                 exit = shrinkVertically(
                     animationSpec = spring(
                         viewModel.defaultEntryAnimationSpec.dampingRatio,
-                        if (reduceAnimations.value) 0f else Spring.StiffnessLow
+                        if (reduceAnimations) 0f else Spring.StiffnessLow
                     )
                 ) + fadeOut(),
             ) {

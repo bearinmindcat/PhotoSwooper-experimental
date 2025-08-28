@@ -23,7 +23,7 @@ import java.util.Calendar
 import kotlin.math.roundToLong
 
 /**
- * The viewModel used by the `StatsCard` function in [com.example.photoswooper.ui.view.TabbedPreferencesAndStatsPage]
+ * The viewModel used by the `StatsScreen` function in [com.example.photoswooper.ui.view.TabbedSheetContent]
  */
 class StatsViewModel(
     val mediaStatusDao: MediaStatusDao,
@@ -102,8 +102,8 @@ class StatsViewModel(
 
         suspend fun getDataFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Float {
             return when (uiState.value.dataType) {
-                StatsData.SWIPE_COUNT -> mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis,).size.toFloat()
-                StatsData.DELETED_COUNT -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis,).size.toFloat()
+                StatsData.SWIPE_COUNT -> mediaStatusDao.getSwipedMediaBetweenDates(firstDateMillis, secondDateMillis).size.toFloat()
+                StatsData.DELETED_COUNT -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis).size.toFloat()
                 StatsData.SPACE_SAVED -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis)
                     .sumOf { it.size }.toInt().div(1000000f)
                     .toBigDecimal().setScale(2, RoundingMode.HALF_UP).toFloat() // div 1000000 to convert to MB TODO("May need to adjust depending on max  value")
@@ -149,7 +149,7 @@ class StatsViewModel(
                 finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
             ).timeInMillis
         }
-        Log.i("Stats", "final stats data = ${statsData}")
+        Log.i("Stats", "final stats data = $statsData")
         _uiState.update { currentState ->
             currentState.copy(
                 latestData = statsData
@@ -248,8 +248,7 @@ class StatsViewModel(
     /** Returns a human-readable string indicating the date that statistics are showing */
     fun getDateTitle(): String {
         val dateToFetchFromMillis = uiState.value.dateToFetchFromMillis
-        val currentTimeFrame = uiState.value.timeFrame
-        when (currentTimeFrame) {
+        when (val currentTimeFrame = uiState.value.timeFrame) {
             TimeFrame.DAY -> {
                 return formatDateTime(dateToFetchFromMillis, DateUtils.FORMAT_SHOW_WEEKDAY) + ", " +
                             formatDateTime(dateToFetchFromMillis, DateUtils.FORMAT_SHOW_DATE)

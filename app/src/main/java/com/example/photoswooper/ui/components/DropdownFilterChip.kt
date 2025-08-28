@@ -11,7 +11,6 @@ import android.os.Build.VERSION.SDK_INT
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,39 +35,40 @@ import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 @Composable
 fun DropdownFilterChip(
     leadingIconPainter: Painter,
-    currentSelection: String,
-    selected: Boolean = false,
+    currentMenuItemSelection: String,
+    filterChipSelected: Boolean = false,
     menuItemsDescription: String,
     menuItems: Array<String>,
     menuItemIcons: Array<Painter> = emptyArray(),
-    onSelectionChange: (String) -> Unit
+    onSelectionChange: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     fun getDisplayedString(menuItem: String): String = menuItem.replace("_", " ").replaceFirstChar { it.uppercase() }
 
     val view = LocalView.current
     var expanded by remember { mutableStateOf(false) }
 
-    Column(Modifier.wrapContentWidth(unbounded = true)) {
+    Column(modifier) {
         FilterChip(
-            selected = selected,
+            selected = filterChipSelected,
             leadingIcon = {
                 Icon(
                     leadingIconPainter,
                     contentDescription = null,
-                    tint = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (filterChipSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
                 )
             },
             label = {
                 Text(
-                    getDisplayedString(currentSelection),
+                    getDisplayedString(currentMenuItemSelection),
                     style = MaterialTheme.typography.labelLarge,
                 )
             },
             trailingIcon = {
                 AnimatedExpandCollapseIcon(
                     expanded = expanded,
-                    contentDescription = if (expanded) "Hide $menuItemsDescription" else "Show $menuItemsDescription"
+                    contentDescription = if (expanded) "Hide $menuItemsDescription" else "Display $menuItemsDescription"
                 )
             },
             onClick = {
@@ -90,7 +90,7 @@ fun DropdownFilterChip(
                 if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                     view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
                                },
-            border = FilterChipDefaults.filterChipBorder(true, false),
+            border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false),
             shape = FilterChipDefaults.shape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
@@ -113,7 +113,7 @@ fun DropdownFilterChip(
                         expanded = !expanded
                         onSelectionChange(menuItem)
                     },
-                    enabled = menuItem != currentSelection
+                    enabled = menuItem != currentMenuItemSelection
                 )
             }
         }

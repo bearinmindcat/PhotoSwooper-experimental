@@ -355,18 +355,16 @@ class ContentResolverInterface(
                             )
 
                         val intentSender = recoverableSecurityException.userAction.actionIntent.intentSender
-                        intentSender.let {
-                            startIntentSenderForResult(
-                                activity,
-                                intentSender,
-                                102,
-                                null,
-                                0,
-                                0,
-                                0,
-                                null
-                            )
-                        }
+                        startIntentSenderForResult(
+                            activity,
+                            intentSender,
+                            102,
+                            null,
+                            0,
+                            0,
+                            0,
+                            null
+                        )
                     } else {
                         throw RuntimeException(securityException.message, securityException)
                     }

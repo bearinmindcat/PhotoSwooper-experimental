@@ -59,16 +59,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
+@Suppress("AssignedValueIsNeverRead")
 @OptIn(ExperimentalFoundationApi::class, ExperimentalKoalaPlotApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ActionBar(
     numToDelete: Int,
     viewModel: MainViewModel,
+    skipReview: Boolean,
+    navigateToReviewScreen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
     val context = LocalContext.current
-    val reduceAnimations = DataStoreInterface(context.dataStore)
+    val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val uiState by viewModel.uiState.collectAsState()
 
@@ -92,8 +95,9 @@ fun ActionBar(
     )
 
     /* Bouncy effect when the time frame is changed */
+    @Suppress("AssignedValueIsNeverRead")
     LaunchedEffect(uiState.currentStorageStatsTimeFrame) {
-        if (!reduceAnimations.value) {
+        if (!reduceAnimations) {
             shuffleIconSize = expandedIconSize
             shuffleIconRotation = 10f
             delay(200)
@@ -143,13 +147,12 @@ fun ActionBar(
                     )
                 }
                 ReviewDeletedButton(
-                    view = view,
-                    viewModel = viewModel,
                     numToDelete = numToDelete,
-                    reviewDialogEnabled = uiState.reviewDialogEnabled,
-                    modifier = Modifier.padding(
-                        horizontal = dimensionResource(R.dimen.padding_small),
-                    )
+                    skipReview = skipReview,
+                    navigateToReviewScreen = { navigateToReviewScreen() },
+                    deleteMedia = {
+                        viewModel.confirmDeletion()
+                    }
                 )
                 /* Filter button */
                 FilledTonalIconButton(

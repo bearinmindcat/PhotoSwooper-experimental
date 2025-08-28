@@ -9,6 +9,8 @@ package com.example.photoswooper.data.models
 import android.net.Uri
 import android.os.Build
 import android.text.format.DateFormat
+import androidx.annotation.DrawableRes
+import com.example.photoswooper.R
 import com.example.photoswooper.data.database.MediaEntity
 import java.time.Instant
 import java.time.LocalDateTime
@@ -19,11 +21,11 @@ enum class MediaType {
     VIDEO
 }
 
-enum class MediaStatus {
-    UNSET,
-    DELETE,
-    KEEP,
-    SNOOZE
+enum class MediaStatus(@param:DrawableRes val iconDrawableId: Int) {
+    UNSET(R.drawable.x),
+    DELETE(R.drawable.trash),
+    KEEP(R.drawable.bookmark_simple),
+    SNOOZE(R.drawable.hourglass_high)
 }
 
 data class Media (

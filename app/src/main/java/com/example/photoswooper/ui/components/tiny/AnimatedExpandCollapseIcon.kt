@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
@@ -33,12 +34,12 @@ fun AnimatedExpandCollapseIcon(
     contentDescription: String?,
 ) {
     val context = LocalContext.current
-    val reduceAnimations = DataStoreInterface(context.dataStore)
+    val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val caretRotation = animateFloatAsState(
         if (expanded) 180f else 0f,
         animationSpec = spring(
-            stiffness = if (reduceAnimations.value) 0f else Spring.StiffnessMediumLow,
+            stiffness = if (reduceAnimations) 0f else Spring.StiffnessMediumLow,
             dampingRatio = Spring.DampingRatioLowBouncy,
         ),
         label = "filterChipCaretRotation",

@@ -28,8 +28,6 @@ data class MainUiState(
     val currentIndex: Int = 0,
     val numUnset: Int = 0,
 
-    val showReviewDialog: Boolean = false,
-    val reviewDialogEnabled: Boolean = true, // Whether to show review dialog, or just delete immediately
     val showInfoAndFloatingActionsRow: Boolean = false,
     val showInfo: Boolean = false,
     val showFilterDialog: Boolean = false,

@@ -19,6 +19,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetValue
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -62,7 +63,7 @@ class MainViewModel (
     val bottomSheetScaffoldState: BottomSheetScaffoldState,
     val player: ExoPlayer,
 ): ViewModel() {
-    private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying,))
+    private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying))
     val uiState = _uiState.asStateFlow()
     // Initialise mediaFilters (Updated with stored values when resetAndGetNewMediaItems() is first called in MainActivity)
     private val _mediaFilter = MutableStateFlow(
@@ -252,7 +253,7 @@ class MainViewModel (
         val mediaToMark = _uiState.value.mediaItems[index]
         _uiState.value.mediaItems[index].status = status
 
-        /* Update database only if keeping/unsetting the media. Only marked as DELETE when confirmed and the file is deleted */
+        // Update database only if keeping/unsetting the media. Only marked as DELETE when confirmed and the file is deleted
         if (status == MediaStatus.SNOOZE) {
             val snoozeLength = dataStoreInterface.getLongSettingValue(
                 setting = LongPreference.SNOOZE_LENGTH.setting
@@ -275,13 +276,17 @@ class MainViewModel (
                 mediaStatusDao.update(mediaToMark.getMediaStatusEntity())
             }
 
-        /* If item being marked as UNSET (e.g. in the review screen), update the unset count & set the index to the first UNSET item */
+        // If item being marked as UNSET (e.g. in the review screen), insert the unset photo to the index before the
+        // current one, and seek to it. This preserves undo functionality
         Log.d("Media marking", "Media at index $index marked as ${mediaToMark.status}")
         if (status == MediaStatus.UNSET) {
-            seekToUnsetItemOrFalse()
+            _uiState.value.mediaItems.removeAt(index)
+            val indexToInsertItem = if (uiState.value.currentIndex - 1 < 0) 0 else uiState.value.currentIndex - 1
+            _uiState.value.mediaItems.add(indexToInsertItem, mediaToMark)
             _uiState.update { currentState ->
                 currentState.copy(
                     numUnset = currentState.numUnset + 1,
+                    currentIndex = currentState.currentIndex - 1
                 )
             }
         } else {
@@ -379,7 +384,6 @@ class MainViewModel (
         // If user cancels deletion of all items
         else {
             makeToast("No items were deleted")
-            dismissReviewDialog()
         }
     }
 
@@ -415,7 +419,6 @@ class MainViewModel (
             }
 
             if (getMediaToDelete().isEmpty()) {
-                dismissReviewDialog()
                 if (uiState.value.numUnset <= 0)
                     CoroutineScope(Dispatchers.IO).launch { resetAndGetNewMediaItems() } // FIXME("Check permissions before getting media (cannot use checkPermissionsAndGetMedia() as no access to context)")
             }
@@ -432,24 +435,8 @@ class MainViewModel (
 
     fun expandBottomSheet(coroutineScope: CoroutineScope) {
         coroutineScope.launch {
-            if (bottomSheetScaffoldState.bottomSheetState.hasExpandedState)
+            if (bottomSheetScaffoldState.bottomSheetState.targetValue != SheetValue.Expanded)
                 bottomSheetScaffoldState.bottomSheetState.expand()
-        }
-    }
-
-    fun showReviewDialog() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                showReviewDialog = true
-            )
-        }
-    }
-
-    fun dismissReviewDialog() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                showReviewDialog = false
-            )
         }
     }
 
@@ -519,14 +506,6 @@ class MainViewModel (
         }
     }
 
-    fun disableReviewDialog() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                reviewDialogEnabled = false
-            )
-        }
-    }
-
     suspend fun cycleStorageStatsTimeFrame() {
         val currentStorageTimeFrame = _uiState.value.currentStorageStatsTimeFrame
         val newTimeFrame =
@@ -552,14 +531,6 @@ class MainViewModel (
         val firstDateInTimeFrame = currentDate - timeFrame.milliseconds
 
         return mediaStatusDao.getDeletedBetweenDates(firstDateInTimeFrame, currentDate).sumOf { it.size }
-    }
-
-    fun toggleIsLoading(newState: Boolean = !uiState.value.fetchingMedia) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                fetchingMedia = newState
-            )
-        }
     }
 
     fun updatePermissionsGranted(newState: Boolean) {

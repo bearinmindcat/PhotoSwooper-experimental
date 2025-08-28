@@ -274,7 +274,7 @@ fun FloatingActionsRow(
 }
 
 @Composable
-private fun FloatingAction(
+fun FloatingAction(
     modifier: Modifier = Modifier,
     @DrawableRes drawableIconId: Int,
     actionTitle: String?,

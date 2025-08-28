@@ -8,6 +8,7 @@ package com.example.photoswooper.ui.view
 
 import android.Manifest.permission.READ_MEDIA_IMAGES
 import android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+import android.content.Context
 import android.content.pm.PackageManager.PERMISSION_DENIED
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.content.res.Resources
@@ -51,13 +52,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -83,14 +88,15 @@ import com.example.photoswooper.ui.components.FilterDialog
 import com.example.photoswooper.ui.components.FloatingActionsRow
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
-import com.example.photoswooper.ui.components.ReviewDialog
 import com.example.photoswooper.ui.components.SwipeableMediaWithIndicatorIcons
 import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.ui.viewmodels.ReviewViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -100,22 +106,25 @@ enum class DragAnchors(val offset: Float) {
     Right(Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
 }
 
+/**
+ * A composable containing the main UI of the app, within a BottomSheetScaffold composable
+ *
+ * @param skipReview Whether the user has chosen to skip navigating to the review screen before deleting swiped items
+ */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalAnimationApi::class)
 fun MainScreen(
     statsViewModel: StatsViewModel,
     mainViewModel: MainViewModel,
-    imageLoader: ImageLoader
+    imageLoader: ImageLoader,
+    skipReview: Boolean
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val density = LocalDensity.current
-
-    val reduceAnimations = DataStoreInterface(context.dataStore)
+    val coroutineScope = rememberCoroutineScope()
+    val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
-    val limitedPhotoAccess = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-            && (checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PERMISSION_GRANTED)
-            && (checkSelfPermission(context, READ_MEDIA_IMAGES) == PERMISSION_DENIED)
 
 
     val uiState by mainViewModel.uiState.collectAsState()
@@ -130,10 +139,23 @@ fun MainScreen(
     val animatedActionBarHeight = animateDpAsState(
         actionBarHeight,
         spring(
-            stiffness = if (reduceAnimations.value) 0f else Spring.StiffnessMediumLow,
+            stiffness = if (reduceAnimations) 0f else Spring.StiffnessMediumLow,
             dampingRatio = Spring.DampingRatioLowBouncy,
         )
     )
+
+    var sheetContentTabIndex by rememberSaveable { mutableIntStateOf(TabIndex.REVIEW.ordinal) }
+    fun navigateToReviewScreen() {
+        coroutineScope.launch {
+            if (mainViewModel.bottomSheetScaffoldState.bottomSheetState.targetValue == SheetValue.Expanded)
+                sheetContentTabIndex = TabIndex.REVIEW.ordinal
+            else {
+                mainViewModel.expandBottomSheet(coroutineScope)
+                delay(250)
+                sheetContentTabIndex = TabIndex.REVIEW.ordinal
+            }
+        }
+    }
 
     /* For anchored draggable (dragging photo/video left/right) */
 
@@ -184,21 +206,7 @@ fun MainScreen(
             }
     }
 
-    if (uiState.showReviewDialog) {
-        ReviewDialog(
-            mediaItemsToDelete = mainViewModel.getMediaToDelete(),
-            onDismissRequest = { mainViewModel.dismissReviewDialog() },
-            onCancellation = {
-                for (photo in mainViewModel.getMediaToDelete()) {
-                    mainViewModel.markItem(MediaStatus.UNSET, uiState.mediaItems.indexOf(photo))
-                }
-            },
-            onUnsetMediaItem = { mainViewModel.markItem(MediaStatus.UNSET, uiState.mediaItems.indexOf(it)) },
-            onConfirmation = { CoroutineScope(Dispatchers.Main).launch { mainViewModel.confirmDeletion() } },
-            onDisableReviewDialog = { mainViewModel.disableReviewDialog() },
-        )
-    }
-    else if (uiState.showFilterDialog)
+    if (uiState.showFilterDialog)
         FilterDialog(
             onDismiss = {
                 mainViewModel.toggleFilterDialog(false)
@@ -222,68 +230,11 @@ fun MainScreen(
                 when {
                     /* When permissions not granted */
                     (uiState.permissionsGranted == false) -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.x),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .padding(bottom = dimensionResource(R.dimen.padding_medium))
-                            )
-                            Text(
-                                stringResource(R.string.media_permission_request),
-                                style = MaterialTheme.typography.titleLarge,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
-                            )
-                            Row {
-                                Button(
-                                    onClick = {
-                                        mainViewModel.navigateToAppSettingsForPermissions(context)
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) view.performHapticFeedback(
-                                            HapticFeedbackConstants.CONFIRM
-                                        )
-                                    },
-                                    shape = MaterialTheme.shapes.extraLarge.copy(
-                                        topEnd = CornerSize(4.dp),
-                                        bottomEnd = CornerSize(4.dp)
-                                    )
-                                ) {
-                                    Text("Go to app settings")
-                                }
-                                Spacer(Modifier.width(2.dp))
-                                OutlinedButton(
-                                    onClick = {
-                                            checkPermissions(
-                                                context,
-                                                onPermissionsGranted = {
-                                                    CoroutineScope(Dispatchers.Main).launch {
-                                                        mainViewModel.updatePermissionsGranted(true)
-                                                        mainViewModel.resetAndGetNewMediaItems()
-                                                    }
-                                                }
-                                            )
-                                    },
-                                    shape = MaterialTheme.shapes.extraLarge.copy(
-                                        topStart = CornerSize(4.dp),
-                                        bottomStart = CornerSize(4.dp)
-                                    ),
-                                ) {
-                                    Icon( // TODO("Add spinning animation when clicked")
-                                        painterResource(R.drawable.arrows_clockwise),
-                                        null,
-                                        modifier = Modifier.size(dimensionResource(R.dimen.small_icon)))
-                                }
-                            }}
+                        RequestPermissionsScreen(mainViewModel, context, view)
                     }
                     /* When loading new photos */
                     (uiState.fetchingMedia) -> {
-                        if (reduceAnimations.value) Text(
+                        if (reduceAnimations) Text(
                             text = "Loading...",
                             style = MaterialTheme.typography.titleLarge,
                             textAlign = TextAlign.Center,
@@ -306,43 +257,19 @@ fun MainScreen(
                     }
 
                     (uiState.mediaItems.isEmpty()) -> {// TODO("Check if this is the last round of photos then show this, instead of checking of scanning list is empty. Can add another UiState edited in [MainViewModel.getNewPhotos()]")
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.check),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .padding(bottom = dimensionResource(R.dimen.padding_medium))
-                            )
-                            Text(
-                                "You have swiped on all of your photos & videos, congrats! :D \uD83C\uDF89",
-                                style = MaterialTheme.typography.titleLarge,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
-                            )
-                                Button(onClick = {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        checkPermissions(
-                                            context = context,
-                                            onPermissionsGranted = { mainViewModel.resetAndGetNewMediaItems() }
-                                        )
-                                    }
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                }) {
-                                    Text(if (limitedPhotoAccess) "Select more photos & videos" else "Scan again")
-                                }
-                        }
+                        EndOfPhotosScreen(context, mainViewModel, view)
                     }
 
                     (!mainViewModel.seekToUnsetItemOrFalse()) -> { // If there are no unset photos in the list, ask the user to delete the photos selected
                         if (numToDelete > 0)
-                            ReviewDeletedButton(view, mainViewModel, numToDelete, uiState.reviewDialogEnabled)
+                            ReviewDeletedButton(
+                                numToDelete = numToDelete,
+                                skipReview = skipReview,
+                                navigateToReviewScreen = { navigateToReviewScreen() },
+                                deleteMedia = {
+                                    mainViewModel.confirmDeletion()
+                                }
+                            )
                         else // If there aren't any photos to delete, ask the user if they want to swipe more photos
                             Button(onClick = {
                                 checkPermissions(
@@ -360,7 +287,7 @@ fun MainScreen(
                 AnimatedVisibility(
                     visible = uiState.showInfoAndFloatingActionsRow && currentMediaItem != null,
                     enter =
-                        if (reduceAnimations.value) fadeIn()
+                        if (reduceAnimations) fadeIn()
                         else fadeIn() + slideInVertically(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,
@@ -369,7 +296,7 @@ fun MainScreen(
                             initialOffsetY = { it }
                         ),
                     exit =
-                        if (reduceAnimations.value) fadeOut()
+                        if (reduceAnimations) fadeOut()
                         else fadeOut() + slideOutVertically(
                             animationSpec = spring(
                                 stiffness = Spring.StiffnessMediumLow,
@@ -391,14 +318,14 @@ fun MainScreen(
                         )
                         AnimatedVisibility(
                             uiState.showInfo,
-                            enter = if (reduceAnimations.value) fadeIn()
+                            enter = if (reduceAnimations) fadeIn()
                                     else fadeIn() + expandVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
                             ),
-                            exit = if (reduceAnimations.value) fadeOut()
+                            exit = if (reduceAnimations) fadeOut()
                             else fadeOut() +  shrinkVertically(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
@@ -426,23 +353,140 @@ fun MainScreen(
             ActionBar(
                 numToDelete = numToDelete,
                 mainViewModel,
+                navigateToReviewScreen = { navigateToReviewScreen() },
+                skipReview = skipReview,
                 modifier = Modifier.onGloballyPositioned { coordinates ->
                     with (density) {
                         actionBarHeight = coordinates.size.height.toDp()
                     }
                 }
             )
-            TabbedPreferencesAndStatsPage(
+            TabbedSheetContent(
+                tabIndex = sheetContentTabIndex,
+                updateTabIndex = { sheetContentTabIndex = it },
+                mainViewModel = mainViewModel,
+                reviewViewModel = ReviewViewModel(),
                 statsViewModel = statsViewModel,
-                numPhotosUnset = uiState.numUnset,
                 expandBottomSheet = { mainViewModel.expandBottomSheet(it) },
                 modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .windowInsetsPadding(WindowInsets.navigationBars),
             )
         },
         sheetPeekHeight = animatedActionBarHeight.value + WindowInsets.navigationBars.getBottom(density).dp *3/4,
         scaffoldState = mainViewModel.bottomSheetScaffoldState,
     )
+}
+
+@Composable
+private fun EndOfPhotosScreen(
+    context: Context,
+    mainViewModel: MainViewModel,
+    view: View,
+) {
+    val limitedPhotoAccess = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            && (checkSelfPermission(context, READ_MEDIA_VISUAL_USER_SELECTED) == PERMISSION_GRANTED)
+            && (checkSelfPermission(context, READ_MEDIA_IMAGES) == PERMISSION_DENIED)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.check),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = dimensionResource(R.dimen.padding_medium))
+        )
+        Text(
+            "You have swiped on all of your photos & videos, congrats! :D \uD83C\uDF89",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
+        )
+        Button(onClick = {
+            CoroutineScope(Dispatchers.IO).launch {
+                checkPermissions(
+                    context = context,
+                    onPermissionsGranted = { mainViewModel.resetAndGetNewMediaItems() }
+                )
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        }) {
+            Text(if (limitedPhotoAccess) "Select more photos & videos" else "Scan again")
+        }
+    }
+}
+
+@Composable
+private fun RequestPermissionsScreen(
+    mainViewModel: MainViewModel,
+    context: Context,
+    view: View
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.x),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = dimensionResource(R.dimen.padding_medium))
+        )
+        Text(
+            stringResource(R.string.media_permission_request),
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
+        )
+        Row {
+            Button(
+                onClick = {
+                    mainViewModel.navigateToAppSettingsForPermissions(context)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) view.performHapticFeedback(
+                        HapticFeedbackConstants.CONFIRM
+                    )
+                },
+                shape = MaterialTheme.shapes.extraLarge.copy(
+                    topEnd = CornerSize(4.dp),
+                    bottomEnd = CornerSize(4.dp)
+                )
+            ) {
+                Text("Go to app settings")
+            }
+            Spacer(Modifier.width(2.dp))
+            OutlinedButton(
+                onClick = {
+                    checkPermissions(
+                        context,
+                        onPermissionsGranted = {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                mainViewModel.updatePermissionsGranted(true)
+                                mainViewModel.resetAndGetNewMediaItems()
+                            }
+                        }
+                    )
+                },
+                shape = MaterialTheme.shapes.extraLarge.copy(
+                    topStart = CornerSize(4.dp),
+                    bottomStart = CornerSize(4.dp)
+                ),
+            ) {
+                Icon( // TODO("Add spinning animation when clicked")
+                    painterResource(R.drawable.arrows_clockwise),
+                    null,
+                    modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
+                )
+            }
+        }
+    }
 }
 
 private fun performDragHapticFeedback(

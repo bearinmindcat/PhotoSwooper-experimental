@@ -177,6 +177,8 @@ class MainActivity : AppCompatActivity() {
             )
             val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting).collectAsState(!BooleanPreference.SYSTEM_FONT.default)
             val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting).collectAsState(BooleanPreference.DYNAMIC_THEME.default)
+            val skipReview by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SKIP_REVIEW.setting)
+                .collectAsState(BooleanPreference.SKIP_REVIEW.default)
             PhotoSwooperTheme(
                 systemFont = systemFont,
                 dynamicColor = dynamicTheme
@@ -191,6 +193,7 @@ class MainActivity : AppCompatActivity() {
                         mainViewModel = mainViewModel,
                         imageLoader = imageLoader,
                         statsViewModel = statsViewModel,
+                        skipReview = skipReview
                     )
                 }
             }
