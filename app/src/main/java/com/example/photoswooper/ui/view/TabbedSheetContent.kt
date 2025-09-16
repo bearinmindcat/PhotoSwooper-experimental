@@ -13,7 +13,6 @@ import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -35,11 +34,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -392,65 +393,56 @@ private fun ReviewScreen(
                                             color = MaterialTheme.colorScheme.tertiaryContainer, shape = CircleShape
                                         )
                                         .align(Alignment.TopEnd)
+                                        .padding(dimensionResource(R.dimen.padding_xsmall))
+                                        .size(dimensionResource(R.dimen.xsmall_icon))
                                 )
                         }
                     }
-//                    item {
-//                        Spacer(
-//                            Modifier
-//                                .size(floatingActionButtonSize)
-//                        )
-//                    }
-//                    item {
-//                        Spacer(
-//                            Modifier
-//                                .size(floatingActionButtonSize)
-//                        )
-//                    }
-//                    item {
-//                        Spacer(
-//                            Modifier
-//                                .size(floatingActionButtonSize)
-//                        )
-//                    }
+                    item(span = StaggeredGridItemSpan.FullLine) {
+                        Spacer(
+                            Modifier
+                                .height(floatingActionButtonSize.height + 32.dp/*(padding)*/)
+                        )
+                    }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(dimensionResource(R.dimen.padding_medium))
-                ) {
-                    AnimatedVisibility(
+                // Floating actions
+                androidx.compose.animation.AnimatedVisibility(
                         visible = reviewUiState.mediaSelectionEnabled,
                         enter =
                             if (reduceAnimations) fadeIn()
-                            else fadeIn() + slideInVertically(
+                            else slideInVertically(
                                 animationSpec = spring(
-                                    stiffness = Spring.StiffnessMediumLow,
+                                    stiffness = Spring.StiffnessLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
                                 initialOffsetY = { it * 2 }
                             ),
                         exit =
                             if (reduceAnimations) fadeOut()
-                            else fadeOut() + slideOutVertically(
+                            else slideOutVertically(
                                 animationSpec = spring(
-                                    stiffness = Spring.StiffnessMediumLow,
+                                    stiffness = Spring.StiffnessLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
                                 targetOffsetY = { it * 2 }
                             ),
-                        label = "Selected photo actions",
-                        modifier = Modifier.dropShadow(
-                            shape = MaterialTheme.shapes.medium,
-                            shadow = Shadow(
-                                radius = 128.dp,
-                                alpha = 0.9f
-                            )
-                        )
+                    label = "Review screen actions",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .align(Alignment.BottomStart)
                     ) {
-                        Row {
+                    Box(contentAlignment = Alignment.BottomStart) {
+                        Row(
+                            modifier = Modifier
+                                .dropShadow(
+                                    shape = MaterialTheme.shapes.medium,
+                                    shadow = Shadow(
+                                        radius = 128.dp,
+                                        alpha = 0.6f
+                                    )
+                                )
+                                .padding(dimensionResource(R.dimen.padding_medium))
+                        ) {
                             FloatingAction(
                                 drawableIconId = R.drawable.x,
                                 actionTitle = stringResource(R.string.cancel),
@@ -462,7 +454,12 @@ private fun ReviewScreen(
                                 actionTitle = stringResource(R.string.select_all),
                                 actionDescription = null,
                                 onClick = {
-                                    mainUiState.mediaItems.forEach { reviewViewModel.toggleMediaItemSelected(it, true) }
+                                    mainUiState.mediaItems.forEach {
+                                        reviewViewModel.toggleMediaItemSelected(
+                                            it,
+                                            true
+                                        )
+                                    }
                                 },
                             )
                             FloatingAction(
@@ -482,15 +479,15 @@ private fun ReviewScreen(
                             )
 
                         }
+                        }
                     }
-                    Spacer(Modifier)
-                    AnimatedVisibility(
+                androidx.compose.animation.AnimatedVisibility(
                         visible = mainViewModel.getMediaToDelete().isNotEmpty()
                                 && !reviewUiState.mediaSelectionEnabled
                                 && reviewUiState.currentStatusFilter == MediaStatus.DELETE,
                         enter =
                             if (reduceAnimations) fadeIn()
-                            else fadeIn() + slideInHorizontally(
+                            else slideInHorizontally(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -499,14 +496,20 @@ private fun ReviewScreen(
                             ),
                         exit =
                             if (reduceAnimations) fadeOut()
-                            else fadeOut() + slideOutHorizontally(
+                            else slideOutHorizontally(
                                 animationSpec = spring(
                                     stiffness = Spring.StiffnessMediumLow,
                                     dampingRatio = Spring.DampingRatioLowBouncy,
                                 ),
                                 targetOffsetX = { it * 2 }
                             ),
+                    modifier = Modifier
+                        .padding(dimensionResource(R.dimen.padding_medium))
+                        .fillMaxSize()
+                        .align(Alignment.BottomEnd)
+
                     ) {
+                    Box(contentAlignment = Alignment.BottomEnd) {
                         ExtendedFloatingActionButton(
                             onClick = { mainViewModel.confirmDeletion() },
                             modifier = Modifier
@@ -522,7 +525,7 @@ private fun ReviewScreen(
                         }
                     }
                 }
-            }
+                }
         }
     else
         Column(
