@@ -237,14 +237,14 @@ fun FloatingActionsRow(
                     value = displayedPlayerPosition,
                     valueRange = 0f..if (viewModel.player.duration > 0L) viewModel.player.duration.toFloat() else Float.MAX_VALUE,
                     onValueChange = {
-                        viewModel.player.pause()
+                        viewModel.tempPause()
                         userDragging = true
                         displayedPlayerPosition = it
                     },
                     onValueChangeFinished = {
                         viewModel.player.seekTo(displayedPlayerPosition.toLong())
                         if (!endOfVideo()) // Prevents play/pause button going wack as play -> immediate pause as end of video
-                            viewModel.player.play()
+                            viewModel.revertIsPlayingToBeforeTempPause()
                         if (SDK_INT >= Build.VERSION_CODES.R)
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                         userDragging = false
