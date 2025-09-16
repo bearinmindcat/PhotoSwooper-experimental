@@ -139,7 +139,6 @@ fun TabbedSheetContent(
     tabIndex: Int,
     updateTabIndex: (Int) -> Unit,
     mainViewModel: MainViewModel,
-    reviewViewModel: ReviewViewModel,
     statsViewModel: StatsViewModel,
     expandBottomSheet: (CoroutineScope) -> Unit,
     modifier: Modifier = Modifier,
@@ -275,7 +274,7 @@ fun TabbedSheetContent(
         ) {
             when (it) {
                 TabIndex.REVIEW.ordinal -> {
-                    ReviewScreen(reviewViewModel, mainViewModel)
+                    ReviewScreen(mainViewModel)
                 }
 
                 TabIndex.STATS.ordinal -> {
@@ -294,7 +293,6 @@ fun TabbedSheetContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReviewScreen(
-    reviewViewModel: ReviewViewModel,
     mainViewModel: MainViewModel,
 ) {
     val context = LocalContext.current
@@ -303,6 +301,7 @@ private fun ReviewScreen(
     val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
 
+    val reviewViewModel = remember { ReviewViewModel() }
     val reviewUiState by reviewViewModel.uiState.collectAsState()
     val mainUiState by mainViewModel.uiState.collectAsState()
 

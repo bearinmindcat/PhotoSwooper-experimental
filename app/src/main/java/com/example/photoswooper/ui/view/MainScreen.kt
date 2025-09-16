@@ -111,7 +111,6 @@ import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.SwipeableMediaWithIndicatorIcons
 import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
-import com.example.photoswooper.ui.viewmodels.ReviewViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
@@ -622,7 +621,6 @@ fun MainScreen(
                     tabIndex = sheetContentTabIndex,
                     updateTabIndex = { sheetContentTabIndex = it },
                     mainViewModel = mainViewModel,
-                    reviewViewModel = ReviewViewModel(),
                     statsViewModel = statsViewModel,
                     expandBottomSheet = { mainViewModel.expandBottomSheet(it) },
                     modifier = Modifier

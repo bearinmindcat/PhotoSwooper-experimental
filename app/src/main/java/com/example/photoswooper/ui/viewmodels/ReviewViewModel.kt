@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.update
 /**
  * The viewModel used by the `ReviewScreen` function in [com.example.photoswooper.ui.view.TabbedSheetContent]
  */
-class ReviewViewModel(/*val dataStoreInterface: DataStoreInterface*/) : ViewModel() {
+class ReviewViewModel() : ViewModel() {
     private val _uiState = MutableStateFlow(ReviewUiState())
     val uiState = _uiState.asStateFlow()
 
