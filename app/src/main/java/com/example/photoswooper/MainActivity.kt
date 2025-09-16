@@ -53,14 +53,17 @@ import coil3.video.VideoFrameDecoder
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
+import com.example.photoswooper.ui.view.TutorialScreen
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -149,16 +152,31 @@ class MainActivity : AppCompatActivity() {
         )
 
         CoroutineScope(Dispatchers.Main).launch {
-            checkPermissions(
-                context = this@MainActivity,
-                onPermissionsGranted = {
-                    mainViewModel.updateMediaFiltersFromDataStore()
-                    mainViewModel.resetAndGetNewMediaItems()
-                }
-            )
+            val onboardingScreenInFocus =
+                (DataStoreInterface(this@MainActivity.dataStore).getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
+                    .first() == 0)
+            if (!onboardingScreenInFocus)
+                checkPermissions(
+                    context = this@MainActivity,
+                    onPermissionsGranted = {
+                        mainViewModel.updateMediaFiltersFromDataStore() // Update on first launch as filters
+                        mainViewModel.resetAndGetNewMediaItems()
+                    }
+                )
         }
 
         setContent {
+            // Get settings for UI
+            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting)
+                .collectAsState(!BooleanPreference.SYSTEM_FONT.default)
+            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting)
+                .collectAsState(BooleanPreference.DYNAMIC_THEME.default)
+            val skipReview by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SKIP_REVIEW.setting)
+                .collectAsState(BooleanPreference.SKIP_REVIEW.default)
+            val tutorialIndex by dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
+                .collectAsState(1000)
+
+            // Create mainViewModel
             val coroutineScope = rememberCoroutineScope()
             val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
             mainViewModel = remember {
@@ -171,20 +189,14 @@ class MainActivity : AppCompatActivity() {
                     dataStoreInterface = dataStoreInterface,
                     makeToast = {
                         Toast.makeText(
-                            this,
+                            applicationContext,
                             it,
                             Toast.LENGTH_SHORT
                         ).show()
                     },
-                    startActivity = { this.startActivity(it) }
+                    startActivity = { startActivity(it) },
                 )
             }
-            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting)
-                .collectAsState(!BooleanPreference.SYSTEM_FONT.default)
-            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting)
-                .collectAsState(BooleanPreference.DYNAMIC_THEME.default)
-            val skipReview by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SKIP_REVIEW.setting)
-                .collectAsState(BooleanPreference.SKIP_REVIEW.default)
             PhotoSwooperTheme(
                 systemFont = systemFont,
                 dynamicColor = dynamicTheme
@@ -195,12 +207,27 @@ class MainActivity : AppCompatActivity() {
                         .fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(
-                        mainViewModel = mainViewModel,
-                        imageLoader = imageLoader,
-                        statsViewModel = statsViewModel,
-                        skipReview = skipReview
-                    )
+                    if (tutorialIndex == 0) {
+                        TutorialScreen(
+                            dataStoreInterface,
+                            onExitTutorialScreen = {
+                                checkPermissions(
+                                    this@MainActivity,
+                                    {
+                                        mainViewModel.updateMediaFiltersFromDataStore()
+                                        mainViewModel.resetAndGetNewMediaItems()
+                                    }
+                                )
+                            },
+                        )
+                    } else {
+                        MainScreen(
+                            mainViewModel = mainViewModel,
+                            imageLoader = imageLoader,
+                            statsViewModel = statsViewModel,
+                            skipReview = skipReview
+                        )
+                    }
                 }
             }
         }
@@ -272,7 +299,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             mainViewModel.updatePermissionsGranted(true)
-            CoroutineScope(Dispatchers.Main).launch {
+            CoroutineScope(Dispatchers.IO).launch {
                 mainViewModel.updateMediaFiltersFromDataStore() // Update on first launch as filters
                 mainViewModel.resetAndGetNewMediaItems()
             }

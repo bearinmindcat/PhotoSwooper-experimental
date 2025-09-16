@@ -33,11 +33,15 @@ enum class BooleanPreference(val default: Boolean, val setting: String) {
 enum class IntPreference(val default: Int, val setting: String) {
     /** Number of media items per stack (poorly named due to being created before videos) */
     NUM_PHOTOS_PER_STACK(30, "num_photos_per_stack"),
+
+    /** The version code the app was updated from (0 for first install) */
+    TUTORIAL_INDEX(0, "tutorial_index")
 }
 
 enum class LongPreference(val default: Long, val setting: String) {
     // Functional
     SNOOZE_LENGTH(2 * TimeFrame.WEEK.milliseconds, "snooze_length"),
+    TUTORIAL_START_TIME(Long.MAX_VALUE, "tutorial_start_time"),
 
     // Filtering
     FILTER_MIN_FILE_SIZE(0, "filter_min_file_size"),

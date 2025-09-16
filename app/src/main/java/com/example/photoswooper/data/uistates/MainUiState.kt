@@ -6,6 +6,8 @@
 
 package com.example.photoswooper.data.uistates
 
+import androidx.annotation.DrawableRes
+import androidx.compose.ui.text.AnnotatedString
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Media
 
@@ -22,11 +24,16 @@ data class MainUiState(
     val permissionsGranted: Boolean? = null,
     val fetchingMedia: Boolean = true,
     val mediaBuffering: Boolean = true,
+    val tutorialMode: Boolean = false,
+
     val isPlaying: Boolean,
     val previousIsPlaying: Boolean = false,
     val mediaItems: MutableList<Media> = mutableListOf(),
     val currentIndex: Int = 0,
     val numUnset: Int = 0,
+    val tutorialCardTitle: String = "",
+    val tutorialCardBody: AnnotatedString = AnnotatedString(""),
+    @param:DrawableRes val tutorialCardIconDrawableId: Int? = null,
 
     val showInfoAndFloatingActionsRow: Boolean = false,
     val showInfo: Boolean = false,

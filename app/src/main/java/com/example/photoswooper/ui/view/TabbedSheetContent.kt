@@ -45,7 +45,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
@@ -54,6 +53,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -79,6 +79,7 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -104,7 +105,6 @@ import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.DropdownFilterChip
 import com.example.photoswooper.ui.components.FloatingAction
 import com.example.photoswooper.ui.viewmodels.MainViewModel
-import com.example.photoswooper.ui.viewmodels.PrefsViewModel
 import com.example.photoswooper.ui.viewmodels.ReviewViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
@@ -336,8 +336,7 @@ private fun ReviewScreen(
                         val imageScale = remember { Animatable(1f) }
                         fun animateImageSelect() {
                             coroutineScope.launch {
-                                var newTargetValue: Float
-                                newTargetValue = if (reviewUiState.selectedMedia.contains(mediaItem)) 0.9f
+                                val newTargetValue: Float = if (reviewUiState.selectedMedia.contains(mediaItem)) 0.9f
                                 else 1f
                                 imageScale.animateTo(
                                     newTargetValue,
@@ -763,23 +762,80 @@ private fun StatsScreen(viewModel: StatsViewModel, uiState: StatsUiState) {
 @Composable
 private fun PreferencesScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val dataStoreInterface = DataStoreInterface(context.dataStore)
+
+    Column(modifier.verticalScroll(rememberScrollState())) {
+        /* Media items per stack preference */
+        IntPreferenceEditor(
+            icon = painterResource(R.drawable.images),
+            title = stringResource(R.string.num_photos_per_stack),
+            dataStoreInterface = dataStoreInterface,
+            setting = IntPreference.NUM_PHOTOS_PER_STACK.setting,
+        )
+        /* Permanently delete preference */
+        if (SDK_INT >= Build.VERSION_CODES.R)
+            BooleanPreferenceEditor(
+                icon = painterResource(R.drawable.trash),
+                title = stringResource(R.string.permanently_delete),
+                description = stringResource(R.string.permanently_delete_desc),
+                dataStoreInterface = dataStoreInterface,
+                setting = BooleanPreference.PERMANENTLY_DELETE.setting
+            )
+        /* Skip review screen */
+        BooleanPreferenceEditor(
+            icon = painterResource(R.drawable.check),
+            title = stringResource(R.string.skip_review),
+            description = stringResource(R.string.skip_review_desc),
+            dataStoreInterface = dataStoreInterface,
+            setting = BooleanPreference.SKIP_REVIEW.setting
+        )
+        /* System font preference */
+        BooleanPreferenceEditor(
+            icon = painterResource(R.drawable.text_aa),
+            title = stringResource(R.string.system_font),
+            description = stringResource(R.string.system_font_desc),
+            dataStoreInterface = dataStoreInterface,
+            setting = BooleanPreference.SYSTEM_FONT.setting
+        )
+        /* Dynamic theme preference */
+        if (SDK_INT >= Build.VERSION_CODES.S)
+            BooleanPreferenceEditor(
+                icon = painterResource(R.drawable.palette),
+                title = stringResource(R.string.dynamic_theme),
+                description = stringResource(R.string.dynamic_theme_desc),
+                dataStoreInterface = dataStoreInterface,
+                setting = BooleanPreference.DYNAMIC_THEME.setting
+            )
+        /* Reduce animations preference */
+        BooleanPreferenceEditor(
+            icon = painterResource(R.drawable.film_strip),
+            title = stringResource(R.string.reduce_animations),
+            description = stringResource(R.string.reduce_animations_desc),
+            dataStoreInterface = dataStoreInterface,
+            setting = BooleanPreference.REDUCE_ANIMATIONS.setting
+        )
+    }
+}
+
+// TODO("Use only parameter of BooleanPreference, encompassing the icon, title, description IDs in the enum class")
+@Composable
+fun BooleanPreferenceEditor(
+    icon: Painter,
+    title: String,
+    description: String,
+    dataStoreInterface: DataStoreInterface,
+    setting: String
+) {
     val view = LocalView.current
 
-    val viewModel = PrefsViewModel(dataStoreInterface = DataStoreInterface(context.dataStore))
-    viewModel.updateStackTextInput()
-    val uiState by viewModel.uiState.collectAsState()
-    val permanentlyDelete by
-    viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.PERMANENTLY_DELETE.setting)
-        .collectAsState(false)
-    val systemFont by
-    viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting).collectAsState(false)
-    val dynamicTheme = viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting)
-        .collectAsState(false)
-    val reduceAnimations by viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)
-        .collectAsState(false)
-    val skipReview by viewModel.dataStoreInterface.getBooleanSettingValue(BooleanPreference.SKIP_REVIEW.setting)
-        .collectAsState(false)
+    val preferenceValue by dataStoreInterface.getBooleanSettingValue(setting).collectAsState(false)
 
+    fun togglePreference() = CoroutineScope(Dispatchers.IO).launch {
+        dataStoreInterface.setBooleanSettingValue(
+            setting = setting,
+            newValue = !preferenceValue
+        )
+    }
 
     fun performSwitchHapticFeedback(toggledOn: Boolean) {
         if (SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -791,232 +847,135 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
 
-    Card(modifier.verticalScroll(rememberScrollState())) {
-        /* Media items per stack preference */
-        ListItem(
-            headlineContent = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.images),
-                        contentDescription = null, // Described in adjacent text
-                        modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_medium))
-                    )
-                    Text(
-                        text = stringResource(R.string.num_photos_per_stack)
-                    )
-                }
-            },
-            supportingContent = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))
-                ) {
-                    OutlinedTextField(
-                        value = uiState.numPhotosPerStackTextInput,
-                        onValueChange = { input -> // Update UI value & dataStore only if valid
-                            if (!viewModel.validatePhotosPerStackInputAndUpdate(input))
-                                Toast.makeText(
-                                    context,
-                                    "Not a number :(",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                        },
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        modifier = Modifier
-                            .weight(0.15f)
-                            .padding(dimensionResource(R.dimen.padding_small))
-                    )
-                    Slider(
-                        value = uiState.numPhotosPerStackTextInput.toFloatOrNull()
-                            ?: IntPreference.NUM_PHOTOS_PER_STACK.default.toFloat(),
-                        onValueChange = {
-                            if (it.roundToInt() != uiState.numPhotosPerStackTextInput.toIntOrNull()) {
-                                viewModel.updatePhotosPerStackInput(it.roundToInt().toString())
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                            }
-                        },
-                        valueRange = 10f..100f,
-                        onValueChangeFinished = {
-                            viewModel.updateIntPreference(
-                                IntPreference.NUM_PHOTOS_PER_STACK.setting,
-                                uiState.numPhotosPerStackTextInput.toInt()
-                            )
-                        },
-                        steps = 8,
-                        modifier = Modifier
-                            .weight(0.5f)
-                            .padding(horizontal = dimensionResource(R.dimen.padding_small))
-                    )
-                }
-            }
-        )
-        // TODO("Make BooleanSettingItem Composable")
-        /* Permanently delete preference */
-        if (SDK_INT >= Build.VERSION_CODES.R)
-            ListItem(
-                leadingContent = {
-                    Icon(
-                        painter = painterResource(R.drawable.trash),
-                        contentDescription = null // Described in adjacent text
-                    )
-                },
-                headlineContent = {
-                    Text(
-                        stringResource(R.string.permanently_delete)
-                    )
-                },
-                trailingContent = {
-                    Switch(
-                        checked = permanentlyDelete,
-                        onCheckedChange = {
-                            viewModel.toggleBooleanSetting(BooleanPreference.PERMANENTLY_DELETE.setting)
-                            performSwitchHapticFeedback(it)
-                        }
-                    )
-                },
-                supportingContent = {
-                    Text(
-                        stringResource(R.string.permanently_delete_desc)
-                    )
-                },
-                modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                    viewModel.toggleBooleanSetting(BooleanPreference.PERMANENTLY_DELETE.setting)
-                    performSwitchHapticFeedback(permanentlyDelete)
+    // UI
+    ListItem(
+        leadingContent = {
+            Icon(
+                painter = icon,
+                contentDescription = null // Described in adjacent text
+            )
+        },
+        headlineContent = {
+            Text(
+                title
+            )
+        },
+        trailingContent = {
+            Switch(
+                checked = preferenceValue,
+                onCheckedChange = {
+                    togglePreference()
+                    performSwitchHapticFeedback(it)
                 }
             )
-        /* Skip review screen */
-        ListItem(
-            leadingContent = {
-                Icon(
-                    painter = painterResource(R.drawable.check),
-                    contentDescription = null // Described in adjacent text
-                )
-            },
-            headlineContent = {
-                Text(
-                    stringResource(R.string.skip_review)
-                )
-            },
-            trailingContent = {
-                Switch(
-                    checked = skipReview,
-                    onCheckedChange = {
-                        viewModel.toggleBooleanSetting(BooleanPreference.SKIP_REVIEW.setting)
-                        performSwitchHapticFeedback(it)
-                    }
-                )
-            },
-            supportingContent = {
-                Text(
-                    stringResource(R.string.skip_review_desc)
-                )
-            },
-            modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                viewModel.toggleBooleanSetting(BooleanPreference.SKIP_REVIEW.setting)
-                performSwitchHapticFeedback(skipReview)
-            }
-        )
-        /* System font preference */
-        ListItem(
-            leadingContent = {
-                Icon(
-                    painter = painterResource(R.drawable.text_aa),
-                    contentDescription = null // Described in adjacent text
-                )
-            },
-            headlineContent = {
-                Text(
-                    stringResource(R.string.system_font)
-                )
-            },
-            trailingContent = {
-                Switch(
-                    checked = systemFont,
-                    onCheckedChange = {
-                        viewModel.toggleBooleanSetting(BooleanPreference.SYSTEM_FONT.setting)
-                        performSwitchHapticFeedback(it)
-                    }
-                )
-            },
-            supportingContent = {
-                Text(
-                    stringResource(R.string.system_font_desc)
-                )
-            },
-            modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                viewModel.toggleBooleanSetting(BooleanPreference.SYSTEM_FONT.setting)
-                performSwitchHapticFeedback(systemFont)
-            }
-        )
-        /* Dynamic theme preference */
-        if (SDK_INT >= Build.VERSION_CODES.S)
-            ListItem(
-                leadingContent = {
-                    Icon(
-                        painter = painterResource(R.drawable.palette),
-                        contentDescription = null // Described in adjacent text
-                    )
-                },
-                headlineContent = {
-                    Text(
-                        stringResource(R.string.dynamic_theme)
-                    )
-                },
-                trailingContent = {
-                    Switch(
-                        checked = dynamicTheme.value,
-                        onCheckedChange = {
-                            viewModel.toggleBooleanSetting(BooleanPreference.DYNAMIC_THEME.setting)
-                            performSwitchHapticFeedback(it)
-                        }
-                    )
-                },
-                supportingContent = {
-                    Text(
-                        stringResource(R.string.dynamic_theme_desc)
-                    )
-                },
-                modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                    viewModel.toggleBooleanSetting(BooleanPreference.DYNAMIC_THEME.setting)
-                    performSwitchHapticFeedback(dynamicTheme.value)
-                }
+        },
+        supportingContent = {
+            Text(
+                description
             )
-        /* Reduce animations preference */
-        ListItem(
-            leadingContent = {
-                Icon(
-                    painter = painterResource(R.drawable.film_strip),
-                    contentDescription = null // Described in adjacent text
-                )
-            },
-            headlineContent = {
-                Text(
-                    stringResource(R.string.reduce_animations)
-                )
-            },
-            trailingContent = {
-                Switch(
-                    checked = reduceAnimations,
-                    onCheckedChange = {
-                        viewModel.toggleBooleanSetting(BooleanPreference.REDUCE_ANIMATIONS.setting)
-                        performSwitchHapticFeedback(it)
-                    }
-                )
-            },
-            supportingContent = {
-                Text(
-                    stringResource(R.string.reduce_animations_desc)
-                )
-            },
-            modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-                viewModel.toggleBooleanSetting(BooleanPreference.REDUCE_ANIMATIONS.setting)
-                performSwitchHapticFeedback(reduceAnimations)
-            }
+        },
+        modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
+            togglePreference()
+            performSwitchHapticFeedback(preferenceValue)
+        }
+    )
+
+}
+
+// TODO("Use only parameter of IntPreference, encompassing the icon, title, description IDs in the enum class")
+@Composable
+fun IntPreferenceEditor(
+    icon: Painter,
+    title: String,
+    description: String = "",
+    dataStoreInterface: DataStoreInterface,
+    setting: String
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+
+    val preferenceValue by dataStoreInterface.getIntSettingValue(setting).collectAsState(0)
+    var displayedPreferenceValue by remember { mutableStateOf(preferenceValue.toString()) }
+    LaunchedEffect(preferenceValue) {
+        displayedPreferenceValue = preferenceValue.toString()
+    }
+
+    fun onUpdate(newValue: Int) = CoroutineScope(Dispatchers.IO).launch {
+        dataStoreInterface.setIntSettingValue(
+            setting = setting,
+            newValue = newValue
         )
     }
+
+    fun validateInputAndUpdate(input: String) {
+        val inputAsInt = input.toIntOrNull()
+        when {
+            (inputAsInt != null) -> {
+                displayedPreferenceValue = input
+                if (inputAsInt in 1..100)
+                    onUpdate(inputAsInt)
+                else Toast.makeText(context, "Value must be within 1-100", Toast.LENGTH_SHORT).show()
+            }
+
+            (input == "") -> displayedPreferenceValue = input
+        }
+    }
+    ListItem(
+        leadingContent = {
+            Icon(
+                painter = icon,
+                contentDescription = null, // Described in adjacent text
+                modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_medium))
+            )
+        },
+        headlineContent = {
+            Text(
+                text = title,
+                modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_xsmall))
+            )
+        },
+        supportingContent = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = displayedPreferenceValue,
+                    isError = (displayedPreferenceValue.toIntOrNull() ?: -1) !in 1..100,
+                    onValueChange = { input -> // Update UI value & dataStore only if valid
+                        validateInputAndUpdate(input)
+                    },
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    modifier = Modifier
+                        .weight(0.15f)
+                )
+                Slider(
+                    value = displayedPreferenceValue.toFloatOrNull()
+                        ?: IntPreference.NUM_PHOTOS_PER_STACK.default.toFloat(),
+                    onValueChange = {
+                        if (it.roundToInt() != displayedPreferenceValue.toIntOrNull()) {
+                            displayedPreferenceValue = it.roundToInt().toString()
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        }
+                    },
+                    valueRange = 10f..100f,
+                    onValueChangeFinished = {
+                        onUpdate(displayedPreferenceValue.toInt())
+                    },
+                    steps = 8,
+                    modifier = Modifier
+                        .weight(0.5f)
+                        .padding(horizontal = dimensionResource(R.dimen.padding_small))
+                )
+            }
+        }
+    )
 }

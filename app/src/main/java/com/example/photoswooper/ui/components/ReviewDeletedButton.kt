@@ -10,6 +10,7 @@ import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,7 +51,9 @@ fun ReviewDeletedButton(
             Icon(
                 painter = painterResource(if (skipReview) R.drawable.trash else R.drawable.check),
                 contentDescription = null,
-                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+                modifier = Modifier
+                    .padding(dimensionResource(R.dimen.padding_small))
+                    .size(dimensionResource(R.dimen.small_icon))
             )
             Text(
                 text = "${if (skipReview) "Delete" else "Review"} $numToDelete items",

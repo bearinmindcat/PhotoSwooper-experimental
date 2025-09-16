@@ -47,5 +47,5 @@ interface MediaStatusDao {
     suspend fun insert(vararg mediaEntities: MediaEntity)
 
     @Delete
-    suspend fun delete(mediaEntityList: MediaEntity)
+    suspend fun delete(mediaEntityList: List<MediaEntity>)
 }

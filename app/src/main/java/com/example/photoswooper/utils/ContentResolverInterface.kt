@@ -67,7 +67,11 @@ class ContentResolverInterface(
                 type = MediaType.VIDEO,
                 mediaFilter = mediaFilter
             )
-        if (mediaFilter.mediaTypes.contains(MediaType.PHOTO)) {
+        Log.i(
+            "ContentResolverInterface",
+            "Attempted to add $targetNumVideos videos - no. not found = $numVideosNotFound"
+        )
+        if (mediaFilter.mediaTypes.contains(MediaType.PHOTO))
             // Get photos
             numPhotosNotFound = getMediaOfTypeFromMediaStore(
                 mediaAdded = mediaAdded,
@@ -78,9 +82,12 @@ class ContentResolverInterface(
                 type = MediaType.PHOTO,
                 mediaFilter = mediaFilter
             )
-        }
+        Log.i(
+            "ContentResolverInterface",
+            "Attempted to add ${targetNumPhotos + numVideosNotFound} photos - no. not found = $numPhotosNotFound"
+        )
         // If more videos can be added to account for missing photos, add them
-        if (numVideosNotFound == 0 && mediaFilter.mediaTypes.contains(MediaType.VIDEO)) {
+        if (numVideosNotFound == 0 && numPhotosNotFound > 0 && mediaFilter.mediaTypes.contains(MediaType.VIDEO)) {
             getMediaOfTypeFromMediaStore(
                 mediaAdded = mediaAdded,
                 onAddMedia = {
@@ -90,6 +97,8 @@ class ContentResolverInterface(
                 type = MediaType.VIDEO,
                 mediaFilter = mediaFilter
             )
+            Log.i("ContentResolverInterface", "Tried to add $numPhotosNotFound videos to compensate for missing photos")
+
         }
     }
 
