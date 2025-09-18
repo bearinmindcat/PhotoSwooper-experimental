@@ -405,32 +405,45 @@ private fun ReviewScreen(
                         )
                     }
                 }
+                if (mainUiState.mediaItems.none { it.status == reviewUiState.currentStatusFilter })
+                        Text(
+                            text = when (reviewUiState.currentStatusFilter) {
+                                MediaStatus.DELETE -> stringResource(R.string.no_deleted_photos)
+                                MediaStatus.KEEP -> stringResource(R.string.no_kept_photos)
+                                else -> stringResource(R.string.no_snoozed_photos)
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .padding(dimensionResource(R.dimen.padding_medium))
+                                .fillMaxSize()
+                        )
                 // Floating actions
                 androidx.compose.animation.AnimatedVisibility(
-                        visible = reviewUiState.mediaSelectionEnabled,
-                        enter =
-                            if (reduceAnimations) fadeIn()
-                            else slideInVertically(
-                                animationSpec = spring(
-                                    stiffness = Spring.StiffnessLow,
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                ),
-                                initialOffsetY = { it * 2 }
+                    visible = reviewUiState.mediaSelectionEnabled,
+                    enter =
+                        if (reduceAnimations) fadeIn()
+                        else slideInVertically(
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessLow,
+                                dampingRatio = Spring.DampingRatioLowBouncy,
                             ),
-                        exit =
-                            if (reduceAnimations) fadeOut()
-                            else slideOutVertically(
-                                animationSpec = spring(
-                                    stiffness = Spring.StiffnessLow,
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                ),
-                                targetOffsetY = { it * 2 }
+                            initialOffsetY = { it * 2 }
+                        ),
+                    exit =
+                        if (reduceAnimations) fadeOut()
+                        else slideOutVertically(
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessLow,
+                                dampingRatio = Spring.DampingRatioLowBouncy,
                             ),
+                            targetOffsetY = { it * 2 }
+                        ),
                     label = "Review screen actions",
                     modifier = Modifier
                         .fillMaxSize()
                         .align(Alignment.BottomStart)
-                    ) {
+                ) {
                     Box(contentAlignment = Alignment.BottomStart) {
                         Row(
                             modifier = Modifier
@@ -479,36 +492,36 @@ private fun ReviewScreen(
                             )
 
                         }
-                        }
                     }
+                }
                 androidx.compose.animation.AnimatedVisibility(
-                        visible = mainViewModel.getMediaToDelete().isNotEmpty()
-                                && !reviewUiState.mediaSelectionEnabled
-                                && reviewUiState.currentStatusFilter == MediaStatus.DELETE,
-                        enter =
-                            if (reduceAnimations) fadeIn()
-                            else slideInHorizontally(
-                                animationSpec = spring(
-                                    stiffness = Spring.StiffnessMediumLow,
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                ),
-                                initialOffsetX = { it * 2 }
+                    visible = mainViewModel.getMediaToDelete().isNotEmpty()
+                            && !reviewUiState.mediaSelectionEnabled
+                            && reviewUiState.currentStatusFilter == MediaStatus.DELETE,
+                    enter =
+                        if (reduceAnimations) fadeIn()
+                        else slideInHorizontally(
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioLowBouncy,
                             ),
-                        exit =
-                            if (reduceAnimations) fadeOut()
-                            else slideOutHorizontally(
-                                animationSpec = spring(
-                                    stiffness = Spring.StiffnessMediumLow,
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                ),
-                                targetOffsetX = { it * 2 }
+                            initialOffsetX = { it * 2 }
+                        ),
+                    exit =
+                        if (reduceAnimations) fadeOut()
+                        else slideOutHorizontally(
+                            animationSpec = spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioLowBouncy,
                             ),
+                            targetOffsetX = { it * 2 }
+                        ),
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.padding_medium))
                         .fillMaxSize()
                         .align(Alignment.BottomEnd)
 
-                    ) {
+                ) {
                     Box(contentAlignment = Alignment.BottomEnd) {
                         ExtendedFloatingActionButton(
                             onClick = { mainViewModel.confirmDeletion() },
@@ -525,8 +538,9 @@ private fun ReviewScreen(
                         }
                     }
                 }
-                }
+            }
         }
+    // Show screen instructing the user to swipe on photos/videos to see items here
     else
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
