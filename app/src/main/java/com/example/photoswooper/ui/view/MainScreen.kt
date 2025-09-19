@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,6 +69,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -109,6 +111,7 @@ import com.example.photoswooper.ui.components.FloatingActionsRow
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.SwipeableMediaWithIndicatorIcons
+import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
@@ -332,6 +335,7 @@ fun MainScreen(
                     if (uiState.currentIndex == 0) {
                         mainViewModel.markItem(MediaStatus.DELETE)
                         mainViewModel.next()
+                        delay(200) // Allow time to update currentIndex
                     }
                     val initialIndex = uiState.currentIndex
                     mainViewModel.updateTutorialCardContent(
@@ -347,7 +351,7 @@ fun MainScreen(
                             pop()
                         }
                     )
-                    while (initialIndex <= uiState.currentIndex) {
+                    while (uiState.currentIndex != 0) {
                         delay(500)
                     }
                     onStepComplete()
@@ -377,7 +381,7 @@ fun MainScreen(
                 }
                 // Review screen shows media marked as deleted. To actually delete media, click the delete button in the bottom right
                 6 -> {
-                    // If first start-up, wait for media items to be fetcheds
+                    // If first start-up, wait for media items to be fetched
                     while (uiState.mediaItems.size < 3) {
                         delay(200)
                     }
@@ -387,7 +391,7 @@ fun MainScreen(
                         mainViewModel.markItem(MediaStatus.DELETE)
                         mainViewModel.next()
                     }
-                    delay(500)
+                    delay(1000)
                     val initialNumToDelete = mainViewModel.getMediaToDelete().size
                     mainViewModel.expandBottomSheet(coroutineScope)
                     sheetContentTabIndex = TabIndex.REVIEW.ordinal
@@ -456,6 +460,9 @@ fun MainScreen(
                     delay(5000)
                     mainViewModel.onEndTutorial()
                 }
+                else -> {
+                    mainViewModel.onEndTutorial()
+                }
             }
         }
     }
@@ -481,6 +488,11 @@ fun MainScreen(
                     modifier = Modifier
                         .padding(paddingValues)
                         .fillMaxSize()
+                        .then(
+                            if (tutorialIndex < 4)
+                                Modifier.safeContentPadding()
+                            else Modifier
+                        )
                 ) {
                     when {
                         /* When permissions not granted */
@@ -665,6 +677,7 @@ fun TutorialCard(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var bodyTextVisible by remember { mutableStateOf(true) }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)
@@ -694,16 +707,28 @@ fun TutorialCard(
 //                        vertical = dimensionResource(R.dimen.padding_xsmall)
                     )
                 ) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_xsmall))
-                    )
-                    Text(
-                        body,
-                        style = MaterialTheme.typography.bodyMedium,
-//                        modifier = Modifier.padding(dimensionResource(R.dimen.padding_xsmall))
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        AnimatedExpandCollapseIcon(
+                            expanded = !bodyTextVisible,
+                            onClick = { bodyTextVisible = !bodyTextVisible },
+                            contentDescription = "tutorial text"
+                        )
+                    }
+                    AnimatedVisibility(bodyTextVisible){
+                        Text(
+                            body,
+                            style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = dimensionResource(R.dimen.padding_xsmall))
+                        )
+                    }
                 }
             }
             TextButton(
