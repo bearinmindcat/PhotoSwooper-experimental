@@ -26,7 +26,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -117,16 +119,17 @@ fun FilterDialog(
         onDismissRequest = { onDismiss() }
     ) {
         Card(
+            shape = MaterialTheme.shapes.large,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(dimensionResource(R.dimen.padding_medium)),
-            shape = MaterialTheme.shapes.large,
         ) {
             Column(
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.Start,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(dimensionResource(R.dimen.padding_medium)),
             ) {
                 // Filtering & sorting title Row
