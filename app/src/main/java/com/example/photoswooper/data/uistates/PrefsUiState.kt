@@ -59,6 +59,14 @@ enum class BooleanPreference(
         description = R.string.skip_review_desc,
         icon = R.drawable.check
     ),
+    PAUSE_BACKGROUND_MEDIA(
+        default = true,
+        setting = "pause_background_media",
+        title = R.string.pause_background_media,
+        description = R.string.pause_background_media_desc,
+        icon = R.drawable.pause
+    ),
+
     STATISTICS_ENABLED(
         default = true,
         setting = "statistics_enabled",

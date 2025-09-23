@@ -23,6 +23,8 @@
     <string name="reduce_animations">Reduce animations</string>
     <string name="skip_review_desc">When enabled, the app will immediately delete photos, rather than first navigating to the review screen</string>
     <string name="skip_review">Skip review screen</string>
+    <string name="pause_background_media">Pause background media while a video is playing</string>
+    <string name="pause_background_media_desc">When enabled, audio playing in the background will pause while a video is playing in PhotoSwooper</string>
     <string name="donate">Donate!</string>
     <string name="report_bug">Report a bug</string>
     <string name="prefs_appearance_title">Appearance</string>

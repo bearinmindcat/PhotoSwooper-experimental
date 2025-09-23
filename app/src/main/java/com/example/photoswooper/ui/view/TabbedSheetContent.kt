@@ -899,6 +899,11 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
                         dataStoreInterface = dataStoreInterface,
                         preference = BooleanPreference.SKIP_REVIEW
                     )
+                    /* Pause background media when video starts playing */
+                    BooleanPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = BooleanPreference.PAUSE_BACKGROUND_MEDIA
+                    )
                 }
 
                 PreferencesCategory.STATISTICS -> {

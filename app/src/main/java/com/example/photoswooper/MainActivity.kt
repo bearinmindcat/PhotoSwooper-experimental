@@ -102,15 +102,7 @@ class MainActivity : AppCompatActivity() {
             .memoryCache(null)
             .diskCache(null) // Disable cache so animation is called every time in AsyncImage (needs an onSuccess call)
             .build()
-        val player: ExoPlayer = ExoPlayer.Builder(this)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setContentType(AUDIO_CONTENT_TYPE_MOVIE)
-                    .setUsage(USAGE_MEDIA)
-                    .build(),
-                false // TODO("Add preference 'Pause music when playing video'")
-            )
-            .build()
+        val player: ExoPlayer = ExoPlayer.Builder(this).build()
         player.prepare()
         player.addListener(
             object : Player.Listener {
@@ -125,6 +117,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+        CoroutineScope(Dispatchers.Main).launch {
+            player.setAudioAttributes(
+                /* audioAttributes = */ AudioAttributes.Builder()
+                    .setContentType(AUDIO_CONTENT_TYPE_MOVIE)
+                    .setUsage(USAGE_MEDIA)
+                    .build(),
+                /* handleAudioFocus = */ dataStoreInterface
+                    .getBooleanSettingValue(BooleanPreference.PAUSE_BACKGROUND_MEDIA.setting).first()
+            )
+        }
 
         val contentResolverInterface = ContentResolverInterface(
             dao = mediaStatusDao,
