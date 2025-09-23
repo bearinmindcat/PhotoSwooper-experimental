@@ -17,6 +17,7 @@ import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateContentSize
@@ -478,6 +479,22 @@ fun MainScreen(
             },
             filterDialogViewModel = FilterDialogViewModel(mainViewModel.mediaFilter.collectAsState().value),
         )
+
+    // Show warning before exiting the app by system back gesture/button
+    var backToExitWarningEnabled by remember { mutableStateOf(true) }
+    BackHandler(enabled = backToExitWarningEnabled) {
+        backToExitWarningEnabled = false
+        Toast.makeText(
+            context,
+            R.string.press_back_again_to_exit,
+            Toast.LENGTH_SHORT
+        ).show()
+        // Enable warning again after 3 seconds
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(3000)
+            backToExitWarningEnabled = true
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         BottomSheetScaffold(
