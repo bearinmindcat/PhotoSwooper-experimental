@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun TutorialScreen(dataStoreInterface: DataStoreInterface, onExitTutorialScreen: () -> Unit) {
+fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) {
     val context = LocalContext.current
     val drawable = context.packageManager.getApplicationIcon(context.packageName)
 
@@ -115,7 +115,7 @@ fun TutorialScreen(dataStoreInterface: DataStoreInterface, onExitTutorialScreen:
                                     newValue = MAX_TUTORIAL_INDEX,
                                     setting = IntPreference.TUTORIAL_INDEX.setting
                                 )
-                                onExitTutorialScreen()
+                                onExit()
                             }
                         },
                     ) {
@@ -135,7 +135,7 @@ fun TutorialScreen(dataStoreInterface: DataStoreInterface, onExitTutorialScreen:
                                     setting = LongPreference.TUTORIAL_START_TIME.setting
                                 )
                             }
-                            onExitTutorialScreen()
+                            onExit()
                         },
                     ) {
                         Text(
@@ -163,6 +163,10 @@ private fun CommonSettings(dataStoreInterface: DataStoreInterface, modifier: Mod
         Text(
             text = stringResource(R.string.common_settings),
             style = MaterialTheme.typography.titleLarge
+        )
+        BooleanPreferenceEditor(
+            dataStoreInterface,
+            preference = BooleanPreference.STATISTICS_ENABLED
         )
         BooleanPreferenceEditor(
             dataStoreInterface = dataStoreInterface,

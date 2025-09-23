@@ -56,7 +56,7 @@ import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
-import com.example.photoswooper.ui.view.TutorialScreen
+import com.example.photoswooper.ui.view.Onboardingcreen
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
@@ -210,9 +210,9 @@ class MainActivity : AppCompatActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (tutorialIndex == 0) {
-                        TutorialScreen(
+                        Onboardingcreen(
                             dataStoreInterface,
-                            onExitTutorialScreen = {
+                            onExit = {
                                 checkPermissions(
                                     this@MainActivity,
                                     {
