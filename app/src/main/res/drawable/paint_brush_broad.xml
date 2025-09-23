@@ -1,0 +1,15 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2025 Loowiz <loowiz@envs.net>
+  ~
+  ~  SPDX-License-Identifier: AGPL-3.0-only
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+  <path
+      android:pathData="M216,20L72,20A44.05,44.05 0,0 0,28 64v72a28,28 0,0 0,28 28L95.64,164L92,207c0,0.33 0,0.67 0,1a36,36 0,0 0,72 0c0,-0.33 0,-0.67 0,-1l-3.6,-43L200,164a28,28 0,0 0,28 -28L228,32A12,12 0,0 0,216 20ZM72,44h88L160,68a12,12 0,0 0,24 0L184,44h20L204,96L52,96L52,64A20,20 0,0 1,72 44ZM200,140L156,140a20,20 0,0 0,-19.85 22.4l3.84,46a12,12 0,0 1,-24 0l3.84,-46A20,20 0,0 0,100 140L56,140a4,4 0,0 1,-4 -4L52,120L204,120v16A4,4 0,0 1,200 140Z"
+      android:fillColor="#000000"/>
+</vector>

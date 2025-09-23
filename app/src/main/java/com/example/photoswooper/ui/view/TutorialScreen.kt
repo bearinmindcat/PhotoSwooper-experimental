@@ -165,18 +165,12 @@ private fun CommonSettings(dataStoreInterface: DataStoreInterface, modifier: Mod
             style = MaterialTheme.typography.titleLarge
         )
         BooleanPreferenceEditor(
-            icon = painterResource(R.drawable.text_aa),
-            title = stringResource(R.string.system_font),
-            description = stringResource(R.string.system_font_desc),
             dataStoreInterface = dataStoreInterface,
-            setting = BooleanPreference.SYSTEM_FONT.setting
+            preference = BooleanPreference.SYSTEM_FONT
         )
         BooleanPreferenceEditor(
-            icon = painterResource(R.drawable.film_strip),
-            title = stringResource(R.string.reduce_animations),
-            description = stringResource(R.string.reduce_animations_desc),
             dataStoreInterface = dataStoreInterface,
-            setting = BooleanPreference.REDUCE_ANIMATIONS.setting
+            preference = BooleanPreference.REDUCE_ANIMATIONS
         )
         Text(
             text = stringResource(R.string.common_settings_desc),

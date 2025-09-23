@@ -11,6 +11,7 @@
     <string name="settings">Settings</string>
     <string name="review">Review</string>
 
+    <!-- Preferences screen -->
     <string name="num_photos_per_stack">Number of photos before reset</string>
     <string name="permanently_delete">Permanently delete photos</string>
     <string name="permanently_delete_desc">If disabled, your phone\'s trash will be used, typically deleting the photo</string>
@@ -22,6 +23,15 @@
     <string name="reduce_animations">Reduce animations</string>
     <string name="skip_review_desc">When enabled, the app will immediately delete photos, rather than first navigating to the review screen</string>
     <string name="skip_review">Skip review screen</string>
+    <string name="donate">Donate!</string>
+    <string name="report_bug">Report a bug</string>
+    <string name="prefs_appearance_title">Appearance</string>
+    <string name="prefs_appearance_desc">Look and feel</string>
+    <string name="prefs_behaviour_title">Behaviour</string>
+    <string name="prefs_behaviour_desc">How the app manages your photos and generally behaves</string>
+    <string name="prefs_statistics_desc"><![CDATA[How the app gathers & displays statistics]]></string>
+    <string name="prefs_backup_restore_title">Backup &amp; Restore</string>
+    <string name="prefs_backup_restore_desc">Backup/restore app data, like statistics &amp; swiped items</string>
 
     <string name="pause_current_video">Pause the current video</string>
     <string name="rewind">Rewind a configured number of seconds</string>
@@ -70,7 +80,7 @@
     <string name="for_info_about_these_actions">for info about these actions</string>
     <string name="tutorial_bottom_sheet_desc">This contains an: \n- undo button (undo previous swipe)\n- review button (review and delete marked photos)\n- filter button (filter what media is shown)</string>
     <string name="tutorial_bottom_sheet_title">This is the bottom sheet</string>
-    <string name="tutorial_bottom_sheet_try">Try undoing the previous swipe!</string>
+    <string name="tutorial_bottom_sheet_try">Try to undo the swipes you just performed!</string>
     <string name="tutorial_filter_sort_title"><![CDATA[Filter & sort]]></string>
     <string name="tutorial_filter_sort_desc"><![CDATA[The filter button lets you choose what you swipe on & set the order they are displayed]]></string>
     <string name="tutorial_filter_sort_try">Try filtering for only photos, and have them be displayed in order of most recent first!</string>
@@ -84,4 +94,11 @@
     <string name="settings_desc">Here you can customise your experience in the app</string>
     <string name="tutorial_end_title">Tutorial finished!</string>
     <string name="tutorial_end_desc">Thanks for completing the tutorial, I hope you enjoy PhotoSwooper :D</string>
+    <string name="no_deleted_photos">No photos to be deleted found</string>
+    <string name="no_kept_photos">No kept photos found</string>
+    <string name="no_snoozed_photos">No snoozed photos found</string>
+    <string name="enable_stats">Enable statistics</string>
+    <string name="enable_stats_desc">Collect statistics about when and how much you swipe for you to look back on. This never leaves your device</string>
+    <string name="press_back_again_to_exit">Press back again to exit</string>
+    <string name="statistics_enabled">Enable statistics</string>
 </resources>

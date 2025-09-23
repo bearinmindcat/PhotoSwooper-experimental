@@ -6,11 +6,16 @@
 
 package com.example.photoswooper.ui.view
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.Animatable
@@ -68,7 +73,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -94,6 +98,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.MediaStatus
@@ -127,6 +132,12 @@ import kotlin.math.roundToInt
 
 enum class TabIndex {
     REVIEW, STATS, SETTINGS
+}
+enum class PreferencesCategory(@param:StringRes val titleStringId: Int, @param:StringRes val descriptionStringId: Int, @param:DrawableRes val iconDrawableId: Int) {
+    BEHAVIOUR(R.string.prefs_behaviour_title, R.string.prefs_behaviour_desc, R.drawable.navigation_arrow),
+    APPEARANCE(R.string.prefs_appearance_title, R.string.prefs_appearance_desc, R.drawable.paint_brush_broad),
+    STATISTICS(R.string.statistics, R.string.prefs_statistics_desc, R.drawable.chart),
+    BACKUP_RESTORE(R.string.prefs_backup_restore_title, R.string.prefs_backup_restore_desc, R.drawable.clock_counter_clockwise),
 }
 
 /**
@@ -190,6 +201,10 @@ fun TabbedSheetContent(
         tabIndicatorWidth = 24.dp
     }
 
+    BackHandler(mainViewModel.bottomSheetScaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
+        currentCoroutineScope.launch { mainViewModel.bottomSheetScaffoldState.bottomSheetState.partialExpand() }
+    }
+
     Column(modifier) {
         TabRow(
             selectedTabIndex = tabIndex,
@@ -202,7 +217,7 @@ fun TabbedSheetContent(
                         .tabIndicatorOffset(currentTabPosition)
                 )
             },
-            modifier = Modifier.padding(vertical = dimensionResource(R.dimen.padding_medium)),
+            modifier = Modifier.padding(top = dimensionResource(R.dimen.padding_medium)),
         ) {
             Tab(
                 selected = (tabIndex == TabIndex.REVIEW.ordinal),
@@ -311,7 +326,9 @@ private fun ReviewScreen(
     if (mainUiState.mediaItems.firstOrNull { it.status != MediaStatus.UNSET } != null)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .padding(top = dimensionResource(R.dimen.padding_small))
+                .fillMaxSize()
         ) {
             Text("Status", style = MaterialTheme.typography.labelLarge)
             val listOfMediaStatusToFilter = MediaStatus.entries.minusElement(MediaStatus.UNSET)
@@ -582,7 +599,8 @@ private fun StatsScreen(viewModel: StatsViewModel, uiState: StatsUiState) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceEvenly
+        verticalArrangement = Arrangement.SpaceEvenly,
+        modifier = Modifier.padding(top = dimensionResource(R.dimen.padding_small))
     ) {
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -778,6 +796,7 @@ private fun StatsScreen(viewModel: StatsViewModel, uiState: StatsUiState) {
 @Composable
 private fun PreferencesScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val view = LocalView.current
     val dataStoreInterface = DataStoreInterface(context.dataStore)
 
     Column(modifier.verticalScroll(rememberScrollState())) {
@@ -829,26 +848,205 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
             description = stringResource(R.string.reduce_animations_desc),
             dataStoreInterface = dataStoreInterface,
             setting = BooleanPreference.REDUCE_ANIMATIONS.setting
+    var section: PreferencesCategory? by remember { mutableStateOf(null) }
+    BackHandler(enabled = section != null) { section = null }
+    @Composable
+    fun BackButtonListItem() {
+        ListItem(
+            headlineContent = { Text("Back") },
+            leadingContent = { Icon(painterResource(R.drawable.arrow_left), null) },
+            modifier = Modifier.clickable {
+                section = null
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            }
+        )
+    }
+
+    AnimatedContent(
+        section,
+        transitionSpec = {
+            if (section != null)
+                slideInHorizontally(
+                    spring(
+                        Spring.DampingRatioNoBouncy,
+                        Spring.StiffnessMedium
+                    ),
+                    { it }
+                ).togetherWith(
+                    slideOutHorizontally(
+                        spring(
+                            Spring.DampingRatioNoBouncy,
+                            Spring.StiffnessMedium
+                        ),
+                        targetOffsetX = {-it}
+                    ) + fadeOut()
+                )
+            else
+                (slideInHorizontally(
+                    spring(
+                        Spring.DampingRatioNoBouncy,
+                        Spring.StiffnessMedium
+                    ),
+                    initialOffsetX = {-it/2}
+                ) + fadeIn()).togetherWith(
+                    slideOutHorizontally(
+                        spring(
+                            Spring.DampingRatioNoBouncy,
+                            Spring.StiffnessMedium
+                        ),
+                        { it }
+                    )
+                )
+        },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier
+                .verticalScroll(rememberScrollState())
+                .fillMaxSize()
+        ) {
+            when (it) {
+                PreferencesCategory.APPEARANCE -> {
+                    BackButtonListItem()
+                    /* System font preference */
+                    BooleanPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = BooleanPreference.SYSTEM_FONT
+                    )
+                    /* Dynamic theme preference */
+                    if (SDK_INT >= Build.VERSION_CODES.S)
+                        BooleanPreferenceEditor(
+                            dataStoreInterface = dataStoreInterface,
+                            preference = BooleanPreference.DYNAMIC_THEME
+                        )
+                    /* Reduce animations preference */
+                    BooleanPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = BooleanPreference.REDUCE_ANIMATIONS
+                    )
+                }
+
+                PreferencesCategory.BEHAVIOUR -> {
+                    BackButtonListItem()
+                    /* Media items per stack preference */
+                    IntPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = IntPreference.NUM_PHOTOS_PER_STACK,
+                    )
+                    /* Permanently delete preference */
+                    if (SDK_INT >= Build.VERSION_CODES.R)
+                        BooleanPreferenceEditor(
+                            dataStoreInterface = dataStoreInterface,
+                            preference = BooleanPreference.PERMANENTLY_DELETE
+                        )
+                    /* Skip review screen */
+                    BooleanPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = BooleanPreference.SKIP_REVIEW
+                    )
+
+                PreferencesCategory.STATISTICS -> {
+                    BackButtonListItem()
+                    // Statistics Enabled
+                    // Start week on monday
+                    // Clear statistics (always enabled)
+                }
+                PreferencesCategory.BACKUP_RESTORE -> {
+                    BackButtonListItem()
+
+                }
+                null -> {
+                    Column(
+                        verticalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Column {
+                            for (category in PreferencesCategory.entries) {
+
+                                ListItem(
+                                    headlineContent = {
+                                        Text(stringResource(category.titleStringId))
+                                    },
+                                    supportingContent = { Text(stringResource(category.descriptionStringId)) },
+                                    leadingContent = {
+                                        Icon(
+                                            painterResource(category.iconDrawableId),
+                                            null
+                                        )
+                                    },
+                                    trailingContent = {
+                                        Icon(
+                                            painterResource(R.drawable.caret_right),
+                                            contentDescription = null
+                                        )
+                                    },
+                                    modifier = Modifier.clickable {
+                                        section = category
+                                        if (SDK_INT >= Build.VERSION_CODES.R)
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    }
+                                )
+                            }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.Bottom,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(dimensionResource(R.dimen.padding_medium))
+                        ) {
+                            FooterLink(
+                                icon = painterResource(R.drawable.bug),
+                                title = stringResource(R.string.report_bug),
+                                link = "https://codeberg.org/Loowiz/PhotoSwooper/issues/new".toUri()
+                            )
+                            FooterLink(
+                                icon = painterResource(R.drawable.heart),
+                                title = stringResource(R.string.donate),
+                                link = "https://liberapay.com/loowiz".toUri()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Composable containing a clickable icon & text, used as footer links in [PreferencesScreen] */
+@Composable
+private fun FooterLink(
+    icon: Painter,
+    title: String,
+    link: Uri
+) {
+    val context = LocalContext.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .padding(dimensionResource(R.dimen.padding_small))
+            .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, link)) }
+    ) {
+        Icon(icon, null, modifier = Modifier.size(dimensionResource(R.dimen.small_icon)))
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
 
-// TODO("Use only parameter of BooleanPreference, encompassing the icon, title, description IDs in the enum class")
 @Composable
 fun BooleanPreferenceEditor(
-    icon: Painter,
-    title: String,
-    description: String,
     dataStoreInterface: DataStoreInterface,
-    setting: String
+    preference: BooleanPreference
 ) {
     val view = LocalView.current
 
-    val preferenceValue by dataStoreInterface.getBooleanSettingValue(setting).collectAsState(false)
+    val preferenceValue by dataStoreInterface.getBooleanSettingValue(preference.setting).collectAsState(false)
 
     fun togglePreference() = CoroutineScope(Dispatchers.IO).launch {
         dataStoreInterface.setBooleanSettingValue(
-            setting = setting,
+            setting = preference.setting,
             newValue = !preferenceValue
         )
     }
@@ -867,13 +1065,13 @@ fun BooleanPreferenceEditor(
     ListItem(
         leadingContent = {
             Icon(
-                painter = icon,
+                painter = painterResource(preference.icon),
                 contentDescription = null // Described in adjacent text
             )
         },
         headlineContent = {
             Text(
-                title
+                stringResource(preference.title)
             )
         },
         trailingContent = {
@@ -886,9 +1084,10 @@ fun BooleanPreferenceEditor(
             )
         },
         supportingContent = {
-            Text(
-                description
-            )
+            if (preference.description != null)
+                Text(
+                    stringResource(preference.description)
+                )
         },
         modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
             togglePreference()
@@ -898,19 +1097,15 @@ fun BooleanPreferenceEditor(
 
 }
 
-// TODO("Use only parameter of IntPreference, encompassing the icon, title, description IDs in the enum class")
 @Composable
 fun IntPreferenceEditor(
-    icon: Painter,
-    title: String,
-    description: String = "",
     dataStoreInterface: DataStoreInterface,
-    setting: String
+    preference: IntPreference
 ) {
     val context = LocalContext.current
     val view = LocalView.current
 
-    val preferenceValue by dataStoreInterface.getIntSettingValue(setting).collectAsState(0)
+    val preferenceValue by dataStoreInterface.getIntSettingValue(preference.setting).collectAsState(0)
     var displayedPreferenceValue by remember { mutableStateOf(preferenceValue.toString()) }
     LaunchedEffect(preferenceValue) {
         displayedPreferenceValue = preferenceValue.toString()
@@ -918,7 +1113,7 @@ fun IntPreferenceEditor(
 
     fun onUpdate(newValue: Int) = CoroutineScope(Dispatchers.IO).launch {
         dataStoreInterface.setIntSettingValue(
-            setting = setting,
+            setting = preference.setting,
             newValue = newValue
         )
     }
@@ -939,14 +1134,14 @@ fun IntPreferenceEditor(
     ListItem(
         leadingContent = {
             Icon(
-                painter = icon,
+                painter = painterResource(preference.icon),
                 contentDescription = null, // Described in adjacent text
                 modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_medium))
             )
         },
         headlineContent = {
             Text(
-                text = title,
+                text = stringResource(preference.title),
                 modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_xsmall))
             )
         },
