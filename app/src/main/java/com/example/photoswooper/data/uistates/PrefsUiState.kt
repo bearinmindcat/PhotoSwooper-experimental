@@ -59,6 +59,13 @@ enum class BooleanPreference(
         description = R.string.skip_review_desc,
         icon = R.drawable.check
     ),
+    STATISTICS_ENABLED(
+        default = true,
+        setting = "statistics_enabled",
+        title = R.string.statistics_enabled,
+        description = null,
+        icon = R.drawable.chart_line_up
+    ),
 
     // Filtering
     FILTER_SHOW_ADVANCED(

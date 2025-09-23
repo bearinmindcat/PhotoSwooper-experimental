@@ -280,7 +280,10 @@ class ContentResolverInterface(
                         onAddMedia(mediaClassToAdd)
                         Log.d("MediaStore", "Added media with uri $fetchedUri")
                         CoroutineScope(Dispatchers.IO).launch {
-                            dao.insert(mediaClassToAdd.getMediaStatusEntity()) // Add to database
+                            val statisticsEnabled = dataStoreInterface.getBooleanSettingValue(
+                                BooleanPreference.STATISTICS_ENABLED.setting
+                            ).first()
+                            dao.insert(mediaClassToAdd.getMediaStatusEntity(statisticsEnabled)) // Add to database
                         }
                     }
 

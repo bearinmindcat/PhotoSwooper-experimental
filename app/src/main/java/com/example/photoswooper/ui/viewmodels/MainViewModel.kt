@@ -95,6 +95,7 @@ class MainViewModel(
     }
 
     val snoozeLengthMillis = dataStoreInterface.getLongSettingValue(LongPreference.SNOOZE_LENGTH.setting)
+    val statisticsEnabled = dataStoreInterface.getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting)
     fun getCurrentMedia() =
         try {
             _uiState.value.mediaItems[_uiState.value.currentIndex]
@@ -171,6 +172,7 @@ class MainViewModel(
             targetNumVideos = maxMediaItemsToAddSynchronously - numPhotosToAddSynchronously,
             mediaFilter = mediaFilter.value
         )
+        sortMediaItems()
         // Ensure media items were found before continuing
         if (_uiState.value.mediaItems.isEmpty()) {
             viewModelScope.launch {
@@ -267,7 +269,7 @@ class MainViewModel(
             CoroutineScope(Dispatchers.IO).launch {
                 val snoozeEndDate = Calendar.getInstance().timeInMillis + snoozeLength.first()
                 mediaStatusDao.update(
-                    mediaToMark.getMediaStatusEntity().copy(
+                    mediaToMark.getMediaStatusEntity(statisticsEnabled.first()).copy(
                         snoozedUntil = snoozeEndDate
                     )
                 )
@@ -279,7 +281,7 @@ class MainViewModel(
             }
         } else if (status != MediaStatus.DELETE)
             CoroutineScope(Dispatchers.IO).launch {
-                mediaStatusDao.update(mediaToMark.getMediaStatusEntity())
+                mediaStatusDao.update(mediaToMark.getMediaStatusEntity(statisticsEnabled.first()))
             }
 
         // If item being marked as UNSET (e.g. in the review screen), insert the unset photo to the index before the
@@ -361,7 +363,7 @@ class MainViewModel(
                     /* Update database  */
                     CoroutineScope(Dispatchers.IO).launch {
                         val mediaItem = _uiState.value.mediaItems[latestSwipedMediaIndex]
-                        mediaStatusDao.update(mediaItem.getMediaStatusEntity())
+                        mediaStatusDao.update(mediaItem.getMediaStatusEntity(statisticsEnabled.first()))
                     }
                 }
             }
@@ -405,7 +407,7 @@ class MainViewModel(
                 val deletedMedia = _uiState.value.mediaItems.find { it.uri == deletedMediaUri }
                 if (deletedMedia != null) {
                     CoroutineScope(Dispatchers.IO).launch {
-                        mediaStatusDao.update(deletedMedia.getMediaStatusEntity())
+                        mediaStatusDao.update(deletedMedia.getMediaStatusEntity(statisticsEnabled.first()))
                     }
                     _uiState.update { currentState ->
                         val newMediaItems = currentState.mediaItems

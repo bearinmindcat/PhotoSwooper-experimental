@@ -160,11 +160,13 @@ fun TabbedSheetContent(
     val currentCoroutineScope = rememberCoroutineScope()
     val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
+    val statisticsEnabled by DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting).collectAsState(true)
 
     val statsUiState by statsViewModel.uiState.collectAsState()
     val bottomSheetTargetValue = mainViewModel.bottomSheetScaffoldState.bottomSheetState.targetValue
 
-    var tabIndexChange by rememberSaveable { mutableIntStateOf(0) } // To decide direction of tab change animation
+    var tabIndexChange by rememberSaveable { mutableStateOf(0) } // To decide direction of tab change animation
     var tabIndicatorWidth by remember { mutableStateOf(24.dp) }
     val animatedTabIndicatorWidth = animateDpAsState(
         tabIndicatorWidth,
@@ -210,7 +212,7 @@ fun TabbedSheetContent(
             selectedTabIndex = tabIndex,
             containerColor = Color(0f, 0f, 0f, 0f),
             indicator = { tabPositions ->
-                val currentTabPosition = tabPositions[tabIndex]
+                val currentTabPosition = tabPositions.getOrElse(tabIndex, { tabPositions.last() })
                 TabRowDefaults.PrimaryIndicator(
                     width = animatedTabIndicatorWidth.value,
                     modifier = Modifier
@@ -233,19 +235,21 @@ fun TabbedSheetContent(
                     stringResource(R.string.review),
                 )
             }
-            Tab(
-                selected = (tabIndex == TabIndex.STATS.ordinal),
-                onClick = { CoroutineScope(Dispatchers.Default).launch { onTabChange(TabIndex.STATS) } },
-                modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_small))
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.chart),
-                    contentDescription = stringResource(R.string.show_stats),
-                    modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
-                )
-                Text(
-                    stringResource(R.string.statistics),
-                )
+            if(statisticsEnabled) {
+                Tab(
+                    selected = (tabIndex == TabIndex.STATS.ordinal),
+                    onClick = { CoroutineScope(Dispatchers.Default).launch { onTabChange(TabIndex.STATS) } },
+                    modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_small))
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.chart),
+                        contentDescription = stringResource(R.string.show_stats),
+                        modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
+                    )
+                    Text(
+                        stringResource(R.string.statistics),
+                    )
+                }
             }
             Tab(
                 selected = (tabIndex == TabIndex.SETTINGS.ordinal),
@@ -799,55 +803,6 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
     val view = LocalView.current
     val dataStoreInterface = DataStoreInterface(context.dataStore)
 
-    Column(modifier.verticalScroll(rememberScrollState())) {
-        /* Media items per stack preference */
-        IntPreferenceEditor(
-            icon = painterResource(R.drawable.images),
-            title = stringResource(R.string.num_photos_per_stack),
-            dataStoreInterface = dataStoreInterface,
-            setting = IntPreference.NUM_PHOTOS_PER_STACK.setting,
-        )
-        /* Permanently delete preference */
-        if (SDK_INT >= Build.VERSION_CODES.R)
-            BooleanPreferenceEditor(
-                icon = painterResource(R.drawable.trash),
-                title = stringResource(R.string.permanently_delete),
-                description = stringResource(R.string.permanently_delete_desc),
-                dataStoreInterface = dataStoreInterface,
-                setting = BooleanPreference.PERMANENTLY_DELETE.setting
-            )
-        /* Skip review screen */
-        BooleanPreferenceEditor(
-            icon = painterResource(R.drawable.check),
-            title = stringResource(R.string.skip_review),
-            description = stringResource(R.string.skip_review_desc),
-            dataStoreInterface = dataStoreInterface,
-            setting = BooleanPreference.SKIP_REVIEW.setting
-        )
-        /* System font preference */
-        BooleanPreferenceEditor(
-            icon = painterResource(R.drawable.text_aa),
-            title = stringResource(R.string.system_font),
-            description = stringResource(R.string.system_font_desc),
-            dataStoreInterface = dataStoreInterface,
-            setting = BooleanPreference.SYSTEM_FONT.setting
-        )
-        /* Dynamic theme preference */
-        if (SDK_INT >= Build.VERSION_CODES.S)
-            BooleanPreferenceEditor(
-                icon = painterResource(R.drawable.palette),
-                title = stringResource(R.string.dynamic_theme),
-                description = stringResource(R.string.dynamic_theme_desc),
-                dataStoreInterface = dataStoreInterface,
-                setting = BooleanPreference.DYNAMIC_THEME.setting
-            )
-        /* Reduce animations preference */
-        BooleanPreferenceEditor(
-            icon = painterResource(R.drawable.film_strip),
-            title = stringResource(R.string.reduce_animations),
-            description = stringResource(R.string.reduce_animations_desc),
-            dataStoreInterface = dataStoreInterface,
-            setting = BooleanPreference.REDUCE_ANIMATIONS.setting
     var section: PreferencesCategory? by remember { mutableStateOf(null) }
     BackHandler(enabled = section != null) { section = null }
     @Composable
@@ -944,10 +899,15 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
                         dataStoreInterface = dataStoreInterface,
                         preference = BooleanPreference.SKIP_REVIEW
                     )
+                }
 
                 PreferencesCategory.STATISTICS -> {
                     BackButtonListItem()
                     // Statistics Enabled
+                    BooleanPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = BooleanPreference.STATISTICS_ENABLED
+                    )
                     // Start week on monday
                     // Clear statistics (always enabled)
                 }

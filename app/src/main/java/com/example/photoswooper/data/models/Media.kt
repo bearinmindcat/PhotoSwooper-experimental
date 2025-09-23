@@ -57,14 +57,14 @@ data class Media(
 
     fun getFormattedLocation() = location?.joinToString(", ") { it.toString().substring(0, 8) }
 
-    fun getMediaStatusEntity(): MediaEntity {
+    fun getMediaStatusEntity(statisticsEnabled: Boolean): MediaEntity {
         return MediaEntity(
             fileHash = fileHash,
             mediaStoreId = id,
             status = status,
             type = type,
             size = size,
-            dateModified = System.currentTimeMillis(),
+            dateModified = if (statisticsEnabled) System.currentTimeMillis() else 0,
         )
     }
 
