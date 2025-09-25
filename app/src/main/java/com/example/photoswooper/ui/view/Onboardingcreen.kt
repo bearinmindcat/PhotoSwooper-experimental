@@ -166,15 +166,15 @@ private fun CommonSettings(dataStoreInterface: DataStoreInterface, modifier: Mod
         )
         BooleanPreferenceEditor(
             dataStoreInterface,
-            preference = BooleanPreference.STATISTICS_ENABLED
+            preference = BooleanPreference.STATISTICS_ENABLED,
         )
         BooleanPreferenceEditor(
             dataStoreInterface = dataStoreInterface,
-            preference = BooleanPreference.SYSTEM_FONT
+            preference = BooleanPreference.SYSTEM_FONT,
         )
         BooleanPreferenceEditor(
             dataStoreInterface = dataStoreInterface,
-            preference = BooleanPreference.REDUCE_ANIMATIONS
+            preference = BooleanPreference.REDUCE_ANIMATIONS,
         )
         Text(
             text = stringResource(R.string.common_settings_desc),

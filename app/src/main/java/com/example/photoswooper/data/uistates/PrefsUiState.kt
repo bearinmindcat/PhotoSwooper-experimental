@@ -71,7 +71,7 @@ enum class BooleanPreference(
     STATISTICS_ENABLED(
         default = true,
         setting = "statistics_enabled",
-        title = R.string.statistics_enabled,
+        title = R.string.enable_statistics,
         description = null,
         icon = R.drawable.chart_line_up
     ),
@@ -136,6 +136,13 @@ enum class IntPreference(
         title = R.string.num_photos_per_stack,
         icon = R.drawable.images
     ),
+    /** Number of days to remember swipes for */
+    NO_DAYS_TO_REMEMBER_SWIPES(
+        default = 0,
+        setting = "no_days_to_remember_swipes",
+        title = R.string.swipe_retention_time,
+        icon = R.drawable.timer
+    ),
 
     /** The version code the app was updated from (0 for first install) */
     TUTORIAL_INDEX(
@@ -143,7 +150,7 @@ enum class IntPreference(
         setting = "tutorial_index",
         title = R.string.app_name, // placeholder as not used
         icon = R.drawable.images // placeholder as not used
-    )
+    ),
 }
 
 enum class LongPreference(val default: Long, val setting: String) {

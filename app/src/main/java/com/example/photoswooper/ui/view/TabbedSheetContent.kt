@@ -18,6 +18,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -349,7 +350,7 @@ private fun ReviewScreen(
             val listOfMediaStatusToFilter = MediaStatus.entries.minusElement(MediaStatus.UNSET)
             DropdownFilterChip(
                 leadingIconPainter = painterResource(reviewUiState.currentStatusFilter.iconDrawableId),
-                currentMenuItemSelection = reviewUiState.currentStatusFilter.toString().lowercase(),
+                selectedMenuItem = reviewUiState.currentStatusFilter.toString().lowercase(),
                 menuItemsDescription = "Statuses of the media to show",
                 menuItems = listOfMediaStatusToFilter.map { it.toString().lowercase() }.toTypedArray(),
                 menuItemIcons = listOfMediaStatusToFilter.map { painterResource(it.iconDrawableId) }.toTypedArray(),
@@ -634,7 +635,7 @@ private fun StatsScreen(
                 )
                 DropdownFilterChip(
                     leadingIconPainter = painterResource(currentDataType.iconDrawableId),
-                    currentMenuItemSelection = currentDataType.toString().lowercase() + " " + currentDataType.extraInfo,
+                    selectedMenuItem = currentDataType.toString().lowercase() + " " + currentDataType.extraInfo,
                     menuItemsDescription = "data types for y-axis",
                     menuItems = StatsData.entries.map { it.toString().lowercase() + " " + it.extraInfo }.toTypedArray(),
                     menuItemIcons = StatsData.entries.map { painterResource(it.iconDrawableId) }.toTypedArray(),
@@ -657,7 +658,7 @@ private fun StatsScreen(
                 )
                 DropdownFilterChip(
                     leadingIconPainter = painterResource(currentTimeFrame.iconDrawableId),
-                    currentMenuItemSelection = currentTimeFrame.toString().lowercase(),
+                    selectedMenuItem = currentTimeFrame.toString().lowercase(),
                     menuItemsDescription = "Time frame for x-axis",
                     menuItems = listOf(TimeFrame.DAY, TimeFrame.WEEK, TimeFrame.YEAR).map { it.toString().lowercase() }
                         .toTypedArray(),
@@ -819,6 +820,9 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
     val view = LocalView.current
     val dataStoreInterface = DataStoreInterface(context.dataStore)
 
+    val statisticsEnabled by DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting).collectAsState(true)
+
     var section: PreferencesCategory? by remember { mutableStateOf(null) }
     BackHandler(enabled = section != null) { section = null }
     @Composable
@@ -882,43 +886,54 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
                     /* System font preference */
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
-                        preference = BooleanPreference.SYSTEM_FONT
+                        preference = BooleanPreference.SYSTEM_FONT,
                     )
                     /* Dynamic theme preference */
                     if (SDK_INT >= Build.VERSION_CODES.S)
                         BooleanPreferenceEditor(
                             dataStoreInterface = dataStoreInterface,
-                            preference = BooleanPreference.DYNAMIC_THEME
+                            preference = BooleanPreference.DYNAMIC_THEME,
                         )
                     /* Reduce animations preference */
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
-                        preference = BooleanPreference.REDUCE_ANIMATIONS
+                        preference = BooleanPreference.REDUCE_ANIMATIONS,
                     )
                 }
 
                 PreferencesCategory.BEHAVIOUR -> {
                     BackButtonListItem()
                     /* Media items per stack preference */
-                    IntPreferenceEditor(
+                    IntPreferenceEditorSlider(
                         dataStoreInterface = dataStoreInterface,
                         preference = IntPreference.NUM_PHOTOS_PER_STACK,
+                        acceptedValueRange = 1..100,
+                    )
+                    // Forget swipes after x days preference
+                    IntPreferenceEditorDropdownOptions(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = IntPreference.NO_DAYS_TO_REMEMBER_SWIPES,
+                        preferenceUnits = "Days",
+                        readOnlyReason = if (statisticsEnabled) null else stringResource(R.string.statistics_required),
+                        acceptedValueRange = 1..365,
+                        choiceTitles = arrayOf("Forever", "1 Year", "1 Month", "1 Week"),
+                        choiceValues = intArrayOf(0, 365, 28, 7)
                     )
                     /* Permanently delete preference */
                     if (SDK_INT >= Build.VERSION_CODES.R)
                         BooleanPreferenceEditor(
                             dataStoreInterface = dataStoreInterface,
-                            preference = BooleanPreference.PERMANENTLY_DELETE
+                            preference = BooleanPreference.PERMANENTLY_DELETE,
                         )
                     /* Skip review screen */
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
-                        preference = BooleanPreference.SKIP_REVIEW
+                        preference = BooleanPreference.SKIP_REVIEW,
                     )
                     /* Pause background media when video starts playing */
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
-                        preference = BooleanPreference.PAUSE_BACKGROUND_MEDIA
+                        preference = BooleanPreference.PAUSE_BACKGROUND_MEDIA,
                     )
                 }
 
@@ -927,12 +942,13 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
                     // Statistics Enabled
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
-                        preference = BooleanPreference.STATISTICS_ENABLED
+                        preference = BooleanPreference.STATISTICS_ENABLED,
                     )
                     // Start week on monday
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
-                        preference = BooleanPreference.START_WEEK_ON_MONDAY
+                        preference = BooleanPreference.START_WEEK_ON_MONDAY,
+                        readOnlyReason = if (statisticsEnabled) null else stringResource(R.string.enable_statistics)
                     )
                     // Clear statistics (always enabled)
                 }
@@ -1020,12 +1036,18 @@ private fun FooterLink(
     }
 }
 
+/** Composable function containing a list item that displays info about a boolean preference, and a switch to toggle it
+ *
+ * @param readOnlyReason Reason to display to the user if the setting is read-only. Value is null when not read-only
+ * */
 @Composable
 fun BooleanPreferenceEditor(
     dataStoreInterface: DataStoreInterface,
-    preference: BooleanPreference
+    preference: BooleanPreference,
+    readOnlyReason: String? = null
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
 
     val preferenceValue by dataStoreInterface.getBooleanSettingValue(preference.setting).collectAsState(false)
 
@@ -1062,6 +1084,7 @@ fun BooleanPreferenceEditor(
         trailingContent = {
             Switch(
                 checked = preferenceValue,
+                enabled = readOnlyReason == null,
                 onCheckedChange = {
                     togglePreference()
                     performSwitchHapticFeedback(it)
@@ -1075,28 +1098,47 @@ fun BooleanPreferenceEditor(
                 )
         },
         modifier = Modifier.clickable { // Allows user to click on the whole row to toggle
-            togglePreference()
-            performSwitchHapticFeedback(preferenceValue)
+            if (readOnlyReason == null) {
+                togglePreference()
+                performSwitchHapticFeedback(preferenceValue)
+            } else {
+                if (SDK_INT >= Build.VERSION_CODES.R)
+                    view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                Toast.makeText(
+                    context,
+                    readOnlyReason,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     )
 
 }
 
+/** Composable function containing a list item that displays info about a integer preference, with a text box & slider to adjust
+ *
+ * @param readOnlyReason Reason to display to the user if the setting is read-only. Value is null when not read-only
+ * */
 @Composable
-fun IntPreferenceEditor(
+fun IntPreferenceEditorSlider(
     dataStoreInterface: DataStoreInterface,
-    preference: IntPreference
+    preference: IntPreference,
+    acceptedValueRange: IntRange,
+    readOnlyReason: String? = null
 ) {
     val context = LocalContext.current
     val view = LocalView.current
 
+    val readOnly = readOnlyReason != null
+
     val preferenceValue by dataStoreInterface.getIntSettingValue(preference.setting).collectAsState(0)
     var displayedPreferenceValue by remember { mutableStateOf(preferenceValue.toString()) }
+    // Update displayed values when the preference's value changes (value on start-up is not correct so needs to be updated)
     LaunchedEffect(preferenceValue) {
         displayedPreferenceValue = preferenceValue.toString()
     }
 
-    fun onUpdate(newValue: Int) = CoroutineScope(Dispatchers.IO).launch {
+    fun onUpdatePreference(newValue: Int) = CoroutineScope(Dispatchers.IO).launch {
         dataStoreInterface.setIntSettingValue(
             setting = preference.setting,
             newValue = newValue
@@ -1108,14 +1150,25 @@ fun IntPreferenceEditor(
         when {
             (inputAsInt != null) -> {
                 displayedPreferenceValue = input
-                if (inputAsInt in 1..100)
-                    onUpdate(inputAsInt)
-                else Toast.makeText(context, "Value must be within 1-100", Toast.LENGTH_SHORT).show()
+                if (inputAsInt in acceptedValueRange)
+                    onUpdatePreference(inputAsInt)
+                else Toast.makeText(
+                    context,
+                    "Value must be within ${acceptedValueRange.first}-${acceptedValueRange.endInclusive}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
 
             (input == "") -> displayedPreferenceValue = input
         }
     }
+
+    fun displayReadOnlyReasoning() {
+        if (SDK_INT >= Build.VERSION_CODES.R)
+            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+        Toast.makeText(context, readOnlyReason, Toast.LENGTH_SHORT).show()
+    }
+
     ListItem(
         leadingContent = {
             Icon(
@@ -1136,7 +1189,7 @@ fun IntPreferenceEditor(
             ) {
                 OutlinedTextField(
                     value = displayedPreferenceValue,
-                    isError = (displayedPreferenceValue.toIntOrNull() ?: -1) !in 1..100,
+                    isError = (displayedPreferenceValue.toIntOrNull() ?: -1) !in acceptedValueRange,
                     onValueChange = { input -> // Update UI value & dataStore only if valid
                         validateInputAndUpdate(input)
                     },
@@ -1150,6 +1203,7 @@ fun IntPreferenceEditor(
                     keyboardOptions = KeyboardOptions.Default.copy(
                         keyboardType = KeyboardType.Number
                     ),
+                    enabled = !readOnly,
                     modifier = Modifier
                         .weight(0.15f)
                 )
@@ -1162,16 +1216,134 @@ fun IntPreferenceEditor(
                             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         }
                     },
-                    valueRange = 10f..100f,
+                    valueRange = acceptedValueRange.first.toFloat()..acceptedValueRange.last.toFloat(),
                     onValueChangeFinished = {
-                        onUpdate(displayedPreferenceValue.toInt())
+                        onUpdatePreference(displayedPreferenceValue.toInt())
                     },
                     steps = 8,
+                    enabled = !readOnly,
                     modifier = Modifier
                         .weight(0.5f)
                         .padding(horizontal = dimensionResource(R.dimen.padding_small))
                 )
             }
+        },
+        modifier = Modifier.clickable(
+            enabled = readOnly,
+        ) {
+            displayReadOnlyReasoning()
         }
     )
 }
+
+/** Composable function containing a list item that displays info about a integer preference, with a dropdown menu
+ * containing choices for this setting, along with a custom choice which creates a text box underneath the setting
+ *
+ * @param readOnlyReason Reason to display to the user if the setting is read-only. Value is null when not read-only
+ * */
+@Composable
+fun IntPreferenceEditorDropdownOptions(
+    dataStoreInterface: DataStoreInterface,
+    preference: IntPreference,
+    preferenceUnits: String,
+    choiceTitles: Array<String>,
+    choiceValues: IntArray,
+    acceptedValueRange: IntRange,
+    readOnlyReason: String? = null
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+
+    val preferenceValue by dataStoreInterface.getIntSettingValue(preference.setting).collectAsState(0)
+    var selectedChoice by remember { mutableStateOf(
+        if (preferenceValue in choiceValues)
+            choiceTitles[choiceValues.indexOf(preferenceValue)]
+        else
+            "Custom"
+    ) }
+    var customValue by remember { mutableStateOf(preferenceValue.toString()) }
+
+    // Update displayed values when the preference's value changes (value on start-up is not correct so needs to be updated)
+    LaunchedEffect(preferenceValue) {
+        customValue = preferenceValue.toString()
+        selectedChoice =
+            if (preferenceValue in choiceValues)
+                choiceTitles[choiceValues.indexOf(preferenceValue)]
+            else
+                "Custom"
+    }
+
+    fun updatePreference(newValue: Int) = CoroutineScope(Dispatchers.IO).launch {
+        dataStoreInterface.setIntSettingValue(
+            setting = preference.setting,
+            newValue = newValue
+        )
+    }
+
+    fun validateInputAndUpdate(input: String) {
+        val inputAsInt = input.toIntOrNull()
+        when {
+            (inputAsInt != null) -> {
+                customValue = input
+                if (inputAsInt in acceptedValueRange)
+                    updatePreference(inputAsInt)
+                else {
+                    if (SDK_INT >= Build.VERSION_CODES.R)
+                        view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                    Toast.makeText(context, "Value must be within $acceptedValueRange", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            (input == "") -> customValue = input
+        }
+    }
+
+    Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+        ListItem(
+            leadingContent = { Icon(painterResource(preference.icon), contentDescription = null) },
+            headlineContent = { Text(stringResource(preference.title)) },
+            trailingContent = {
+                DropdownFilterChip(
+                    selectedMenuItem = selectedChoice,
+                    menuItemsDescription = stringResource(R.string.options_for_current_preference),
+                    menuItems = (choiceTitles + "Custom"),
+                    onSelectionChange = {
+                        selectedChoice = it
+                        updatePreference(
+                            if (it == "Custom") customValue.toInt()
+                            else choiceValues[choiceTitles.indexOf(it)]
+                        )
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    },
+                )
+            },
+            modifier = Modifier.clickable(
+                enabled = readOnlyReason != null,
+            ) {
+                Toast.makeText(context, readOnlyReason, Toast.LENGTH_SHORT).show()
+            }
+        )
+        AnimatedVisibility(selectedChoice == "Custom", modifier = Modifier.padding(start = 56.dp)) {
+            OutlinedTextField(
+                value = customValue,
+                isError = (customValue.toIntOrNull() ?: -1) !in acceptedValueRange,
+                onValueChange = { input -> // Update UI value & dataStore only if valid
+                    validateInputAndUpdate(input)
+                },
+//                label = { Text(stringResource(R.string.value_for_above_preference)) },
+                suffix = { Text(preferenceUnits) },
+                textStyle = MaterialTheme.typography.bodyMedium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Number
+                ),
+                modifier = Modifier
+            )
+        }
+    }}

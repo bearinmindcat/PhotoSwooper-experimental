@@ -25,6 +25,7 @@ import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.uistates.IntPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -33,6 +34,7 @@ import java.io.DataInputStream
 import java.io.File
 import java.security.MessageDigest
 import java.util.Calendar
+import kotlin.time.Duration.Companion.days
 
 
 class ContentResolverInterface(
@@ -287,24 +289,37 @@ class ContentResolverInterface(
                         }
                     }
 
-                    val currentDate = Calendar.getInstance().timeInMillis
+                    // Check all conditions for media to be added, before then calling addMedia() to add it
+
+                    val foundInSession = mediaAdded.find { it.id == fetchedId } != null
+                    if (foundInSession) break
 
                     val mediaSatisfiesFilters =
                         fetchedAbsoluteFilePath.contains(mediaFilter.directory)
                                 && (fetchedDescription?.contains(mediaFilter.containsText) ?: false
                                 || fetchedDisplayName.contains(mediaFilter.containsText))
                                 && fetchedSize in mediaFilter.sizeRange
+                    if (!mediaSatisfiesFilters) break
+
 //                    val findPhotoByHash = dao.findByHash(fileHash) TODO("Duplicate files feature: user can configure auto-delete or show both duplicates")
+                    val currentDate = Calendar.getInstance()
                     val findById = dao.findByMediaStoreId(fetchedId)
+                    /** True when: media is not snoozed, or the snoozeUntil date has passed */
+                    val snoozeHasPassed = findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate.timeInMillis
+                    if (!snoozeHasPassed) break
+
                     val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
                         findById.status
                     )
+                    val swipeRetentionTimeMillis = dataStoreInterface
+                        .getIntSettingValue(IntPreference.NO_DAYS_TO_REMEMBER_SWIPES.setting).first().days.inWholeMilliseconds
+                    val swipeRetentionTimeHasPassed =
+                        if (swipeRetentionTimeMillis != 0L) // value of 0 means remember swipes forever
+                            (findById?.dateModified?: Long.MAX_VALUE) <= currentDate.timeInMillis - swipeRetentionTimeMillis
+                        else true
+                    if (hasBeenSwiped && !swipeRetentionTimeHasPassed) break
 
-                    /** True when: media is not snoozed, or the snoozeUntil date has passed */
-                    val snoozeHasPassed = findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate
-                    val foundInSession = mediaAdded.find { it.id == fetchedId } != null
-
-                    if (!foundInSession && !hasBeenSwiped && snoozeHasPassed && mediaSatisfiesFilters) addMedia()
+                    addMedia()
 //                    when {
 //                        /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
 //                        ((photoFoundInSession || photoInDatabaseAndSwiped)) -> {  }

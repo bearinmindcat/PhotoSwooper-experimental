@@ -524,11 +524,7 @@ fun MainScreen(
                                 textAlign = TextAlign.Center,
                             )
                             else
-                                CircularProgressIndicator(
-                                    modifier = Modifier.width(64.dp),
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceContainer,
-                                )
+                                CircularProgressIndicator()
                         }
 
                         (currentMediaItem != null && currentMediaItem.status == MediaStatus.UNSET) -> {

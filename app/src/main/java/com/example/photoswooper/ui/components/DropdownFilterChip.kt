@@ -31,11 +31,18 @@ import androidx.compose.ui.res.dimensionResource
 import com.example.photoswooper.R
 import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 
+/** Filter chip that, when clicked, displays a dropdown menu displaying the options
+ *
+ * @param leadingIconPainter icon displayed to the left of the filter chip
+ * @param filterChipSelected Display the filter chip as selected (true) or unselected (false)
+ * @param menuItemsDescription Description of what the options the filter chip displays represent
+ * @param menuItemIcons Descriptive icons of each menu item
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DropdownFilterChip(
-    leadingIconPainter: Painter,
-    currentMenuItemSelection: String,
+    leadingIconPainter: Painter? = null,
+    selectedMenuItem: String,
     filterChipSelected: Boolean = false,
     menuItemsDescription: String,
     menuItems: Array<String>,
@@ -52,6 +59,7 @@ fun DropdownFilterChip(
         FilterChip(
             selected = filterChipSelected,
             leadingIcon = {
+                if (leadingIconPainter != null)
                 Icon(
                     leadingIconPainter,
                     contentDescription = null,
@@ -61,7 +69,7 @@ fun DropdownFilterChip(
             },
             label = {
                 Text(
-                    getDisplayedString(currentMenuItemSelection),
+                    getDisplayedString(selectedMenuItem),
                     style = MaterialTheme.typography.labelLarge,
                 )
             },
@@ -96,15 +104,18 @@ fun DropdownFilterChip(
         ) {
             menuItems.forEach { menuItem ->
                 val menuItemIndex = menuItems.indexOf(menuItem)
+                fun menuItemIconOrNull(): (@Composable () -> Unit)? {
+                    if (menuItemIcons.getOrNull(menuItemIndex) is Painter) return {
+                        Icon(
+                            menuItemIcons[menuItemIndex],
+                            contentDescription = null,
+                            modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
+                        )
+                    }
+                    else return null
+                }
                 DropdownMenuItem(
-                    leadingIcon = {
-                        if (menuItemIcons.getOrNull(menuItemIndex) is Painter)
-                            Icon(
-                                menuItemIcons[menuItemIndex],
-                                contentDescription = null,
-                                modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
-                            )
-                    },
+                    leadingIcon = menuItemIconOrNull(),
                     text = {
                         Text(
                             getDisplayedString(menuItem),
@@ -115,7 +126,7 @@ fun DropdownFilterChip(
                         expanded = !expanded
                         onSelectionChange(menuItem)
                     },
-                    enabled = menuItem != currentMenuItemSelection
+                    enabled = menuItem != selectedMenuItem
                 )
             }
         }

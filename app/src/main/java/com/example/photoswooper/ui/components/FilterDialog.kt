@@ -216,7 +216,7 @@ fun FilterDialog(
                 ) {
                     DropdownFilterChip(
                         leadingIconPainter = painterResource(newFilters.sortField.iconDrawableId),
-                        currentMenuItemSelection = newFilters.sortField.toString().lowercase(),
+                        selectedMenuItem = newFilters.sortField.toString().lowercase(),
                         filterChipSelected = newFilters.sortField != MediaSortField.RANDOM,
                         menuItemsDescription = "Fields to sort media by",
                         menuItems = MediaSortField.entries.map { it.toString().lowercase() }.toTypedArray(),

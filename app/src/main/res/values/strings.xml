@@ -32,9 +32,13 @@
     <string name="skip_review">Skip review screen</string>
     <string name="pause_background_media">Pause background media while a video is playing</string>
     <string name="pause_background_media_desc">When enabled, audio playing in the background will pause while a video is playing in PhotoSwooper</string>
-    <string name="statistics_enabled">Enable statistics</string>
+    <string name="enable_statistics">Enable statistics</string>
+    <string name="statistics_required">This preference requires statistics to be enabled</string>
     <string name="start_week_on_monday">Start week on monday</string>
     <string name="start_week_on_monday_desc">If disabled, the start of the week is displayed as sunday</string>
+    <string name="swipe_retention_time">Number of days to remember swipes for</string>
+    <string name="options_for_current_preference">Options for current preference</string>
+    <string name="value_for_above_preference">Value for above preference</string>
     <string name="donate">Donate!</string>
     <string name="report_bug">Report a bug</string>
 
