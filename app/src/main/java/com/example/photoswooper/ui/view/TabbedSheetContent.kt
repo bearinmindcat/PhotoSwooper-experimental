@@ -162,6 +162,9 @@ fun TabbedSheetContent(
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val statisticsEnabled by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting).collectAsState(true)
+    val startWeekOnMonday by DataStoreInterface(context.dataStore).getBooleanSettingValue(
+        BooleanPreference.START_WEEK_ON_MONDAY.setting
+    ).collectAsState(BooleanPreference.START_WEEK_ON_MONDAY.default)
 
     val statsUiState by statsViewModel.uiState.collectAsState()
     val bottomSheetTargetValue = mainViewModel.bottomSheetScaffoldState.bottomSheetState.targetValue
@@ -184,15 +187,19 @@ fun TabbedSheetContent(
         expandBottomSheet(currentCoroutineScope)
     }
 
-    /* Update the stats when the time frame or date to fetch changes */
-    LaunchedEffect(statsUiState.timeFrame, statsUiState.dateToFetchFromMillis) {
-        statsViewModel.updateStatsData()
-    }
-
-    /* Update the stats when user pulls up the bottom sheet */
-    LaunchedEffect(bottomSheetTargetValue) {
+    /* Update the stats when:
+    * - the time frame or date to fetch changes
+    * - User pulls up bottom sheet
+    * - user updates startWeekOnMonday preference
+    */
+    LaunchedEffect(
+        statsUiState.timeFrame,
+        statsUiState.dateToFetchFromMillis,
+        bottomSheetTargetValue,
+        startWeekOnMonday
+    ) {
         if (bottomSheetTargetValue == SheetValue.Expanded)
-            statsViewModel.updateStatsData()
+            statsViewModel.updateStatsData(startWeekOnMonday)
     }
 
     /* Expand, then shrink the tab indicator while it is moving for a smooth animation */
@@ -299,7 +306,11 @@ fun TabbedSheetContent(
 
                 TabIndex.STATS.ordinal -> {
                     if (statsUiState.latestData.isNotEmpty()) // If there is data to plot
-                        StatsScreen(statsViewModel, statsUiState)
+                        StatsScreen(
+                            startWeekOnMonday,
+                            statsViewModel,
+                            statsUiState
+                        )
                 }
 
                 TabIndex.SETTINGS.ordinal -> {
@@ -593,7 +604,11 @@ private fun ReviewScreen(
 
 @OptIn(ExperimentalKoalaPlotApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun StatsScreen(viewModel: StatsViewModel, uiState: StatsUiState) {
+private fun StatsScreen(
+    startWeekOnMonday: Boolean,
+    viewModel: StatsViewModel,
+    uiState: StatsUiState
+) {
     val context = LocalContext.current
     val view = LocalView.current
 
@@ -627,7 +642,8 @@ private fun StatsScreen(viewModel: StatsViewModel, uiState: StatsUiState) {
                         viewModel.updateDataType(
                             StatsData.valueOf(
                                 it.substringBefore(" ").uppercase()
-                            )
+                            ),
+                            startWeekOnMonday
                         )
                         if (SDK_INT >= Build.VERSION_CODES.R)
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -672,7 +688,7 @@ private fun StatsScreen(viewModel: StatsViewModel, uiState: StatsUiState) {
                     30f // Default max value if all other values are zero
             val yAxisRange = 0f..maxYValue
             val xAxisRange = viewModel.getXAxisRange()
-            val xAxisValues = viewModel.getNamedXAxisValues() ?: xAxisRange.map { it.toString() }.toList()
+            val xAxisValues = viewModel.getNamedXAxisValues(startWeekOnMonday) ?: xAxisRange.map { it.toString() }.toList()
             fun barChartEntries(): List<VerticalBarPlotEntry<String, Float>> {
                 Log.v("Stats", "Building bar chart entries")
                 return buildList {
@@ -726,7 +742,7 @@ private fun StatsScreen(viewModel: StatsViewModel, uiState: StatsUiState) {
             }
         }
         Text(
-            text = viewModel.getDateTitle(),
+            text = viewModel.getDateRangeTitle(startWeekOnMonday),
             style = MaterialTheme.typography.labelLarge,
         )
         Row(
@@ -914,6 +930,10 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
                         preference = BooleanPreference.STATISTICS_ENABLED
                     )
                     // Start week on monday
+                    BooleanPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = BooleanPreference.START_WEEK_ON_MONDAY
+                    )
                     // Clear statistics (always enabled)
                 }
                 PreferencesCategory.BACKUP_RESTORE -> {

@@ -6,6 +6,7 @@
 
 package com.example.photoswooper.data.uistates
 
+import android.icu.util.Calendar
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import androidx.annotation.DrawableRes
@@ -73,6 +74,13 @@ enum class BooleanPreference(
         title = R.string.statistics_enabled,
         description = null,
         icon = R.drawable.chart_line_up
+    ),
+    START_WEEK_ON_MONDAY(
+        default = Calendar.getInstance().firstDayOfWeek == Calendar.MONDAY,
+        setting = "start_week_on_monday",
+        title = R.string.start_week_on_monday,
+        description = R.string.start_week_on_monday_desc,
+        icon = R.drawable.calendar_dot
     ),
 
     // Filtering

@@ -12,6 +12,13 @@
     <string name="review">Review</string>
 
     <!-- Preferences screen -->
+    <string name="prefs_appearance_title">Appearance</string>
+    <string name="prefs_appearance_desc">Look and feel</string>
+    <string name="prefs_behaviour_title">Behaviour</string>
+    <string name="prefs_behaviour_desc">How the app manages your photos and generally behaves</string>
+    <string name="prefs_statistics_desc"><![CDATA[How the app gathers & displays statistics]]></string>
+    <string name="prefs_backup_restore_title">Backup &amp; Restore</string>
+    <string name="prefs_backup_restore_desc">Backup/restore app data, like statistics &amp; swiped items</string>
     <string name="num_photos_per_stack">Number of photos before reset</string>
     <string name="permanently_delete">Permanently delete photos</string>
     <string name="permanently_delete_desc">If disabled, your phone\'s trash will be used, typically deleting the photo</string>
@@ -25,15 +32,11 @@
     <string name="skip_review">Skip review screen</string>
     <string name="pause_background_media">Pause background media while a video is playing</string>
     <string name="pause_background_media_desc">When enabled, audio playing in the background will pause while a video is playing in PhotoSwooper</string>
+    <string name="statistics_enabled">Enable statistics</string>
+    <string name="start_week_on_monday">Start week on monday</string>
+    <string name="start_week_on_monday_desc">If disabled, the start of the week is displayed as sunday</string>
     <string name="donate">Donate!</string>
     <string name="report_bug">Report a bug</string>
-    <string name="prefs_appearance_title">Appearance</string>
-    <string name="prefs_appearance_desc">Look and feel</string>
-    <string name="prefs_behaviour_title">Behaviour</string>
-    <string name="prefs_behaviour_desc">How the app manages your photos and generally behaves</string>
-    <string name="prefs_statistics_desc"><![CDATA[How the app gathers & displays statistics]]></string>
-    <string name="prefs_backup_restore_title">Backup &amp; Restore</string>
-    <string name="prefs_backup_restore_desc">Backup/restore app data, like statistics &amp; swiped items</string>
 
     <string name="pause_current_video">Pause the current video</string>
     <string name="rewind">Rewind a configured number of seconds</string>
@@ -102,5 +105,4 @@
     <string name="enable_stats">Enable statistics</string>
     <string name="enable_stats_desc">Collect statistics about when and how much you swipe for you to look back on. This never leaves your device</string>
     <string name="press_back_again_to_exit">Press back again to exit</string>
-    <string name="statistics_enabled">Enable statistics</string>
 </resources>

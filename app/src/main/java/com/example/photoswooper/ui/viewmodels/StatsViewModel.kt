@@ -44,14 +44,19 @@ class StatsViewModel(
         }
     }
 
-    fun getNamedXAxisValues(): List<String>? {
+    fun getNamedXAxisValues(startWeekOnMonday: Boolean): List<String>? {
         val currentTimeFrame = uiState.value.timeFrame
         return when (currentTimeFrame) {
             TimeFrame.DAY -> (0..23).map {
                 if (it.mod(3) == 0) it.toString()
                 else " ".repeat(it) // Repeat to make graph think each one is a different category
             } // Original is 1..24
-            TimeFrame.WEEK -> daysOfTheWeek
+            TimeFrame.WEEK -> {
+                if (startWeekOnMonday)
+                    daysOfTheWeek.slice(1..6).plus(daysOfTheWeek[0])
+                else
+                    daysOfTheWeek
+            }
             else -> monthsOfTheYear
         }
     }
@@ -59,7 +64,7 @@ class StatsViewModel(
     /**
      * Updates the [uiState] with the latest statistics data
      */
-    suspend fun updateStatsData() {
+    suspend fun updateStatsData(startWeekOnMonday: Boolean) {
         Log.i("Stats", "Updating stats data")
 
         val currentTimeFrame = uiState.value.timeFrame
@@ -118,24 +123,43 @@ class StatsViewModel(
                 StatsData.SPACE_SAVED -> mediaStatusDao.getDeletedBetweenDates(firstDateMillis, secondDateMillis)
                     .sumOf { it.size }.toInt().div(1000000f)
                     .toBigDecimal().setScale(2, RoundingMode.HALF_UP)
-                    .toFloat() // div 1000000 to convert to MB TODO("May need to adjust depending on max  value")
+                    .toFloat() // div 1000000 to convert to MB TODO("May need to adjust depending on max value")
             }
         }
 
         val statsData = mutableListOf<Float>() // Initialise
 
         var firstDateMillis = getCalendarAtZero(
-            finalZeroedJavaTime = fieldToZeroAndMaxForTimeFrame,
+            finalJavaTimeConstantToZero = fieldToZeroAndMaxForTimeFrame,
             dateMillisToZero = uiState.value.dateToFetchFromMillis
         ).timeInMillis
+        var finalTimeInMillis = getCalendarAtZero(
+            finalJavaTimeConstantToZero = fieldToZeroAndMaxForTimeFrame,
+            dateMillisToZero = uiState.value.dateToFetchFromMillis + currentTimeFrame.milliseconds // zeroed time of next date = max time of this date
+        ).timeInMillis
+
+        if (currentTimeFrame == TimeFrame.WEEK && startWeekOnMonday) {
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = uiState.value.dateToFetchFromMillis
+            // If sunday, get stats from previous week as sunday would be the end of the week, not the start. (startWeekOnMonday = true)
+            if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
+                firstDateMillis = getCalendarAtZero(
+                    finalJavaTimeConstantToZero = fieldToZeroAndMaxForTimeFrame,
+                    dateMillisToZero = uiState.value.dateToFetchFromMillis - intervalMilliseconds
+                ).timeInMillis
+                finalTimeInMillis = getCalendarAtZero(
+                    finalJavaTimeConstantToZero = fieldToZeroAndMaxForTimeFrame,
+                    dateMillisToZero = uiState.value.dateToFetchFromMillis
+                ).timeInMillis
+            }
+            firstDateMillis += intervalMilliseconds
+            finalTimeInMillis += intervalMilliseconds
+        }
+
         var secondDateMillis = getCalendarAtZero(
-            finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
+            finalJavaTimeConstantToZero = fieldToZeroAndMaxOnIteration,
             dateMillisToZero = firstDateMillis + intervalMilliseconds.times(1.5f)
                 .roundToLong() // zeroed time of next date = max time of this date
-        ).timeInMillis
-        val finalTimeInMillis = getCalendarAtZero(
-            finalZeroedJavaTime = fieldToZeroAndMaxForTimeFrame,
-            dateMillisToZero = uiState.value.dateToFetchFromMillis + currentTimeFrame.milliseconds // zeroed time of next date = max time of this date
         ).timeInMillis
 
         Log.d("Stats", "firstDate = ${formatDateTime(firstDateMillis, 0)} at ${formatDateTime(firstDateMillis,
@@ -155,13 +179,13 @@ class StatsViewModel(
             firstDateMillis = getCalendarAtZero(
                 // Must be zeroed each time as months have varying numbers of days/milliseconds.
                 dateMillisToZero = firstDateMillis + intervalMilliseconds.times(1.5f).roundToLong(),
-                finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
+                finalJavaTimeConstantToZero = fieldToZeroAndMaxOnIteration,
             ).timeInMillis
 
             secondDateMillis = getCalendarAtZero(
                 // Must be zeroed each time as months have varying numbers of days/milliseconds.
                 dateMillisToZero = secondDateMillis + intervalMilliseconds.times(1.5f).roundToLong(),
-                finalZeroedJavaTime = fieldToZeroAndMaxOnIteration,
+                finalJavaTimeConstantToZero = fieldToZeroAndMaxOnIteration,
             ).timeInMillis
         }
         Log.i("Stats", "final stats data = $statsData")
@@ -174,7 +198,7 @@ class StatsViewModel(
 
     /** Returns a Java calendar class at e.g. 0:00 for the day, or 1st day of month, depending on the arguement */
     fun getCalendarAtZero(
-        finalZeroedJavaTime: Int,
+        finalJavaTimeConstantToZero: Int,
         dateMillisToZero: Long = uiState.value.dateToFetchFromMillis,
     ): Calendar {
         val calendarToZero = Calendar.getInstance()
@@ -190,11 +214,11 @@ class StatsViewModel(
                 Calendar.SECOND,
                 Calendar.MILLISECOND
             )
-        val finalZeroedJavaTimeIndex = selectedJavaTimeFrames.indexOf(finalZeroedJavaTime)
+        val finalTimeIndexToZero = selectedJavaTimeFrames.indexOf(finalJavaTimeConstantToZero)
 
         var timeFrameIndex = selectedJavaTimeFrames.lastIndex
         var currentJavaTimeFrame: Int
-        while (finalZeroedJavaTimeIndex <= timeFrameIndex) {
+        while (finalTimeIndexToZero <= timeFrameIndex) {
             currentJavaTimeFrame = selectedJavaTimeFrames[timeFrameIndex]
             calendarToZero.set(
                 currentJavaTimeFrame,
@@ -261,7 +285,7 @@ class StatsViewModel(
     }
 
     /** Returns a human-readable string indicating the date that statistics are showing */
-    fun getDateTitle(): String {
+    fun getDateRangeTitle(startWeekOnMonday: Boolean): String {
         val dateToFetchFromMillis = uiState.value.dateToFetchFromMillis
         when (val currentTimeFrame = uiState.value.timeFrame) {
             TimeFrame.DAY -> {
@@ -270,11 +294,30 @@ class StatsViewModel(
             }
 
             TimeFrame.WEEK -> {
-                val startOfWeekMillis = getCalendarAtZero(Calendar.DAY_OF_WEEK).timeInMillis
-                val endOfWeekMillis = getCalendarAtZero(
-                    Calendar.DAY_OF_WEEK,
+                var startOfWeekMillis =
+                    getCalendarAtZero(Calendar.DAY_OF_WEEK).timeInMillis
+                var endOfWeekMillis = getCalendarAtZero(
+                    finalJavaTimeConstantToZero = Calendar.DAY_OF_WEEK,
                     dateMillisToZero = dateToFetchFromMillis + currentTimeFrame.milliseconds
-                ).timeInMillis - TimeFrame.DAY.milliseconds
+                ).timeInMillis
+                // Adjust if week starts on monday
+                if (startWeekOnMonday) {
+                    val calendar = Calendar.getInstance()
+                    calendar.timeInMillis = uiState.value.dateToFetchFromMillis
+                    // If today is sunday, get stats from previous week as sunday would be the end of the week, not the start. (startWeekOnMonday = true)
+                    if (calendar.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
+                        startOfWeekMillis = getCalendarAtZero(
+                            finalJavaTimeConstantToZero = Calendar.DAY_OF_WEEK,
+                            dateMillisToZero = uiState.value.dateToFetchFromMillis - TimeFrame.DAY.milliseconds
+                        ).timeInMillis
+                        endOfWeekMillis = getCalendarAtZero(
+                            finalJavaTimeConstantToZero = Calendar.DAY_OF_WEEK,
+                            dateMillisToZero = uiState.value.dateToFetchFromMillis
+                        ).timeInMillis
+                    }
+                    startOfWeekMillis += TimeFrame.DAY.milliseconds
+                    endOfWeekMillis += TimeFrame.DAY.milliseconds
+                }
 
                 return formatDateTimeRange(
                     startOfWeekMillis,
@@ -291,14 +334,14 @@ class StatsViewModel(
         }
     }
 
-    fun updateDataType(newDataType: StatsData) {
+    fun updateDataType(newDataType: StatsData, startWeekOnMonday: Boolean) {
         _uiState.update { currentState ->
             currentState.copy(
                 dataType = newDataType
             )
         }
         viewModelScope.launch {
-            updateStatsData()
+            updateStatsData(startWeekOnMonday)
         }
     }
 
