@@ -181,11 +181,19 @@ fun TabbedSheetContent(
     )
 
     fun onTabChange(newTabIndex: TabIndex) {
+        // Calculate direction of tab movement for content slide animation direction
         tabIndexChange = newTabIndex.ordinal - tabIndex
         updateTabIndex(newTabIndex.ordinal)
         if (SDK_INT >= Build.VERSION_CODES.R)
             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
         expandBottomSheet(currentCoroutineScope)
+        // Expand, then shrink the tab indicator while it is moving for a smooth animation
+        currentCoroutineScope.launch {
+            delay(10)
+            tabIndicatorWidth = 40.dp
+            delay(100)
+            tabIndicatorWidth = 24.dp
+        }
     }
 
     /* Update the stats when:
@@ -201,14 +209,6 @@ fun TabbedSheetContent(
     ) {
         if (bottomSheetTargetValue == SheetValue.Expanded)
             statsViewModel.updateStatsData(startWeekOnMonday)
-    }
-
-    /* Expand, then shrink the tab indicator while it is moving for a smooth animation */
-    LaunchedEffect(tabIndex) {
-        delay(10)
-        tabIndicatorWidth = 64.dp
-        delay(125)
-        tabIndicatorWidth = 24.dp
     }
 
     BackHandler(mainViewModel.bottomSheetScaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
