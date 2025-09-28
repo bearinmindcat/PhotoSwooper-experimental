@@ -45,8 +45,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -507,7 +507,7 @@ fun MainScreen(
                         .fillMaxSize()
                         .then(
                             if (tutorialIndex < 4)
-                                Modifier.safeContentPadding()
+                                Modifier.navigationBarsPadding()
                             else Modifier
                         )
                 ) {
@@ -547,7 +547,7 @@ fun MainScreen(
                                     skipReview = skipReview,
                                     navigateToReviewScreen = { navigateToReviewScreen() },
                                     deleteMedia = {
-                                        mainViewModel.confirmDeletion()
+                                        mainViewModel.deleteMarkedMedia()
                                     }
                                 )
                             else // If there aren't any photos to delete, ask the user if they want to swipe more photos
@@ -778,7 +778,6 @@ private fun EndOfPhotosScreen(
         Icon(
             painter = painterResource(R.drawable.check),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.secondary,
             modifier = Modifier
                 .size(64.dp)
                 .padding(bottom = dimensionResource(R.dimen.padding_medium))
@@ -787,7 +786,6 @@ private fun EndOfPhotosScreen(
             "You have swiped on all of your photos & videos, congrats! :D \uD83C\uDF89",
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
         )
         Button(onClick = {

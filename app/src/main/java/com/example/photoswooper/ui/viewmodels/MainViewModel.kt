@@ -341,19 +341,26 @@ class MainViewModel(
     }
 
     fun undo(): Boolean {
-        if (_uiState.value.currentIndex > 0) { // First check if there is an action to undo
+        val listOfMediaBeforeCurrent = _uiState.value.mediaItems.subList(0, _uiState.value.currentIndex)
+        var canUndo = _uiState.value.currentIndex > 0 && listOfMediaBeforeCurrent.all { it.status != MediaStatus.HIDE }
+        if (canUndo) { // First check if there is an action to undo
             viewModelScope.launch {
                 exitImage()
                 delay(100)
-                if (_uiState.value.currentIndex > 0) { // Check if undo valid again, after the above delay
-                    val latestSwipedMediaIndex = _uiState.value.currentIndex - 1
+                // Check if undo valid again, after the above delay
+                if (canUndo) {
+                    if (getCurrentMedia()?.type == MediaType.VIDEO)
+                        player.pause()
+                    var indexToSeekTo = _uiState.value.currentIndex - 1
+                    while (uiState.value.mediaItems[indexToSeekTo].status == MediaStatus.HIDE)
+                        indexToSeekTo--
                     // Unset the status
-                    _uiState.value.mediaItems[latestSwipedMediaIndex].status = MediaStatus.UNSET
+                    _uiState.value.mediaItems[indexToSeekTo].status = MediaStatus.UNSET
 
                     // Decrement currentIndex
                     _uiState.update { currentState ->
                         currentState.copy(
-                            currentIndex = latestSwipedMediaIndex,
+                            currentIndex = indexToSeekTo,
                             numUnset = currentState.numUnset + 1,
                             mediaBuffering = true
                         )
@@ -362,7 +369,7 @@ class MainViewModel(
                         onCurrentMediaIsVideo()
                     /* Update database  */
                     CoroutineScope(Dispatchers.IO).launch {
-                        val mediaItem = _uiState.value.mediaItems[latestSwipedMediaIndex]
+                        val mediaItem = _uiState.value.mediaItems[indexToSeekTo]
                         mediaStatusDao.update(mediaItem.getMediaStatusEntity(statisticsEnabled.first()))
                     }
                 }
@@ -374,7 +381,7 @@ class MainViewModel(
         }
     }
 
-    fun confirmDeletion() {
+    fun deleteMarkedMedia() {
         val mediaToDelete = getMediaToDelete()
         // Delete the media in user's storage
         if (mediaToDelete.isNotEmpty()) {
@@ -386,7 +393,6 @@ class MainViewModel(
                     }
                 )
             }
-
 
         }
         // If user cancels deletion of all items
@@ -403,21 +409,20 @@ class MainViewModel(
             else if (deletedMediaUris.size == getMediaToDelete().size)
                 makeToast("All selected items deleted")
             /* Update database & hide media in UI*/
-            deletedMediaUris.forEach { deletedMediaUri ->
-                val deletedMedia = _uiState.value.mediaItems.find { it.uri == deletedMediaUri }
-                if (deletedMedia != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        mediaStatusDao.update(deletedMedia.getMediaStatusEntity(statisticsEnabled.first()))
-                    }
-                    _uiState.update { currentState ->
-                        val newMediaItems = currentState.mediaItems
-                        newMediaItems[_uiState.value.mediaItems.indexOf(deletedMedia)] =
-                            deletedMedia.copy(status = MediaStatus.KEEP)
-                        return@update currentState.copy(
-                            mediaItems = newMediaItems
-                        )
-                    }
-                }
+            val deletedMediaItems = _uiState.value.mediaItems.filter { deletedMediaUris.contains(it.uri) }
+            CoroutineScope(Dispatchers.IO).launch {
+                mediaStatusDao.update(*deletedMediaItems.map {
+                    it.getMediaStatusEntity(statisticsEnabled.first())
+                }.toTypedArray())
+            }
+            _uiState.update { currentState ->
+                currentState.copy(
+                    mediaItems = currentState.mediaItems.map {
+                        if (deletedMediaItems.contains(it))
+                            it.copy(status = MediaStatus.HIDE)
+                        else it
+                    }.toMutableList()
+                )
             }
             /* Update space saved in the current time frame */
             _uiState.update { currentState ->

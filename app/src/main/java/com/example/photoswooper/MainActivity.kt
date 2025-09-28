@@ -320,7 +320,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     else
                         CoroutineScope(Dispatchers.Main).launch {
-                            mainViewModel.confirmDeletion() // Delete the rest if on lower android versions
+                            mainViewModel.deleteMarkedMedia() // Delete the rest if on lower android versions
                         }
                 } else
                     if (SDK_INT >= Build.VERSION_CODES.R)

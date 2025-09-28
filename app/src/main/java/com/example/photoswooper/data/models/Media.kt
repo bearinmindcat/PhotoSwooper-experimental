@@ -25,7 +25,8 @@ enum class MediaStatus(@param:DrawableRes val iconDrawableId: Int) {
     UNSET(R.drawable.x),
     DELETE(R.drawable.trash),
     KEEP(R.drawable.bookmark_simple),
-    SNOOZE(R.drawable.hourglass_high)
+    SNOOZE(R.drawable.hourglass_high),
+    HIDE(R.drawable.check) // Used when an item is deleted so shouldnt be attempted to be fetched
 }
 
 data class Media(

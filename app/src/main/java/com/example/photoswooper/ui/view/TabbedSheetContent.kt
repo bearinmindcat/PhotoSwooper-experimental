@@ -74,6 +74,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -363,79 +364,82 @@ private fun ReviewScreen(
             )
 
             Box(Modifier.fillMaxSize()) {
-                LazyVerticalStaggeredGrid(columns = StaggeredGridCells.Adaptive(120.dp)) {
-                    items(mainUiState.mediaItems.filter { it.status == reviewUiState.currentStatusFilter }) { mediaItem ->
-                        val coroutineScope = rememberCoroutineScope()
-                        val imageScale = remember { Animatable(1f) }
-                        fun animateImageSelect() {
-                            coroutineScope.launch {
-                                val newTargetValue: Float = if (reviewUiState.selectedMedia.contains(mediaItem)) 0.9f
-                                else 1f
-                                imageScale.animateTo(
-                                    newTargetValue,
-                                    spring(
-                                        stiffness = Spring.StiffnessMedium,
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                key(mainUiState.mediaItems) {
+                    LazyVerticalStaggeredGrid(columns = StaggeredGridCells.Adaptive(120.dp)) {
+                        items(mainUiState.mediaItems.filter { it.status == reviewUiState.currentStatusFilter }) { mediaItem ->
+                            val coroutineScope = rememberCoroutineScope()
+                            val imageScale = remember { Animatable(1f) }
+                            fun animateImageSelect() {
+                                coroutineScope.launch {
+                                    val newTargetValue: Float =
+                                        if (reviewUiState.selectedMedia.contains(mediaItem)) 0.9f
+                                        else 1f
+                                    imageScale.animateTo(
+                                        newTargetValue,
+                                        spring(
+                                            stiffness = Spring.StiffnessMedium,
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        )
                                     )
+                                }
+                            }
+                            LaunchedEffect(reviewUiState.selectedMedia) {
+                                animateImageSelect()
+                            }
+                            Box(
+                                Modifier.combinedClickable(
+                                    onClick = {
+                                        if (reviewUiState.mediaSelectionEnabled) {
+                                            reviewViewModel.toggleMediaItemSelected(mediaItem)
+                                        } else
+                                            mainViewModel.openInGalleryApp(mediaItem)
+                                    },
+                                    onClickLabel =
+                                        if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
+                                        else stringResource(R.string.open_externally_desc),
+                                    onLongClick = {
+                                        if (reviewUiState.mediaSelectionEnabled) {
+                                            reviewViewModel.toggleMediaItemSelected(mediaItem)
+                                        } else {
+                                            reviewViewModel.toggleMediaSelectionEnabled()
+                                            reviewViewModel.toggleMediaItemSelected(mediaItem)
+                                        }
+                                    },
+                                    onLongClickLabel =
+                                        if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
+                                        else stringResource(R.string.enable_media_selection)
                                 )
+                            ) {
+                                AsyncImage(
+                                    model = mediaItem.uri,
+                                    contentDescription = null,
+                                    alignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .scale(imageScale.value)
+                                        .padding(dimensionResource(R.dimen.padding_small))
+
+                                )
+                                if (reviewUiState.selectedMedia.contains(mediaItem))
+                                    Icon(
+                                        painter = painterResource(R.drawable.check),
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        contentDescription = stringResource(R.string.selected),
+                                        modifier = Modifier
+                                            .background(
+                                                color = MaterialTheme.colorScheme.tertiaryContainer, shape = CircleShape
+                                            )
+                                            .align(Alignment.TopEnd)
+                                            .padding(dimensionResource(R.dimen.padding_xsmall))
+                                            .size(dimensionResource(R.dimen.xsmall_icon))
+                                    )
                             }
                         }
-                        LaunchedEffect(reviewUiState.selectedMedia) {
-                            animateImageSelect()
-                        }
-                        Box(
-                            Modifier.combinedClickable(
-                                onClick = {
-                                    if (reviewUiState.mediaSelectionEnabled) {
-                                        reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                    } else
-                                        mainViewModel.openInGalleryApp(mediaItem)
-                                },
-                                onClickLabel =
-                                    if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
-                                    else stringResource(R.string.open_externally_desc),
-                                onLongClick = {
-                                    if (reviewUiState.mediaSelectionEnabled) {
-                                        reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                    } else {
-                                        reviewViewModel.toggleMediaSelectionEnabled()
-                                        reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                    }
-                                },
-                                onLongClickLabel =
-                                    if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
-                                    else stringResource(R.string.enable_media_selection)
+                        item(span = StaggeredGridItemSpan.FullLine) {
+                            Spacer(
+                                Modifier
+                                    .height(floatingActionButtonSize.height + 32.dp/*(padding)*/)
                             )
-                        ) {
-                            AsyncImage(
-                                model = mediaItem.uri,
-                                contentDescription = null,
-                                alignment = Alignment.Center,
-                                modifier = Modifier
-                                    .scale(imageScale.value)
-                                    .padding(dimensionResource(R.dimen.padding_small))
-
-                            )
-                            if (reviewUiState.selectedMedia.contains(mediaItem))
-                                Icon(
-                                    painter = painterResource(R.drawable.check),
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    contentDescription = stringResource(R.string.selected),
-                                    modifier = Modifier
-                                        .background(
-                                            color = MaterialTheme.colorScheme.tertiaryContainer, shape = CircleShape
-                                        )
-                                        .align(Alignment.TopEnd)
-                                        .padding(dimensionResource(R.dimen.padding_xsmall))
-                                        .size(dimensionResource(R.dimen.xsmall_icon))
-                                )
                         }
-                    }
-                    item(span = StaggeredGridItemSpan.FullLine) {
-                        Spacer(
-                            Modifier
-                                .height(floatingActionButtonSize.height + 32.dp/*(padding)*/)
-                        )
                     }
                 }
                 if (mainUiState.mediaItems.none { it.status == reviewUiState.currentStatusFilter })
@@ -458,7 +462,7 @@ private fun ReviewScreen(
                         if (reduceAnimations) fadeIn()
                         else slideInVertically(
                             animationSpec = spring(
-                                stiffness = Spring.StiffnessLow,
+                                stiffness = Spring.StiffnessMediumLow,
                                 dampingRatio = Spring.DampingRatioLowBouncy,
                             ),
                             initialOffsetY = { it * 2 }
@@ -467,7 +471,7 @@ private fun ReviewScreen(
                         if (reduceAnimations) fadeOut()
                         else slideOutVertically(
                             animationSpec = spring(
-                                stiffness = Spring.StiffnessLow,
+                                stiffness = Spring.StiffnessMediumLow,
                                 dampingRatio = Spring.DampingRatioLowBouncy,
                             ),
                             targetOffsetY = { it * 2 }
@@ -493,13 +497,19 @@ private fun ReviewScreen(
                                 drawableIconId = R.drawable.x,
                                 actionTitle = stringResource(R.string.cancel),
                                 actionDescription = stringResource(R.string.cancel_selection),
-                                onClick = { reviewViewModel.cancelSelection() },
+                                onClick = {
+                                    if (SDK_INT >= Build.VERSION_CODES.R)
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    reviewViewModel.cancelSelection()
+                                },
                             )
                             FloatingAction(
                                 drawableIconId = R.drawable.selection_all,
                                 actionTitle = stringResource(R.string.select_all),
                                 actionDescription = null,
                                 onClick = {
+                                    if (SDK_INT >= Build.VERSION_CODES.R)
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     mainUiState.mediaItems.forEach {
                                         reviewViewModel.toggleMediaItemSelected(
                                             it,
@@ -557,7 +567,7 @@ private fun ReviewScreen(
                 ) {
                     Box(contentAlignment = Alignment.BottomEnd) {
                         ExtendedFloatingActionButton(
-                            onClick = { mainViewModel.confirmDeletion() },
+                            onClick = { mainViewModel.deleteMarkedMedia() },
                             modifier = Modifier
                                 .onGloballyPositioned {
                                     with(density) {
@@ -948,7 +958,7 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
                         preference = BooleanPreference.START_WEEK_ON_MONDAY,
-                        readOnlyReason = if (statisticsEnabled) null else stringResource(R.string.enable_statistics)
+                        readOnlyReason = if (statisticsEnabled) null else stringResource(R.string.statistics_required)
                     )
                     // Clear statistics (always enabled)
                 }
