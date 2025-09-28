@@ -72,7 +72,7 @@ enum class BooleanPreference(
         default = true,
         setting = "statistics_enabled",
         title = R.string.enable_statistics,
-        description = null,
+        description = R.string.enable_statistics_desc,
         icon = R.drawable.chart_line_up
     ),
     START_WEEK_ON_MONDAY(

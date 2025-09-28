@@ -10,4 +10,6 @@
     <dimen name="xsmall_icon">16dp</dimen>
     <dimen name="small_icon">24dp</dimen>
     <dimen name="medium_icon">32dp</dimen>
+
+    <dimen name="duration_text_width">40dp</dimen>
 </resources>

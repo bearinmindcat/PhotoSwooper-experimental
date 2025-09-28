@@ -36,7 +36,7 @@
     <string name="statistics_required">This preference requires statistics to be enabled</string>
     <string name="start_week_on_monday">Start week on monday</string>
     <string name="start_week_on_monday_desc">If disabled, the start of the week is displayed as sunday</string>
-    <string name="swipe_retention_time">Number of days to remember swipes for</string>
+    <string name="swipe_retention_time">Remember swipes for:</string>
     <string name="options_for_current_preference">Options for current preference</string>
     <string name="value_for_above_preference">Value for above preference</string>
     <string name="donate">Donate!</string>
@@ -89,7 +89,7 @@
     <string name="for_info_about_these_actions">for info about these actions</string>
     <string name="tutorial_bottom_sheet_desc">This contains an: \n- undo button (undo previous swipe)\n- review button (review and delete marked photos)\n- filter button (filter what media is shown)</string>
     <string name="tutorial_bottom_sheet_title">This is the bottom sheet</string>
-    <string name="tutorial_bottom_sheet_try">Try to undo the swipes you just performed!</string>
+    <string name="tutorial_bottom_sheet_try">Try to undo all the swipes you just performed!</string>
     <string name="tutorial_filter_sort_title"><![CDATA[Filter & sort]]></string>
     <string name="tutorial_filter_sort_desc"><![CDATA[The filter button lets you choose what you swipe on & set the order they are displayed]]></string>
     <string name="tutorial_filter_sort_try">Try filtering for only photos, and have them be displayed in order of most recent first!</string>
@@ -109,4 +109,6 @@
     <string name="enable_stats">Enable statistics</string>
     <string name="enable_stats_desc">Collect statistics about when and how much you swipe for you to look back on. This never leaves your device</string>
     <string name="press_back_again_to_exit">Press back again to exit</string>
+    <string name="enable_statistics_desc">Warning: Disabling statistics also disables any custom photo retention periods</string>
+    <string name="use_filter_dialog_buttons_to_exit">Use Cancel or Confirm button at the bottom of this dialog to exit</string>
 </resources>

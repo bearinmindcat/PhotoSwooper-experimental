@@ -15,10 +15,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
@@ -116,7 +115,13 @@ fun FilterDialog(
     val titleStyle = MaterialTheme.typography.titleMedium
 
     Dialog(
-        onDismissRequest = { onDismiss() }
+        onDismissRequest = {
+            Toast.makeText(
+                context,
+                R.string.use_filter_dialog_buttons_to_exit,
+                Toast.LENGTH_SHORT
+            ).show()
+        },
     ) {
         Card(
             shape = MaterialTheme.shapes.large,
@@ -174,6 +179,12 @@ fun FilterDialog(
                                         ).show()
                                     }
                                 )
+                                if (Build.VERSION.SDK_INT >= 34) {
+                                    if (newFilters.mediaTypes.contains(mediaType))
+                                        view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
+                                    else
+                                        view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
+                                }
                             },
                             label = {
                                 Text(
@@ -209,62 +220,63 @@ fun FilterDialog(
                 // Sort by
                 Text("Sort by:", style = titleStyle)
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = dimensionResource(R.dimen.padding_medium))
                 ) {
-                    DropdownFilterChip(
-                        leadingIconPainter = painterResource(newFilters.sortField.iconDrawableId),
-                        selectedMenuItem = newFilters.sortField.toString().lowercase(),
-                        filterChipSelected = newFilters.sortField != MediaSortField.RANDOM,
-                        menuItemsDescription = "Fields to sort media by",
-                        menuItems = MediaSortField.entries.map { it.toString().lowercase() }.toTypedArray(),
-                        menuItemIcons = MediaSortField.entries.map { painterResource(it.iconDrawableId) }
-                            .toTypedArray(),
-                        onSelectionChange = {
-                            filterDialogViewModel.updateSortField(MediaSortField.valueOf(it.uppercase()))
-                        }
-                    )
-                    AnimatedVisibility(
-                        newFilters.sortField != MediaSortField.RANDOM,
-                        enter = if (reduceAnimations) fadeIn()
-                        else fadeIn() + expandHorizontally(
-                            animationSpec = spring(
-                                stiffness = Spring.StiffnessMediumLow,
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                            ),
-                        ),
-                        exit = if (reduceAnimations) fadeOut()
-                        else fadeOut() + shrinkHorizontally(
-                            animationSpec = spring(
-                                stiffness = Spring.StiffnessMediumLow,
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                            ),
-                        ),
-                        label = "sort ascending"
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .padding(start = dimensionResource(R.dimen.padding_small))
-                                .clickable { filterDialogViewModel.toggleSortAscending() }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.sort_ascending),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .graphicsLayer(
-                                        rotationZ = sortIconRotation,
-                                        rotationY = sortIconRotation
-                                    )
-                                    .size(dimensionResource(R.dimen.small_icon))
+                    Column {
+                            DropdownFilterChip(
+                                leadingIconPainter = painterResource(newFilters.sortField.iconDrawableId),
+                                selectedMenuItem = newFilters.sortField.toString().lowercase(),
+                                filterChipSelected = newFilters.sortField != MediaSortField.RANDOM,
+                                menuItemsDescription = "Fields to sort media by",
+                                menuItems = MediaSortField.entries.map { it.toString().lowercase() }.toTypedArray(),
+                                menuItemIcons = MediaSortField.entries.map { painterResource(it.iconDrawableId) }
+                                    .toTypedArray(),
+                                onSelectionChange = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    filterDialogViewModel.updateSortField(MediaSortField.valueOf(it.uppercase()))
+                                }
                             )
-                            Text(
-                                text = if (newFilters.sortAscending) "Ascending" else "Descending",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
+                            AnimatedVisibility(
+                                newFilters.sortField != MediaSortField.RANDOM,
+                                enter = if (reduceAnimations) fadeIn()
+                                else fadeIn() + expandVertically(
+                                    animationSpec = spring(
+                                        stiffness = Spring.StiffnessMediumLow,
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                    ),
+                                ),
+                                exit = if (reduceAnimations) fadeOut()
+                                else fadeOut() + shrinkVertically (
+                                    animationSpec = spring(
+                                        stiffness = Spring.StiffnessMediumLow,
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                    ),
+                                ),
+                                label = "sort ascending"
+                            ) {
+                                DropdownFilterChip(
+                                    leadingIconPainter = if (newFilters.sortAscending) painterResource(R.drawable.sort_descending) else painterResource(
+                                        R.drawable.sort_ascending
+                                    ),
+                                    selectedMenuItem = if (newFilters.sortAscending) "Ascending" else "Descending",
+                                    menuItemsDescription = "Sort order options (ascending/descending)",
+                                    menuItems = arrayOf("Ascending", "Descending"),
+                                    menuItemIcons = arrayOf(
+                                        painterResource(R.drawable.sort_descending),
+                                        painterResource(R.drawable.sort_ascending)
+                                    ),
+                                    onSelectionChange = {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        filterDialogViewModel.toggleSortAscending()
+                                    }
+                                )
+                            }
                     }
                     AnimatedVisibility(newFilters.sortField.sortOrderString != StringPreference.FILTER_SORT_FIELD.default) {
                         IconButton(onClick = {

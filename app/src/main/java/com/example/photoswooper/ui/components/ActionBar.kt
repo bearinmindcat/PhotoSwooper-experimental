@@ -151,7 +151,7 @@ fun ActionBar(
                     skipReview = skipReview,
                     navigateToReviewScreen = { navigateToReviewScreen() },
                     deleteMedia = {
-                        viewModel.confirmDeletion()
+                        viewModel.deleteMarkedMedia()
                     }
                 )
                 /* Filter button */
