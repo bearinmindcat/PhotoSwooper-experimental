@@ -216,7 +216,7 @@ class ContentResolverInterface(
                             if (type == MediaType.PHOTO)
                                 fileInputStream?.readAllBytes()
                             else
-                                fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use TODO("Check if this is long enough")
+                                fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use
                         val hash: ByteArray = digest.digest(byteArrayToHash ?: ByteArray(0))
                         hash.toHexString()
                     } else {

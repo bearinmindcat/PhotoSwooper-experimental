@@ -76,9 +76,17 @@ fun FloatingActionsRow(
 ) {
     val view = LocalView.current
     val uiState by viewModel.uiState.collectAsState()
+
     // player position used in bottom slider
     var displayedPlayerPosition by remember { mutableFloatStateOf(viewModel.player.currentPosition.toFloat()) }
     fun endOfVideo() = viewModel.player.currentPosition >= viewModel.player.duration
+    var playPauseIcon by remember { mutableStateOf(
+        when {
+            (uiState.isPlaying) -> R.drawable.pause
+            (endOfVideo()) -> R.drawable.arrow_counter_clockwise
+            else -> R.drawable.play
+        }
+    ) }
 
     var showChangeSnoozeLengthDialog by remember { mutableStateOf(false) }
     if (showChangeSnoozeLengthDialog)
@@ -158,29 +166,24 @@ fun FloatingActionsRow(
                         },
 //                            onLongPress = { TODO("Configurable rewind amount") }
                     )
-                    FloatingAction(
-                        drawableIconId =
-                            when {
-                                (uiState.isPlaying) -> R.drawable.pause
-                                (endOfVideo()) -> R.drawable.arrow_counter_clockwise // FIXME("Restart icon not showing on drag to end")
-                                else -> R.drawable.play
-                            },
-                        actionTitle = null,
-                        actionDescription = stringResource(R.string.pause_current_video),
-                        onClick = {
-                            when {
-                                (viewModel.player.isPlaying) -> viewModel.safePause()
-                                (endOfVideo()) -> {
-                                    viewModel.player.seekTo(0)
-                                    viewModel.safePlay()
-                                }
+                        FloatingAction(
+                            drawableIconId = playPauseIcon,
+                            actionTitle = null,
+                            actionDescription = stringResource(R.string.pause_current_video),
+                            onClick = {
+                                when {
+                                    (viewModel.player.isPlaying) -> viewModel.safePause()
+                                    (endOfVideo()) -> {
+                                        viewModel.player.seekTo(0)
+                                        viewModel.safePlay()
+                                    }
 
-                                else -> viewModel.safePlay()
-                            }
-                            if (SDK_INT >= Build.VERSION_CODES.R)
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        },
-                    )
+                                    else -> viewModel.safePlay()
+                                }
+                                if (SDK_INT >= Build.VERSION_CODES.R)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            },
+                        )
                     FloatingAction(
                         drawableIconId = R.drawable.fast_forward,
                         actionTitle = null,
@@ -214,8 +217,14 @@ fun FloatingActionsRow(
             LaunchedEffect(null) { // When either of these two values (keys) change:
                 while (true) {
                     delay(50) // Only update every 100 milliseconds
-                    if (!userDragging)
+                    if (!userDragging) {
                         displayedPlayerPosition = viewModel.player.currentPosition.toFloat()
+                        playPauseIcon = when {
+                            (uiState.isPlaying) -> R.drawable.pause
+                            (endOfVideo()) -> R.drawable.arrow_counter_clockwise
+                            else -> R.drawable.play
+                        }
+                    }
                     else
                         viewModel.player.seekTo(displayedPlayerPosition.toLong())
                 }
@@ -228,16 +237,17 @@ fun FloatingActionsRow(
                     .fillMaxWidth()
             ) {
                 DurationText(
-                    displayedPlayerPosition,
+                    displayedPlayerPosition.toLong(),
                     Color.White,
                     Modifier
-                        .width(32.dp)
+                        .width(dimensionResource(R.dimen.duration_text_width))
                 )
                 androidx.compose.material.Slider(
                     value = displayedPlayerPosition,
                     valueRange = 0f..if (viewModel.player.duration > 0L) viewModel.player.duration.toFloat() else Float.MAX_VALUE,
                     onValueChange = {
-                        viewModel.tempPause()
+                        if (!userDragging) // Only run when user first starts dragging
+                            viewModel.tempPause()
                         userDragging = true
                         displayedPlayerPosition = it
                     },
@@ -267,7 +277,7 @@ fun FloatingActionsRow(
                     if (viewModel.player.duration > 0L) viewModel.player.duration else 0,
                     Color.White,
                     Modifier
-                        .width(32.dp)
+                        .width(dimensionResource(R.dimen.duration_text_width))
                 )
             }
         }
@@ -396,7 +406,7 @@ private fun ChangeSnoozeLengthDialog(
 
 @Composable
 private fun DurationText(
-    duration: Number,
+    duration: Long,
     color: Color = MaterialTheme.colorScheme.onSurface,
     modifier: Modifier = Modifier
 ) {
@@ -409,9 +419,26 @@ private fun DurationText(
     )
 }
 
-// TODO("Format durations > 1hr")
-private fun formatDuration(numToConvert: Number): String { // Parameter is the minutes in milliseconds
-    val minutes = numToConvert.toLong().floorDiv(60000) // Get the minutes and round down
-    val seconds = numToConvert.toLong().mod(60000).floorDiv(1000) // Get the seconds remaining from the division
-    return "%d:%02d".format(minutes, seconds) // Combine the results
+private fun formatDuration(numToConvert: Long): String { // Parameter is the minutes in milliseconds
+    numToConvert.milliseconds.toComponents { days, hours, minutes, seconds, _ ->
+        var formattedDuration = ""
+
+        if (days > 0) formattedDuration += days.toString()
+        if (hours > 0) {
+            if (formattedDuration.isNotEmpty())
+                formattedDuration += ":"
+            formattedDuration += hours.toString()
+        }
+        // Minutes
+        if (formattedDuration.isNotEmpty())
+            formattedDuration += ":"
+        formattedDuration += minutes.toString()
+        // Seconds
+        if (formattedDuration.isNotEmpty())
+            formattedDuration += ":"
+        if (seconds < 10)
+            formattedDuration += "0" // Add 0 so minimum 2 digits displayed
+        formattedDuration += seconds.toString()
+        return formattedDuration
+    }
 }
