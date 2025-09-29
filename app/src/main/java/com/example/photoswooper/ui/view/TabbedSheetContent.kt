@@ -38,6 +38,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,6 +55,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
@@ -61,6 +64,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetValue
@@ -102,8 +106,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import com.example.photoswooper.MainActivity
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
@@ -135,6 +141,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.system.exitProcess
+
 
 enum class TabIndex {
     REVIEW, STATS, SETTINGS
@@ -343,6 +351,17 @@ private fun ReviewScreen(
     val mainUiState by mainViewModel.uiState.collectAsState()
 
     var floatingActionButtonSize by remember { mutableStateOf(DpSize(0.dp, 0.dp)) }
+
+    fun performSelectItemHapticFeedback(mediaItem: Media) {
+        if (SDK_INT >= 34) {
+            if (reviewUiState.selectedMedia.contains(mediaItem))
+                view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
+            else
+                view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
+        }
+        else
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
 
     if (mainUiState.mediaItems.firstOrNull { it.status != MediaStatus.UNSET } != null)
         Column(
@@ -893,6 +912,73 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
         )
     }
 
+    var showRestartRequiredDialog by remember { mutableStateOf(false) }
+    if (showRestartRequiredDialog)
+        Dialog(
+        onDismissRequest = {}
+        ) {
+            Card(
+                shape = MaterialTheme.shapes.large,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimensionResource(R.dimen.padding_medium)),
+            ) {
+                Text(
+                    stringResource(R.string.restart_required_for_preference),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(
+                        top = dimensionResource(R.dimen.padding_medium),
+                        bottom = dimensionResource(R.dimen.padding_small),
+                        start = dimensionResource(R.dimen.padding_medium),
+                        end = dimensionResource(R.dimen.padding_medium)
+                    ),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    stringResource(R.string.this_will_discard_items_marked_as_deleted),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(
+                        top = dimensionResource(R.dimen.padding_small),
+                        bottom = dimensionResource(R.dimen.padding_small),
+                        start = dimensionResource(R.dimen.padding_medium),
+                        end = dimensionResource(R.dimen.padding_medium)
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                FlowRow (
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = dimensionResource(R.dimen.padding_medium)),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            if (SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            showRestartRequiredDialog = false
+                        },
+                        modifier = Modifier.padding(dimensionResource(R.dimen.padding_small)),
+                        ) {
+                        Text(stringResource(R.string.restart_later))
+                    }
+                    Button(
+                        onClick = {
+                            if (SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            val intent: Intent = Intent(context, MainActivity::class.java)
+                            context.startActivity(intent)
+                            exitProcess(0)
+                        },
+                        modifier = Modifier.padding(dimensionResource(R.dimen.padding_small)),
+                        ) {
+                        Text(stringResource(R.string.restart_now))
+                    }
+                }
+            }
+        }
+
     AnimatedContent(
         section,
         transitionSpec = {
@@ -990,6 +1076,7 @@ private fun PreferencesScreen(modifier: Modifier = Modifier) {
                     BooleanPreferenceEditor(
                         dataStoreInterface = dataStoreInterface,
                         preference = BooleanPreference.PAUSE_BACKGROUND_MEDIA,
+                        onUpdate = { showRestartRequiredDialog = true }
                     )
                 }
 
@@ -1100,6 +1187,7 @@ private fun FooterLink(
 fun BooleanPreferenceEditor(
     dataStoreInterface: DataStoreInterface,
     preference: BooleanPreference,
+    onUpdate: (newValue: Boolean) -> Unit = {},
     readOnlyReason: String? = null
 ) {
     val view = LocalView.current
@@ -1108,6 +1196,7 @@ fun BooleanPreferenceEditor(
     val preferenceValue by dataStoreInterface.getBooleanSettingValue(preference.setting).collectAsState(false)
 
     fun togglePreference() = CoroutineScope(Dispatchers.IO).launch {
+        onUpdate(!preferenceValue)
         dataStoreInterface.setBooleanSettingValue(
             setting = preference.setting,
             newValue = !preferenceValue
