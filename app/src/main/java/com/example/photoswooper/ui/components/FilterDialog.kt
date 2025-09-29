@@ -435,7 +435,7 @@ fun FilterDialog(
                 ) {
                     OutlinedButton(
                         onClick = { onDismiss() },
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(dimensionResource(R.dimen.padding_small)),
                     ) {
                         Text(
                             stringResource(R.string.cancel),
@@ -453,7 +453,7 @@ fun FilterDialog(
                                 setFilterAsDefault
                             )
                         },
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(dimensionResource(R.dimen.padding_small)),
                     ) {
                         Text(
                             stringResource(R.string.confirm),

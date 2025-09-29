@@ -111,4 +111,7 @@
     <string name="press_back_again_to_exit">Press back again to exit</string>
     <string name="enable_statistics_desc">Warning: Disabling statistics also disables any custom photo retention periods</string>
     <string name="use_filter_dialog_buttons_to_exit">Use Cancel or Confirm button at the bottom of this dialog to exit</string>
+    <string name="restart_later">Restart later</string>
+    <string name="restart_now">Restart now</string>
+    <string name="restart_required_for_preference">To apply this preference PhotoSwooper must be restarted</string>
 </resources>

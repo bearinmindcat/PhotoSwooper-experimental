@@ -23,8 +23,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -103,7 +105,9 @@ import androidx.compose.ui.unit.toSize
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
+import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
+import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.StatsData
@@ -386,52 +390,94 @@ private fun ReviewScreen(
                             LaunchedEffect(reviewUiState.selectedMedia) {
                                 animateImageSelect()
                             }
+                            // Box containing image, type icon & selected checkbox
                             Box(
-                                Modifier.combinedClickable(
-                                    onClick = {
-                                        if (reviewUiState.mediaSelectionEnabled) {
-                                            reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                        } else
-                                            mainViewModel.openInGalleryApp(mediaItem)
-                                    },
-                                    onClickLabel =
-                                        if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
-                                        else stringResource(R.string.open_externally_desc),
-                                    onLongClick = {
-                                        if (reviewUiState.mediaSelectionEnabled) {
-                                            reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                        } else {
-                                            reviewViewModel.toggleMediaSelectionEnabled()
-                                            reviewViewModel.toggleMediaItemSelected(mediaItem)
-                                        }
-                                    },
-                                    onLongClickLabel =
-                                        if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
-                                        else stringResource(R.string.enable_media_selection)
-                                )
+                                Modifier
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (reviewUiState.mediaSelectionEnabled) {
+                                                performSelectItemHapticFeedback(mediaItem)
+                                                reviewViewModel.toggleMediaItemSelected(mediaItem)
+                                            } else
+                                                mainViewModel.openInGalleryApp(mediaItem)
+                                        },
+                                        onClickLabel =
+                                            if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
+                                            else stringResource(R.string.open_externally_desc),
+                                        onLongClick = {
+                                            if (reviewUiState.mediaSelectionEnabled) {
+                                                performSelectItemHapticFeedback(mediaItem)
+                                                reviewViewModel.toggleMediaItemSelected(mediaItem)
+                                            } else {
+                                                reviewViewModel.toggleMediaSelectionEnabled()
+                                                reviewViewModel.toggleMediaItemSelected(mediaItem)
+                                            }
+                                        },
+                                        onLongClickLabel =
+                                            if (reviewUiState.mediaSelectionEnabled) stringResource(R.string.select_item)
+                                            else stringResource(R.string.enable_media_selection)
+                                    )
                             ) {
-                                AsyncImage(
-                                    model = mediaItem.uri,
-                                    contentDescription = null,
-                                    alignment = Alignment.Center,
+                                // Box containing type icon & image
+                                Box(
                                     modifier = Modifier
                                         .scale(imageScale.value)
-                                        .padding(dimensionResource(R.dimen.padding_small))
-
-                                )
-                                if (reviewUiState.selectedMedia.contains(mediaItem))
-                                    Icon(
-                                        painter = painterResource(R.drawable.check),
-                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        contentDescription = stringResource(R.string.selected),
+                                ) {
+                                    AsyncImage(
+                                        model = mediaItem.uri,
+                                        contentDescription = null,
+                                        alignment = Alignment.Center,
                                         modifier = Modifier
-                                            .background(
-                                                color = MaterialTheme.colorScheme.tertiaryContainer, shape = CircleShape
-                                            )
-                                            .align(Alignment.TopEnd)
-                                            .padding(dimensionResource(R.dimen.padding_xsmall))
-                                            .size(dimensionResource(R.dimen.xsmall_icon))
+                                            .padding(dimensionResource(R.dimen.padding_small))
+
                                     )
+                                    Icon(
+                                        painter = painterResource(if (mediaItem.type == MediaType.PHOTO) R.drawable.image else R.drawable.video),
+                                        contentDescription = "This item is a ${mediaItem.type.toString().lowercase()}",
+                                        modifier = Modifier
+                                            .padding(dimensionResource(R.dimen.padding_medium))
+                                            .align(Alignment.BottomStart)
+                                            .size(dimensionResource(R.dimen.xsmall_icon))
+                                            .dropShadow(
+                                                MaterialTheme.shapes.medium,
+                                                Shadow(dimensionResource(R.dimen.xsmall_icon).div(1.5f))
+                                            )
+                                    )
+                                }
+                                androidx.compose.animation.AnimatedVisibility(
+                                    reviewUiState.selectedMedia.contains(
+                                        mediaItem
+                                    ),
+                                    enter = expandIn(
+                                        spring(
+                                            stiffness = Spring.StiffnessMediumLow,
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        ),
+                                        expandFrom = Alignment.Center,
+                                    ),
+                                    exit = shrinkOut(
+                                        spring(
+                                            stiffness = Spring.StiffnessMediumLow,
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        ),
+                                        shrinkTowards = Alignment.Center
+                                    ),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.check),
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    contentDescription = stringResource(R.string.selected),
+                                    modifier = Modifier
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f),
+                                            shape = CircleShape
+                                        )
+                                        .padding(dimensionResource(R.dimen.padding_xsmall))
+                                        .size(dimensionResource(R.dimen.small_icon))
+                                )
+                            }
                             }
                         }
                         item(span = StaggeredGridItemSpan.FullLine) {
