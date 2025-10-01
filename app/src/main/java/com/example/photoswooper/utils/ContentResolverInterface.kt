@@ -59,7 +59,7 @@ class ContentResolverInterface(
         var numVideosNotFound = 0
         var numPhotosNotFound = 0
         // Get videos and save remaining number of videos to add as variable (user's device may not have the desired number)
-        if (mediaFilter.mediaTypes.contains(MediaType.VIDEO))
+        if (mediaFilter.mediaTypes.contains(MediaType.VIDEO)) {
             numVideosNotFound = getMediaOfTypeFromMediaStore(
                 mediaAdded = mediaAdded,
                 onAddMedia = {
@@ -69,11 +69,12 @@ class ContentResolverInterface(
                 type = MediaType.VIDEO,
                 mediaFilter = mediaFilter
             )
-        Log.i(
-            "ContentResolverInterface",
-            "Attempted to add $targetNumVideos videos - no. not found = $numVideosNotFound"
-        )
-        if (mediaFilter.mediaTypes.contains(MediaType.PHOTO))
+            Log.i(
+                "ContentResolverInterface",
+                "Attempted to add $targetNumVideos videos - no. not found = $numVideosNotFound"
+            )
+        }
+        if (mediaFilter.mediaTypes.contains(MediaType.PHOTO)) {
             // Get photos
             numPhotosNotFound = getMediaOfTypeFromMediaStore(
                 mediaAdded = mediaAdded,
@@ -84,10 +85,11 @@ class ContentResolverInterface(
                 type = MediaType.PHOTO,
                 mediaFilter = mediaFilter
             )
-        Log.i(
-            "ContentResolverInterface",
-            "Attempted to add ${targetNumPhotos + numVideosNotFound} photos - no. not found = $numPhotosNotFound"
-        )
+            Log.i(
+                "ContentResolverInterface",
+                "Attempted to add ${targetNumPhotos + numVideosNotFound} photos - no. not found = $numPhotosNotFound"
+            )
+        }
         // If more videos can be added to account for missing photos, add them
         if (numVideosNotFound == 0 && numPhotosNotFound > 0 && mediaFilter.mediaTypes.contains(MediaType.VIDEO)) {
             getMediaOfTypeFromMediaStore(
@@ -292,21 +294,21 @@ class ContentResolverInterface(
                     // Check all conditions for media to be added, before then calling addMedia() to add it
 
                     val foundInSession = mediaAdded.find { it.id == fetchedId } != null
-                    if (foundInSession) break
+                    if (foundInSession) continue
 
                     val mediaSatisfiesFilters =
                         fetchedAbsoluteFilePath.contains(mediaFilter.directory)
                                 && (fetchedDescription?.contains(mediaFilter.containsText) ?: false
                                 || fetchedDisplayName.contains(mediaFilter.containsText))
                                 && fetchedSize in mediaFilter.sizeRange
-                    if (!mediaSatisfiesFilters) break
+                    if (!mediaSatisfiesFilters) continue
 
 //                    val findPhotoByHash = dao.findByHash(fileHash) TODO("Duplicate files feature: user can configure auto-delete or show both duplicates")
                     val currentDate = Calendar.getInstance()
                     val findById = dao.findByMediaStoreId(fetchedId)
                     /** True when: media is not snoozed, or the snoozeUntil date has passed */
                     val snoozeHasPassed = findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate.timeInMillis
-                    if (!snoozeHasPassed) break
+                    if (!snoozeHasPassed) continue
 
                     val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
                         findById.status
@@ -317,7 +319,7 @@ class ContentResolverInterface(
                         if (swipeRetentionTimeMillis != 0L) // value of 0 means remember swipes forever
                             (findById?.dateModified?: Long.MAX_VALUE) <= currentDate.timeInMillis - swipeRetentionTimeMillis
                         else true
-                    if (hasBeenSwiped && !swipeRetentionTimeHasPassed) break
+                    if (hasBeenSwiped && !swipeRetentionTimeHasPassed) continue
 
                     addMedia()
 //                    when {

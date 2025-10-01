@@ -172,7 +172,7 @@ class MainViewModel(
             targetNumVideos = maxMediaItemsToAddSynchronously - numPhotosToAddSynchronously,
             mediaFilter = mediaFilter.value
         )
-        sortMediaItems()
+        sortMediaItems(0)
         // Ensure media items were found before continuing
         if (_uiState.value.mediaItems.isEmpty()) {
             viewModelScope.launch {
