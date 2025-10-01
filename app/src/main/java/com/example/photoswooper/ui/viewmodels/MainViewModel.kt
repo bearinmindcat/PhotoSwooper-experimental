@@ -166,13 +166,12 @@ class MainViewModel(
         val numPhotosToAddSynchronously = numPhotosToAddUsingFilters(maxMediaItemsToAddSynchronously)
         contentResolverInterface.getAllMediaFromMediaStore(
             onAddMedia = {
-                _uiState.value.mediaItems.add(it)
+                insertMediaItemIntoListSorted(it, 0)
             },
             targetNumPhotos = numPhotosToAddSynchronously,
             targetNumVideos = maxMediaItemsToAddSynchronously - numPhotosToAddSynchronously,
             mediaFilter = mediaFilter.value
         )
-        sortMediaItems(0)
         // Ensure media items were found before continuing
         if (_uiState.value.mediaItems.isEmpty()) {
             viewModelScope.launch {
@@ -203,14 +202,13 @@ class MainViewModel(
                     val numPhotosToAddAsync = numPhotosToAddUsingFilters(numPerStackPreference)
                     contentResolverInterface.getAllMediaFromMediaStore(
                         onAddMedia = {
-                            _uiState.value.mediaItems.add(it)
+                            insertMediaItemIntoListSorted(it)
                         },
                         targetNumPhotos = numPhotosToAddAsync - numPhotosToAddSynchronously,
                         targetNumVideos = numPerStackPreference - numPhotosToAddAsync - (maxMediaItemsToAddSynchronously - numPhotosToAddSynchronously),
                         mediaAdded = _uiState.value.mediaItems.toMutableSet(),
                         mediaFilter = mediaFilter.value
                     )
-                    sortMediaItems()
                     if (_uiState.value.mediaItems.size != numPerStackPreference) {
                         makeToast("Last round!")
                         // Update UI state with the actual number of media items found
@@ -234,26 +232,53 @@ class MainViewModel(
         }
     }
 
-    /** Changes the sort order of the photos displayed to the user */
-    private fun sortMediaItems(fromIndex: Int = _uiState.value.currentIndex + 1) {
-        if (_uiState.value.mediaItems.size > fromIndex) {
-            val indecesRangeAfterCurrentIndex = _uiState.value.currentIndex + 1.._uiState.value.mediaItems.lastIndex
+    /** Inserts the media item into the UI state list according to the current sort field & direction */
+    private fun insertMediaItemIntoListSorted(
+        mediaItemToInsert: Media,
+        fromIndex: Int = _uiState.value.currentIndex + 1
+    ) {
+        val mediaItems = uiState.value.mediaItems
 
-            val mediaItemsToSort = _uiState.value.mediaItems.subList(
-                indecesRangeAfterCurrentIndex.first,
-                indecesRangeAfterCurrentIndex.last
-            )
-            when (mediaFilter.value.sortField) {
-                MediaSortField.RANDOM -> mediaItemsToSort.shuffle()
-                MediaSortField.SIZE ->
-                    if (mediaFilter.value.sortAscending) mediaItemsToSort.sortBy { it.size }
-                    else mediaItemsToSort.sortByDescending { it.size }
-
-                MediaSortField.DATE ->
-                    if (mediaFilter.value.sortAscending) mediaItemsToSort.sortBy { it.dateTaken }
-                    else mediaItemsToSort.sortByDescending { it.dateTaken }
+        if (mediaItems.isNotEmpty()) {
+            val indexToInsertInto: Int
+            // If random, select random index and insert
+            if (mediaFilter.value.sortField == MediaSortField.RANDOM) {
+                val random = Random(17530163829) // Random number generator}
+                indexToInsertInto = random.nextInt(fromIndex, mediaItems.size)
             }
-        }
+            // If not random, use sort field to insert
+            else {
+                val comparisonValue =
+                    when (mediaFilter.value.sortField) {
+                        MediaSortField.SIZE -> mediaItemToInsert.size
+                        MediaSortField.DATE -> mediaItemToInsert.dateTaken
+                        MediaSortField.RANDOM -> mediaItemToInsert.id // Not used - MediaSortField.RANDOM handled above
+                    }
+                val listToCompareTo = when (mediaFilter.value.sortField) {
+                    MediaSortField.SIZE -> mediaItems.map { it.size }
+                    MediaSortField.DATE -> mediaItems.map { it.dateTaken }
+                    MediaSortField.RANDOM -> mediaItems.map { it.id } // Not used - MediaSortField.RANDOM handled above
+                }
+
+                var currentIndex = fromIndex
+                if (mediaFilter.value.sortAscending)
+                    while ((listToCompareTo[currentIndex] ?: 0) < (comparisonValue ?: 0)) {
+                        currentIndex++
+                        if (currentIndex == mediaItems.size)
+                            break
+                    }
+                else
+                    while ((listToCompareTo[currentIndex] ?: 0) > (comparisonValue ?: 0)) {
+                        currentIndex++
+                        if (currentIndex == mediaItems.size)
+                            break
+                    }
+                indexToInsertInto = currentIndex
+            }
+
+            mediaItems.add(indexToInsertInto, mediaItemToInsert)
+        } else
+            mediaItems.add(mediaItemToInsert)
     }
 
     fun markItem(status: MediaStatus, index: Int = _uiState.value.currentIndex) {
@@ -728,7 +753,7 @@ class MainViewModel(
                     secondDate = Long.MAX_VALUE,
                 )
             )
+            resetAndGetNewMediaItems()
         }
-        viewModelScope.launch { resetAndGetNewMediaItems() }
     }
 }
