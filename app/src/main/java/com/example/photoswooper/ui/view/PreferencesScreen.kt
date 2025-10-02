@@ -93,6 +93,8 @@ enum class PreferencesCategory(@param:StringRes val titleStringId: Int, @param:S
     // TODO("Backup & restore")
 }
 
+// TODO("Add titles to each category page")
+
 @Composable
 fun PreferencesScreen(
     modifier: Modifier = Modifier
@@ -104,15 +106,15 @@ fun PreferencesScreen(
     val statisticsEnabled by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting).collectAsState(true)
 
-    var section: PreferencesCategory? by remember { mutableStateOf(null) }
-    BackHandler(enabled = section != null) { section = null }
+    var currentCategory: PreferencesCategory? by remember { mutableStateOf(null) }
+    BackHandler(enabled = currentCategory != null) { currentCategory = null }
     @Composable
     fun BackButtonListItem() {
         ListItem(
             headlineContent = { Text("Back") },
             leadingContent = { Icon(painterResource(R.drawable.arrow_left), null) },
             modifier = Modifier.clickable {
-                section = null
+                currentCategory = null
                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
             }
         )
@@ -144,9 +146,9 @@ fun PreferencesScreen(
 
 
     AnimatedContent(
-        section,
+        currentCategory,
         transitionSpec = {
-            if (section != null)
+            if (currentCategory != null)
                 slideInHorizontally(
                     spring(
                         Spring.DampingRatioNoBouncy,
@@ -289,7 +291,7 @@ fun PreferencesScreen(
                                         )
                                     },
                                     modifier = Modifier.clickable {
-                                        section = category
+                                        currentCategory = category
                                         if (SDK_INT >= Build.VERSION_CODES.R)
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     }
