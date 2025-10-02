@@ -104,8 +104,14 @@ fun TabbedSheetContent(
         // Calculate direction of tab movement for content slide animation direction
         tabIndexChange = newTabIndex.ordinal - tabIndex
         updateTabIndex(newTabIndex.ordinal)
-        if (SDK_INT >= Build.VERSION_CODES.R)
-            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+        if (SDK_INT >= Build.VERSION_CODES.R) {
+            if (tabIndexChange != 0
+                || mainViewModel.bottomSheetScaffoldState.bottomSheetState.currentValue == SheetValue.PartiallyExpanded
+            )
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+            else
+                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+        }
         expandBottomSheet(currentCoroutineScope)
         // Expand, then shrink the tab indicator while it is moving for a smooth animation
         currentCoroutineScope.launch {
