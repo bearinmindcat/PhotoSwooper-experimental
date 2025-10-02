@@ -18,8 +18,8 @@ android {
         applicationId = "com.example.photoswooper"
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = "2025.8.3"
+        versionCode = 10
+        versionName = "2025.10.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

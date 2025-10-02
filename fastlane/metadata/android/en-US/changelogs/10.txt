@@ -1,0 +1,15 @@
+Features:
+- Video support!
+- Filtering/sorting
+- Snoozing
+- New review screen dialog
+- Separate preferences into different categories
+- Add preference to start statistics week on Monday
+- Add preference to disable statistics
+- Configurable period to remember swipes for
+- Added a tutorial for new users
+- Open photo/video in external gallery app
+
+Fixes:
+- Require 2 system back gesture/button presses to exit app
+- Week title in statistics page now shows the correct dates

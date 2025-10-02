@@ -20,7 +20,7 @@ Hope you enjoy!
 
 ## Features
 
-> Features last updated 2025-08-13
+> Features last updated 2025-10-02
 
 - [X] Undo button
 - [X] Info drawer
@@ -31,17 +31,26 @@ Hope you enjoy!
 
 ## Screenshots
 
-> Screenshots as of 2025-08-13
+> Screenshots as of 2025-10-02
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/info.png" alt="Home screen" width="200"/>
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/stats.png" alt="Library screen" width="200"/>
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/settings.png" alt="Library screen" width="200"/>
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/review.png" alt="Library screen" width="200"/>
+
+| info drawer                                                                                                 | Filtering options                                                                                             | Review screen                                                                                                    | Statistics screen                                                                                                  | settings home page                                                                                                  | Behaviour settings                                                                                                                       | Appearance settings                                                                                                                        | Statistics settings                                                                                                                   |
+|-------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/info.png" alt="Home screen" width="200"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/filter.png" alt="Home screen" width="200"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/review.png" alt="Library screen" width="200"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/stats.png" alt="Statistics screen" width="200"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/settings.png" alt="Settings screen" width="200"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/behaviourSettings.png" alt="Behaviour settings category" width="200"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/appearanceSettings.png" alt="Appearance settings category" width="200"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/statsSettings.png" alt="Statistics settings category" width="200"/> |
+|                                                                                                             |                                                                                                               |                                                                                                                  |                                                                                                                    |                                                                                                                     |                                                                                                                                          |                                                                                                                                            |                                                                                                                                       |
+|                                                                                                             |                                                                                                               |                                                                                                                  |                                                                                                                    |                                                                                                                     |                                                                                                                                          |                                                                                                                                            |                                                                                                                                       |
 
 ## Issues
 
-If you would like to report a bug or request a feature, you may do so via the issues section of this git page or via
-any contact method listed on [my website](https://loowiz.envs.net).
+If you would like to report a bug or request a feature, you may do so via:
+- the issues section of this git page
+- any contact method listed on [my website](https://loowiz.envs.net).
+
+## Thanks
+- Thanks to [Phosphor Icons](https://phosphoricons.com/) for the icons used in this project
+- Thanks to [EkType](https://ektype.in/) for the beautiful Baloo 2 font, which I have personally fallen in love with
+- Thanks to [Jetbrains](https://jetbrains.com) for making [Intellij IDEA](https://www.jetbrains.com/idea/), which was 
+used, along with the Android plugin, to make this app
 
 ## Legal
 
