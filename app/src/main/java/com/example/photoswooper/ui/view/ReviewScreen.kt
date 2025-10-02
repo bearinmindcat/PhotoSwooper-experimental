@@ -379,7 +379,11 @@ fun ReviewScreen(
                 ) {
                     Box(contentAlignment = Alignment.BottomEnd) {
                         ExtendedFloatingActionButton(
-                            onClick = { mainViewModel.deleteMarkedMedia() },
+                            onClick = {
+                                if (SDK_INT >= Build.VERSION_CODES.R)
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                mainViewModel.deleteMarkedMedia()
+                                      },
                             modifier = Modifier
                                 .onGloballyPositioned {
                                     with(density) {

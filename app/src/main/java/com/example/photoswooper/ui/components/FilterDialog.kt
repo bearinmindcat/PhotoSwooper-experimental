@@ -7,6 +7,7 @@
 package com.example.photoswooper.ui.components
 
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -116,6 +117,8 @@ fun FilterDialog(
 
     Dialog(
         onDismissRequest = {
+            if (SDK_INT >= Build.VERSION_CODES.R)
+            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
             Toast.makeText(
                 context,
                 R.string.use_filter_dialog_buttons_to_exit,

@@ -7,7 +7,10 @@
 package com.example.photoswooper.ui.view
 
 import android.icu.util.Calendar
+import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -52,6 +56,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) {
     val context = LocalContext.current
+    val view = LocalView.current
+
     val drawable = context.packageManager.getApplicationIcon(context.packageName)
 
     Scaffold { paddingValues ->
@@ -110,6 +116,8 @@ fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) 
                 ) {
                     TextButton(
                         onClick = {
+                            if (SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             CoroutineScope(Dispatchers.IO).launch {
                                 dataStoreInterface.setIntSettingValue(
                                     newValue = MAX_TUTORIAL_INDEX,
@@ -123,6 +131,8 @@ fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) 
                     }
                     Button(
                         onClick = {
+                            if (SDK_INT >= Build.VERSION_CODES.R)
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             CoroutineScope(Dispatchers.IO).launch {
                                 dataStoreInterface.setIntSettingValue(
                                     newValue = 1,
