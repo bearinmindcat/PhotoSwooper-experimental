@@ -255,12 +255,13 @@ fun MainScreen(
             if (showToast)
                 Toast.makeText(
                     context,
-                    "Nice! :)",
+                    "Nice! :) \uD83C\uDF89",
                     Toast.LENGTH_SHORT
                 ).show()
             updateTutorialIndex(tutorialIndex + 1)
         }
         LaunchedEffect(tutorialIndex) {
+            // TODO("Clean this up by placing it in a separate function, or in the viewModel")
             when (tutorialIndex) {
                 // Swipe right to keep
                 1 -> {
@@ -270,7 +271,7 @@ fun MainScreen(
                         body = buildAnnotatedString {
                             append(context.getString(R.string.tutorial_swipe_right_desc) + "\n\n")
                             pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.tutorial_swipe_right_try))
+                            append(context.getString(R.string.try_it))
                             pop()
                         }
                     )
@@ -458,6 +459,11 @@ fun MainScreen(
                             append(context.getString(R.string.tutorial_end_desc))
                         }
                     )
+                    Toast.makeText(
+                        context,
+                        "\uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     delay(5000)
                     mainViewModel.onEndTutorial()
                 }
@@ -744,17 +750,18 @@ fun TutorialCard(
                     }
                 }
             }
-            TextButton(
-                onClick = {
-                    onSkip()
-                },
-                modifier = Modifier.align(Alignment.End)
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = dimensionResource(R.dimen.padding_small))
             ) {
                 Text(
-                    text = stringResource(R.string.skip),
-//                        color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_xsmall))
+                    text = "Swipe actions are temporary for the tutorial",
+                    style = MaterialTheme.typography.labelSmall,
                 )
+                TextButton(onClick = { onSkip() }) { Text(stringResource(R.string.skip)) }
             }
         }
     }

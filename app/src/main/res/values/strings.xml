@@ -41,6 +41,8 @@
     <string name="value_for_above_preference">Value for above preference</string>
     <string name="donate">Donate!</string>
     <string name="report_bug">Report a bug</string>
+    <string name="restart_tutorial">Restart tutorial</string>
+    <string name="confirm_restart_tutorial">Are you sure you want to start the tutorial again?</string>
 
     <string name="pause_current_video">Pause the current video</string>
     <string name="rewind">Rewind a configured number of seconds</string>
@@ -79,7 +81,6 @@
     <string name="previous">Previous</string>
     <string name="tutorial_swipe_right_title">Swipe right to keep photos/videos</string>
     <string name="tutorial_swipe_right_desc">Items are marked as keep when you swipe right on them.</string>
-    <string name="tutorial_swipe_right_try">Try it! - swipes are temporary in the tutorial</string>
     <string name="tutorial_swipe_left_title">Swipe left to delete photos/videos</string>
     <string name="tutorial_swipe_left_desc">Items are marked as delete when you swipe left on them.</string>
     <string name="try_it">Try it!</string>
@@ -98,7 +99,7 @@
     <string name="tutorial_review_try">Try unswiping one photo/video by tapping and holding one to select it, then tapping \'Unswipe\'</string>
     <string name="statistics_screen">Statistics Screen</string>
     <string name="tutorial_statistics_desc">The statistics screen displays statistics about your swiping history</string>
-    <string name="tutorial_statistics_try">Try filtering to see how much space you have saved in the past day</string>
+    <string name="tutorial_statistics_try">Try to see how much space you have saved in the past day</string>
     <string name="settings_screen">Settings Screen</string>
     <string name="settings_desc">Here you can customise your experience in the app</string>
     <string name="tutorial_end_title">Tutorial finished!</string>
