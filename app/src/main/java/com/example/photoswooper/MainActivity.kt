@@ -181,24 +181,6 @@ class MainActivity : AppCompatActivity() {
             // Create mainViewModel
             val coroutineScope = rememberCoroutineScope()
             val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
-            mainViewModel = remember {
-                MainViewModel(
-                    contentResolverInterface = contentResolverInterface,
-                    mediaStatusDao = mediaStatusDao,
-                    player = player,
-                    uiCoroutineScope = coroutineScope,
-                    bottomSheetScaffoldState = bottomSheetScaffoldState,
-                    dataStoreInterface = dataStoreInterface,
-                    makeToast = {
-                        Toast.makeText(
-                            applicationContext,
-                            it,
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    startActivity = { startActivity(it) },
-                )
-            }
             PhotoSwooperTheme(
                 systemFont = systemFont,
                 dynamicColor = dynamicTheme
@@ -223,6 +205,25 @@ class MainActivity : AppCompatActivity() {
                             },
                         )
                     } else {
+                        mainViewModel = remember {
+                            MainViewModel(
+                                contentResolverInterface = contentResolverInterface,
+                                mediaStatusDao = mediaStatusDao,
+                                player = player,
+                                uiCoroutineScope = coroutineScope,
+                                bottomSheetScaffoldState = bottomSheetScaffoldState,
+                                dataStoreInterface = dataStoreInterface,
+                                makeToast = {
+                                    Toast.makeText(
+                                        applicationContext,
+                                        it,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                checkPermissions = { checkPermissions(this, it) },
+                                startActivity = { startActivity(it) },
+                            )
+                        }
                         MainScreen(
                             mainViewModel = mainViewModel,
                             imageLoader = imageLoader,

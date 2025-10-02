@@ -58,9 +58,10 @@ import kotlin.time.Duration.Companion.milliseconds
 class MainViewModel(
     private val contentResolverInterface: ContentResolverInterface,
     private val mediaStatusDao: MediaStatusDao,
-    private val startActivity: (Intent) -> Unit,
     private val dataStoreInterface: DataStoreInterface,
+    private val startActivity: (Intent) -> Unit,
     private val makeToast: (String) -> Unit,
+    private val checkPermissions: (onPermissionsGranted: suspend () -> Unit) -> Unit,
     private val uiCoroutineScope: CoroutineScope,
     val bottomSheetScaffoldState: BottomSheetScaffoldState,
     val player: ExoPlayer,
@@ -458,7 +459,7 @@ class MainViewModel(
 
             if (getMediaToDelete().isEmpty()) {
                 if (_uiState.value.numUnset <= 0)
-                    CoroutineScope(Dispatchers.IO).launch { resetAndGetNewMediaItems() } // FIXME("Check permissions before getting media (cannot use checkPermissionsAndGetMedia() as no access to context)")
+                    CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
             }
         } else {
             if (deletionCancelled) {
@@ -692,7 +693,7 @@ class MainViewModel(
         _mediaFilter.update {
             newFilter
         }
-        CoroutineScope(Dispatchers.IO).launch { resetAndGetNewMediaItems() }
+        CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
         CoroutineScope(Dispatchers.IO).launch {
             if (setFilterAsDefault) {
                 dataStoreInterface.setLongSettingValue(
@@ -753,7 +754,7 @@ class MainViewModel(
                     secondDate = Long.MAX_VALUE,
                 )
             )
-            resetAndGetNewMediaItems()
+           checkPermissions { resetAndGetNewMediaItems() }
         }
     }
 }

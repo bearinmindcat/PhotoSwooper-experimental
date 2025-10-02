@@ -120,11 +120,11 @@ fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) 
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             CoroutineScope(Dispatchers.IO).launch {
                                 dataStoreInterface.setIntSettingValue(
-                                    newValue = MAX_TUTORIAL_INDEX,
+                                    newValue = MAX_TUTORIAL_INDEX + 1,
                                     setting = IntPreference.TUTORIAL_INDEX.setting
                                 )
-                                onExit()
                             }
+                            onExit()
                         },
                     ) {
                         Text("Skip tutorial")
