@@ -318,7 +318,7 @@ class ContentResolverInterface(
                     val swipeRetentionTimeHasPassed =
                         if (swipeRetentionTimeMillis != 0L) // value of 0 means remember swipes forever
                             (findById?.dateModified?: Long.MAX_VALUE) <= currentDate.timeInMillis - swipeRetentionTimeMillis
-                        else true
+                        else false
                     if (hasBeenSwiped && !swipeRetentionTimeHasPassed) continue
 
                     addMedia()
