@@ -84,7 +84,8 @@ class MainViewModel(
                 currentState.copy(
                     spaceSavedInTimeFrame = getSpaceSavedInTimeFrame(),
                     tutorialMode = dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
-                        .first() < MAX_TUTORIAL_INDEX
+                        .first() < MAX_TUTORIAL_INDEX,
+                    fetchingMedia = getMediaToDelete().isEmpty()
                 )
             }
         }
