@@ -451,10 +451,10 @@ class MainViewModel(
                     spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
                 )
             }
-
-            if (getMediaToDelete().isEmpty()) {
-                if (_uiState.value.numUnset <= 0)
-                    CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
+            // Hide the bottom sheet so user can immediately return to swiping
+            uiCoroutineScope.launch{
+                delay(500)
+                bottomSheetScaffoldState.bottomSheetState.partialExpand()
             }
         } else {
             if (deletionCancelled) {
