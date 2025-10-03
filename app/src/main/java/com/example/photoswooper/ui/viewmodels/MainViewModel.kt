@@ -368,7 +368,7 @@ class MainViewModel(
 
     fun undo(): Boolean {
         val listOfMediaBeforeCurrent = _uiState.value.mediaItems.subList(0, _uiState.value.currentIndex)
-        var canUndo = _uiState.value.currentIndex > 0 && listOfMediaBeforeCurrent.all { it.status != MediaStatus.HIDE }
+        var canUndo = _uiState.value.currentIndex > 0 && !listOfMediaBeforeCurrent.all { it.status == MediaStatus.HIDE }
         if (canUndo) { // First check if there is an action to undo
             viewModelScope.launch {
                 exitImage()
