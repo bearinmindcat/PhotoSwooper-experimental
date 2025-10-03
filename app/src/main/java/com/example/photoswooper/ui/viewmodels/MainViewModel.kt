@@ -327,6 +327,7 @@ class MainViewModel(
     }
 
     fun next() {
+        revertShowFloatingActionsToPreviousState()
         if (getCurrentMedia()?.type == MediaType.VIDEO)
             player.pause()
         // Increment currentIndex
@@ -487,7 +488,24 @@ class MainViewModel(
     fun toggleInfoAndFloatingActionsRow(newState: Boolean = !uiState.value.showInfoAndFloatingActionsRow) {
         _uiState.update { currentState ->
             currentState.copy(
-                showInfoAndFloatingActionsRow = newState
+                showInfoAndFloatingActionsRow = newState,
+                previousShowInfoAndFloatingActionsRow = newState
+            )
+        }
+    }
+
+    fun tempShowFloatingActions() {
+        _uiState.update { currentState ->
+                currentState.copy(
+                    previousShowInfoAndFloatingActionsRow = currentState.showInfoAndFloatingActionsRow,
+                    showInfoAndFloatingActionsRow = true
+                )
+        }
+    }
+    fun revertShowFloatingActionsToPreviousState() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                showInfoAndFloatingActionsRow = currentState.previousShowInfoAndFloatingActionsRow
             )
         }
     }
@@ -606,11 +624,7 @@ class MainViewModel(
                 )
             )
             player.play()
-            _uiState.update { currentState ->
-                currentState.copy(
-                    showInfoAndFloatingActionsRow = true
-                )
-            }
+            tempShowFloatingActions()
         }
     }
 
@@ -635,7 +649,6 @@ class MainViewModel(
             player.pause()
         }
     }
-
     fun revertIsPlayingToBeforeTempPause() {
         if (getCurrentMedia()?.type == MediaType.VIDEO && !_uiState.value.showFilterDialog) {
             if (_uiState.value.previousIsPlaying) player.play()
