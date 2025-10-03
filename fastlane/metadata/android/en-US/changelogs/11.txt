@@ -1,0 +1,15 @@
+*2025.10.2*
+Fix image not scaling to full screen
+
+*Summary of 2025.10.1*
+
+- Video support!
+- Filtering/sorting
+- Snoozing
+- New review screen dialog
+- Separate preferences into different categories
+- Add preference to start statistics week on Monday
+- Add preference to disable statistics
+- Configurable period to remember swipes for
+- Added a tutorial
+- Open photo/video in external gallery app
