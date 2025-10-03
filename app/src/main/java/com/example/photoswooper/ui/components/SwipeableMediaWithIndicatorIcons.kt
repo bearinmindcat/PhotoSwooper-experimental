@@ -202,14 +202,14 @@ fun SwipeableMediaWithIndicatorIcons(
                 // Double-tap to toggle zoom
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onDoubleTap = {
+                        onDoubleTap = { clickOffset ->
                             if (scale > 1f) {
                                 scale = 1f
                             } else {
                                 scale = 2f
-                                offset = it.copy(
-                                    x = -it.x - Resources.getSystem().displayMetrics.widthPixels.toFloat() / 25,
-                                    y = -it.y + (media.resolution?.substringAfterLast("×")?.toFloat()
+                                offset = clickOffset.copy(
+                                    x = -clickOffset.x - Resources.getSystem().displayMetrics.widthPixels.toFloat() / 25,
+                                    y = -clickOffset.y + (media.resolution?.substringAfterLast("×")?.toFloat()
                                         ?: 0f) / 25,
                                 )
                             }
@@ -260,32 +260,35 @@ fun SwipeableMediaWithIndicatorIcons(
                 )
 
         ) {
-            when (media.type) {
-                MediaType.PHOTO -> {
-                    AsyncImage(
-                        model = media.uri,
-                        imageLoader = imageLoader,
-                        contentDescription = null,
-                        onSuccess = {
-                            /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
-                            viewModel.onMediaLoaded()
-                        },
-                        contentScale = ContentScale.FillWidth,
-                        modifier = Modifier
-                            .scale(viewModel.animatedImageScaleEntry.value)
-                    )
-                }
+            // Container setting scale of either the photo or video
+                Box (Modifier.scale(viewModel.animatedImageScaleEntry.value)) {
+                    when (media.type) {
+                        MediaType.PHOTO -> {
+                            AsyncImage(
+                                model = media.uri,
+                                imageLoader = imageLoader,
+                                contentDescription = null,
+                                onSuccess = {
+                                    /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
+                                    viewModel.onMediaLoaded()
+                                },
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                            )
+                        }
 
-                MediaType.VIDEO -> {
-                    PlayerSurface(
-                        player = viewModel.player,
-                        surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-                        modifier = Modifier
-                            .aspectRatio(videoAspectRatio)
-                            .scale(viewModel.animatedImageScaleEntry.value)
-                    )
+                        MediaType.VIDEO -> {
+                            PlayerSurface(
+                                player = viewModel.player,
+                                surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+                                modifier = Modifier
+                                    .aspectRatio(videoAspectRatio)
+                                    .fillMaxSize()
+                            )
+                        }
+                    }
                 }
-            }
         }
     }
 }
