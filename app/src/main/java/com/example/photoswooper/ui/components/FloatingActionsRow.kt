@@ -25,15 +25,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +50,7 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -61,7 +63,11 @@ import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
+import com.example.photoswooper.data.uistates.LongPreference
+import com.example.photoswooper.data.uistates.TimeFrame
+import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -91,10 +97,12 @@ fun FloatingActionsRow(
     var showChangeSnoozeLengthDialog by remember { mutableStateOf(false) }
     if (showChangeSnoozeLengthDialog)
         ChangeSnoozeLengthDialog(
-            currentSnoozeLength = viewModel.snoozeLengthMillis.collectAsState(0).value,
-            onDismissRequest = { showChangeSnoozeLengthDialog = false },
+            onDismissRequest = {
+                showChangeSnoozeLengthDialog = false
+                               },
             onConfirmation = {
                 viewModel.updateSnoozeLengthMillis(it)
+                showChangeSnoozeLengthDialog = false
             }
         )
 
@@ -332,11 +340,15 @@ fun FloatingAction(
 
 @Composable
 private fun ChangeSnoozeLengthDialog(
-    currentSnoozeLength: Long,
     onDismissRequest: () -> Unit,
     onConfirmation: (Long) -> Unit
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
+
+
+    val currentSnoozeLength by DataStoreInterface(context.dataStore).getLongSettingValue(LongPreference.SNOOZE_LENGTH.setting).collectAsState(LongPreference.SNOOZE_LENGTH.default)
+
     Dialog(
         onDismissRequest = { onDismissRequest() }
     ) {
@@ -381,22 +393,20 @@ private fun ChangeSnoozeLengthDialog(
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                TextButton(
+                OutlinedButton (
                     onClick = { onDismissRequest() },
                 ) {
                     Text(
-                        "Cancel",
-                        color = MaterialTheme.colorScheme.secondary
+                        stringResource(R.string.cancel),
                     )
                 }
-                TextButton(
+                Button(
                     onClick = {
-                        onConfirmation(displayedSnoozeLength.toLong())
+                        onConfirmation(TimeFrame.DAY.milliseconds * displayedSnoozeLength.toLong())
                     },
                 ) {
                     Text(
                         stringResource(R.string.confirm),
-                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }

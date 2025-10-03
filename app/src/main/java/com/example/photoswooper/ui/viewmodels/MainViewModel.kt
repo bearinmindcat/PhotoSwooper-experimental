@@ -94,8 +94,6 @@ class MainViewModel(
             }
         }
     }
-
-    val snoozeLengthMillis = dataStoreInterface.getLongSettingValue(LongPreference.SNOOZE_LENGTH.setting)
     val statisticsEnabled = dataStoreInterface.getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting)
     fun getCurrentMedia() =
         try {
