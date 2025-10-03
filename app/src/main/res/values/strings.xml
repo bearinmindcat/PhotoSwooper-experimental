@@ -116,4 +116,6 @@
     <string name="restart_now">Restart now</string>
     <string name="restart_required_for_preference">To apply this preference PhotoSwooper must be restarted</string>
     <string name="this_will_discard_items_marked_as_deleted">Warning: This will unswipe items currently marked as deleted</string>
+    <string name="loop_videos">Loop video playback</string>
+    <string name="loop_videos_desc">Automatically replay videos when they reach the end</string>
 </resources>

@@ -117,15 +117,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+        // Set player attributes using user preferences
         CoroutineScope(Dispatchers.Main).launch {
+            val handleAudioFocus = dataStoreInterface.getBooleanSettingValue(BooleanPreference.PAUSE_BACKGROUND_MEDIA.setting).first()
+            val loopVideos = dataStoreInterface.getBooleanSettingValue(BooleanPreference.LOOP_VIDEOS.setting).first()
             player.setAudioAttributes(
                 /* audioAttributes = */ AudioAttributes.Builder()
                     .setContentType(AUDIO_CONTENT_TYPE_MOVIE)
                     .setUsage(USAGE_MEDIA)
                     .build(),
-                /* handleAudioFocus = */ dataStoreInterface
-                    .getBooleanSettingValue(BooleanPreference.PAUSE_BACKGROUND_MEDIA.setting).first()
+                /* handleAudioFocus = */ handleAudioFocus
             )
+            player.repeatMode = if (loopVideos) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         }
 
         val contentResolverInterface = ContentResolverInterface(
@@ -161,7 +164,6 @@ class MainActivity : AppCompatActivity() {
                 checkPermissions(
                     context = this@MainActivity,
                     onPermissionsGranted = {
-                        mainViewModel.updateMediaFiltersFromDataStore() // Update on first launch as filters
                         mainViewModel.resetAndGetNewMediaItems()
                     }
                 )

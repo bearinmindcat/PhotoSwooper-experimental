@@ -244,6 +244,12 @@ fun PreferencesScreen(
                         preference = BooleanPreference.PAUSE_BACKGROUND_MEDIA,
                         onUpdate = { showRestartRequiredDialog = true }
                     )
+                    /* Loop videos */
+                    BooleanPreferenceEditor(
+                        dataStoreInterface = dataStoreInterface,
+                        preference = BooleanPreference.LOOP_VIDEOS,
+                        onUpdate = { showRestartRequiredDialog = true }
+                    )
                 }
 
                 PreferencesCategory.STATISTICS -> {
@@ -374,7 +380,18 @@ fun ConfirmRestartTutorialDialog(
                 ),
                 textAlign = TextAlign.Center
             )
-
+            Text(
+                stringResource(R.string.this_will_discard_items_marked_as_deleted),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(
+                    top = dimensionResource(R.dimen.padding_small),
+                    bottom = dimensionResource(R.dimen.padding_small),
+                    start = dimensionResource(R.dimen.padding_medium),
+                    end = dimensionResource(R.dimen.padding_medium)
+                ),
+                textAlign = TextAlign.Center
+            )
             FlowRow (
                 modifier = Modifier
                     .fillMaxWidth()
@@ -448,9 +465,9 @@ private fun RestartRequiredDialog(
 
             FlowRow (
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = dimensionResource(R.dimen.padding_medium)),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .fillMaxWidth(),
+//                    .padding(horizontal = dimensionResource(R.dimen.padding_medium)),
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 OutlinedButton(
                     onClick = {

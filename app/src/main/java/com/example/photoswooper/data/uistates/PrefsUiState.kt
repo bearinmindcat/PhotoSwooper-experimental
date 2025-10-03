@@ -67,6 +67,13 @@ enum class BooleanPreference(
         description = R.string.pause_background_media_desc,
         icon = R.drawable.pause
     ),
+    LOOP_VIDEOS(
+        default = false,
+        setting = "loop_videos",
+        title = R.string.loop_videos,
+        description = R.string.loop_videos_desc,
+        icon = R.drawable.repeat
+    ),
 
     STATISTICS_ENABLED(
         default = true,
