@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -200,6 +201,7 @@ fun ReviewScreen(
                                     Icon(
                                         painter = painterResource(if (mediaItem.type == MediaType.PHOTO) R.drawable.image else R.drawable.video),
                                         contentDescription = "This item is a ${mediaItem.type.toString().lowercase()}",
+                                        tint = Color.White,
                                         modifier = Modifier
                                             .padding(dimensionResource(R.dimen.padding_medium))
                                             .align(Alignment.BottomStart)
