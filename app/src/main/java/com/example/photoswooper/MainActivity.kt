@@ -305,7 +305,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             mainViewModel.updatePermissionsGranted(true)
             CoroutineScope(Dispatchers.IO).launch {
-                mainViewModel.updateMediaFiltersFromDataStore() // Update on first launch as filters
                 mainViewModel.resetAndGetNewMediaItems()
             }
         }

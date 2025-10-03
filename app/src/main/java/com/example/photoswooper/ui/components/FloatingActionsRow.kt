@@ -11,6 +11,7 @@ import android.os.Build.VERSION.SDK_INT
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -222,9 +223,10 @@ fun FloatingActionsRow(
         }
         AnimatedVisibility(showVideoPlaybackControls) {
             var userDragging by remember { mutableStateOf(false) }
+            val animatedDisplayedPlayerPosition by animateFloatAsState(displayedPlayerPosition, viewModel.defaultEntryAnimationSpec)
             LaunchedEffect(null) { // When either of these two values (keys) change:
                 while (true) {
-                    delay(50) // Only update every 100 milliseconds
+                    delay(150) // Only update every 150 milliseconds
                     if (!userDragging) {
                         displayedPlayerPosition = viewModel.player.currentPosition.toFloat()
                         playPauseIcon = when {
@@ -251,7 +253,7 @@ fun FloatingActionsRow(
                         .width(dimensionResource(R.dimen.duration_text_width))
                 )
                 androidx.compose.material.Slider(
-                    value = displayedPlayerPosition,
+                    value = if (userDragging) displayedPlayerPosition else animatedDisplayedPlayerPosition,
                     valueRange = 0f..if (viewModel.player.duration > 0L) viewModel.player.duration.toFloat() else Float.MAX_VALUE,
                     onValueChange = {
                         if (!userDragging) // Only run when user first starts dragging
