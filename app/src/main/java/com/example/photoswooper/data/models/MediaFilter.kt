@@ -31,3 +31,12 @@ data class MediaFilter(
     // Advanced filters
 //    val location: DoubleArray?, // TODO("Implement filtering by location")
 )
+
+val defaultMediaFilter = MediaFilter(
+    sizeRange = 0L..0L,
+    mediaTypes = MediaType.entries.toSet(),
+    directory = "",
+    containsText = "",
+    sortField = MediaSortField.RANDOM,
+    sortAscending = false,
+)

@@ -126,6 +126,12 @@ class ContentResolverInterface(
         // TODO("Automatically add unset media from app database before fetching from MediaStore")
         var numAdded = 0
 
+        val swipeRetentionTimeMillis = dataStoreInterface
+            .getIntSettingValue(IntPreference.NO_DAYS_TO_REMEMBER_SWIPES.setting).first().days.inWholeMilliseconds
+        val statisticsEnabled = dataStoreInterface.getBooleanSettingValue(
+            BooleanPreference.STATISTICS_ENABLED.setting
+        ).first()
+
         val mediaStoreUri = if (SDK_INT >= Build.VERSION_CODES.Q) { // Might not need the when statements? Needs testing
             when (type) {
                 MediaType.PHOTO -> MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
@@ -284,9 +290,6 @@ class ContentResolverInterface(
                         onAddMedia(mediaClassToAdd)
                         Log.d("MediaStore", "Added media with uri $fetchedUri")
                         CoroutineScope(Dispatchers.IO).launch {
-                            val statisticsEnabled = dataStoreInterface.getBooleanSettingValue(
-                                BooleanPreference.STATISTICS_ENABLED.setting
-                            ).first()
                             dao.insert(mediaClassToAdd.getMediaStatusEntity(statisticsEnabled)) // Add to database
                         }
                     }
@@ -313,8 +316,6 @@ class ContentResolverInterface(
                     val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
                         findById.status
                     )
-                    val swipeRetentionTimeMillis = dataStoreInterface
-                        .getIntSettingValue(IntPreference.NO_DAYS_TO_REMEMBER_SWIPES.setting).first().days.inWholeMilliseconds
                     val swipeRetentionTimeHasPassed =
                         if (swipeRetentionTimeMillis != 0L) // value of 0 means remember swipes forever
                             (findById?.dateModified?: Long.MAX_VALUE) <= currentDate.timeInMillis - swipeRetentionTimeMillis

@@ -33,6 +33,7 @@ import com.example.photoswooper.data.models.MediaFilter
 import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
+import com.example.photoswooper.data.models.defaultMediaFilter
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.LongPreference
@@ -71,19 +72,13 @@ class MainViewModel(
 
     // Initialise mediaFilters (Updated with stored values when resetAndGetNewMediaItems() is first called in MainActivity)
     private val _mediaFilter = MutableStateFlow(
-        MediaFilter(
-            sizeRange = 0L..0L,
-            mediaTypes = MediaType.entries.toSet(),
-            directory = "",
-            containsText = "",
-            sortField = MediaSortField.RANDOM,
-            sortAscending = false,
-        )
+        defaultMediaFilter
     )
     val mediaFilter = _mediaFilter.asStateFlow()
 
     /* On first start, update the space saved in time frame value & set the filters from  */
     init {
+        CoroutineScope(Dispatchers.IO).launch { updateMediaFiltersFromDataStore() }
         viewModelScope.launch {
             _uiState.update { currentState ->
                 currentState.copy(
@@ -267,7 +262,7 @@ class MainViewModel(
                             break
                     }
                 else
-                    while ((listToCompareTo[currentIndex] ?: 0) > (comparisonValue ?: 0)) {
+                    while ((listToCompareTo.getOrNull(currentIndex)?: 0) > (comparisonValue ?: 0)) {
                         currentIndex++
                         if (currentIndex == mediaItems.size)
                             break
@@ -691,7 +686,6 @@ class MainViewModel(
         _mediaFilter.update {
             newFilter
         }
-        CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
         CoroutineScope(Dispatchers.IO).launch {
             if (setFilterAsDefault) {
                 dataStoreInterface.setLongSettingValue(
@@ -728,6 +722,7 @@ class MainViewModel(
                 )
             }
         }
+        CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
     }
 
     fun updateTutorialCardContent(title: String, body: AnnotatedString, iconDrawableId: Int) {
