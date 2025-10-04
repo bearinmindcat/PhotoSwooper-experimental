@@ -459,6 +459,8 @@ class MainViewModel(
                 delay(500)
                 bottomSheetScaffoldState.bottomSheetState.partialExpand()
             }
+            if (_uiState.value.numUnset <= 0)
+                CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
         } else {
             if (deletionCancelled) {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q)
