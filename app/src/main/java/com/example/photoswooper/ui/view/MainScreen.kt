@@ -387,6 +387,7 @@ fun MainScreen(
                     while (uiState.mediaItems.size < 3) {
                         delay(200)
                     }
+                    delay(400)
                     if (mainViewModel.getMediaToDelete().isEmpty()) {
                         mainViewModel.markItem(MediaStatus.DELETE)
                         mainViewModel.next()

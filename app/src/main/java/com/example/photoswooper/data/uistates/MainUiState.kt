@@ -36,6 +36,7 @@ data class MainUiState(
     @param:DrawableRes val tutorialCardIconDrawableId: Int? = null,
 
     val showInfoAndFloatingActionsRow: Boolean = false,
+    val previousShowInfoAndFloatingActionsRow: Boolean = false, // Used for showing/hiding floating actions for videos
     val showInfo: Boolean = false,
     val showFilterDialog: Boolean = false,
 

@@ -26,13 +26,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
@@ -54,6 +56,7 @@ import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
+import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.Onboardingcreen
@@ -155,6 +158,31 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         )
+        mainViewModel = MainViewModel(
+            contentResolverInterface = contentResolverInterface,
+            mediaStatusDao = mediaStatusDao,
+            player = player,
+            uiCoroutineScope = CoroutineScope(Dispatchers.Main), // placeholder value
+            bottomSheetScaffoldState = BottomSheetScaffoldState(
+                SheetState(
+                    skipPartiallyExpanded = false,
+                    positionalThreshold = { 0f },
+                    velocityThreshold = {0f},
+                ),
+                snackbarHostState = SnackbarHostState()
+            ), // placeholder value
+            dataStoreInterface = dataStoreInterface,
+            makeToast = {
+                Toast.makeText(
+                    applicationContext,
+                    it,
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            checkPermissions = { checkPermissions(this, it) },
+            startActivity = { startActivity(it) },
+        )
+
 
         CoroutineScope(Dispatchers.Main).launch {
             val onboardingScreenInFocus =
@@ -180,9 +208,11 @@ class MainActivity : AppCompatActivity() {
             val tutorialIndex by dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
                 .collectAsState(1000)
 
-            // Create mainViewModel
-            val coroutineScope = rememberCoroutineScope()
+            // Set values for viewModel
             val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
+            mainViewModel.bottomSheetScaffoldState = bottomSheetScaffoldState
+            mainViewModel.setUiCoroutineScope(rememberCoroutineScope())
+
             PhotoSwooperTheme(
                 systemFont = systemFont,
                 dynamicColor = dynamicTheme
@@ -199,33 +229,11 @@ class MainActivity : AppCompatActivity() {
                             onExit = {
                                 checkPermissions(
                                     this@MainActivity,
-                                    {
-                                        mainViewModel.updateMediaFiltersFromDataStore()
-                                        mainViewModel.resetAndGetNewMediaItems()
-                                    }
+                                    { mainViewModel.resetAndGetNewMediaItems() }
                                 )
                             },
                         )
                     } else {
-                        mainViewModel = remember {
-                            MainViewModel(
-                                contentResolverInterface = contentResolverInterface,
-                                mediaStatusDao = mediaStatusDao,
-                                player = player,
-                                uiCoroutineScope = coroutineScope,
-                                bottomSheetScaffoldState = bottomSheetScaffoldState,
-                                dataStoreInterface = dataStoreInterface,
-                                makeToast = {
-                                    Toast.makeText(
-                                        applicationContext,
-                                        it,
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                },
-                                checkPermissions = { checkPermissions(this, it) },
-                                startActivity = { startActivity(it) },
-                            )
-                        }
                         MainScreen(
                             mainViewModel = mainViewModel,
                             imageLoader = imageLoader,
