@@ -56,7 +56,6 @@ import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
-import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.Onboardingcreen
@@ -162,6 +161,7 @@ class MainActivity : AppCompatActivity() {
             contentResolverInterface = contentResolverInterface,
             mediaStatusDao = mediaStatusDao,
             player = player,
+//            initialUiState = MainUiState(isPlaying = player.isPlaying),
             uiCoroutineScope = CoroutineScope(Dispatchers.Main), // placeholder value
             bottomSheetScaffoldState = BottomSheetScaffoldState(
                 SheetState(

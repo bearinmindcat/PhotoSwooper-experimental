@@ -462,7 +462,7 @@ fun MainScreen(
                     )
                     Toast.makeText(
                         context,
-                        "\uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89",
+                        "Fin :) \uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89",
                         Toast.LENGTH_SHORT
                     ).show()
                     delay(5000)

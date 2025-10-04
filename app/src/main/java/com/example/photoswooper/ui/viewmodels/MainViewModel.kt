@@ -66,10 +66,11 @@ class MainViewModel(
     private var uiCoroutineScope: CoroutineScope,
     var bottomSheetScaffoldState: BottomSheetScaffoldState,
     val player: ExoPlayer,
+//    val initialUiState: MainUiState,
 ) : ViewModel() {
     fun setUiCoroutineScope(newCoroutineScope: CoroutineScope) {uiCoroutineScope = newCoroutineScope}
 
-    private val _uiState = MutableStateFlow(initialUiState)
+    private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying))
     val uiState = _uiState.asStateFlow()
 
     // Initialise mediaFilters (Updated with stored values when resetAndGetNewMediaItems() is first called in MainActivity)
