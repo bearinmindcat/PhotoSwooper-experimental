@@ -1,0 +1,5 @@
+One more release, making performance improvements, specifically when filtering
+- Improve performance dramatically when fetching photos/videos (especially when filters are active)
+- Automatically fetch new photos & videos after reviewing current batch
+
+See the PhotoSwooper Codeberg releases for changelog of previous versions
