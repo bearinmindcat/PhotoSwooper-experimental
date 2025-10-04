@@ -1,0 +1,9 @@
+Yet another release, fixing more bugs:
+- Fix undoing after confirming deletion on the previous item
+- Fix swiped items not being remembered
+- Fix filters not being applied
+- Revert floating actions visibility to state before video started playing
+- Add preference to loop videos
+- Polished the tutorial screen
+
+See the PhotoSwooper Codeberg repo for changelog of previous versions
