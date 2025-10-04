@@ -31,7 +31,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.DataInputStream
-import java.io.File
 import java.security.MessageDigest
 import java.util.Calendar
 import kotlin.time.Duration.Companion.days
@@ -147,6 +146,7 @@ class ContentResolverInterface(
             MediaStore.MediaColumns._ID,
             if (SDK_INT >= Build.VERSION_CODES.BAKLAVA) MediaStore.MediaColumns.INFERRED_DATE
             else MediaStore.MediaColumns.DATE_TAKEN,
+            MediaStore.MediaColumns.DATE_MODIFIED,
             MediaStore.MediaColumns.SIZE,
             if (type == MediaType.PHOTO) MediaStore.Images.ImageColumns.DESCRIPTION
             else MediaStore.Video.VideoColumns.DESCRIPTION,
@@ -181,22 +181,24 @@ class ContentResolverInterface(
 
             val idColumnIndex = cursor.getColumnIndexOrThrow(projection[0])
             val dateTakenColumnIndex = cursor.getColumnIndexOrThrow(projection[1])
-            val sizeColumnIndex = cursor.getColumnIndexOrThrow(projection[2])
-            val descriptionColumnIndex = cursor.getColumnIndexOrThrow(projection[3])
-            val displayNameColumnIndex = cursor.getColumnIndexOrThrow(projection[4])
-            val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(projection[5])
+            val dateModifiedColumnIndex = cursor.getColumnIndexOrThrow(projection[2])
+            val sizeColumnIndex = cursor.getColumnIndexOrThrow(projection[3])
+            val descriptionColumnIndex = cursor.getColumnIndexOrThrow(projection[4])
+            val displayNameColumnIndex = cursor.getColumnIndexOrThrow(projection[5])
+            val absoluteFilePathColumnIndex = cursor.getColumnIndexOrThrow(projection[6])
             val albumColumnIndex =
-                if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[6])
+                if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[7])
                 else 0 // 0 value not used
             val resolutionColumnIndex =
-                if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[7])
+                if (SDK_INT >= Build.VERSION_CODES.R) cursor.getColumnIndexOrThrow(projection[8])
                 else 0 // 0 value not used
 
             /* add these values to the list of tracks */
             Log.d("MediaStore", "Iterating over database output")
-            while (cursor.moveToNext()) { // While there is another audio file to iterate over, iterate over to the next one and:
+            while (cursor.moveToNext() && numAdded < numToAdd) { // While there is another audio file to iterate over, iterate over to the next one and:
                 val fetchedId = cursor.getLong(idColumnIndex)
                 val fetchedDateTaken = cursor.getLong(dateTakenColumnIndex)
+                val fetchedDateModified = cursor.getLong(dateModifiedColumnIndex)
                 val fetchedSize = cursor.getLong(sizeColumnIndex)
                 val fetchedAlbum = if (SDK_INT >= Build.VERSION_CODES.R) cursor.getString(albumColumnIndex) else null
                 val fetchedResolution =
@@ -216,113 +218,69 @@ class ContentResolverInterface(
                 }
                 val fetchedAbsoluteFilePath = cursor.getString(absoluteFilePathColumnIndex)
 
-                val fileInputStream = contentResolver.openInputStream(fetchedUri)
-                val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
-                val fileHash =
-                    if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        val byteArrayToHash =
-                            if (type == MediaType.PHOTO)
-                                fileInputStream?.readAllBytes()
-                            else
-                                fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use
-                        val hash: ByteArray = digest.digest(byteArrayToHash ?: ByteArray(0))
-                        hash.toHexString()
-                    } else {
-                        /* Based on https://stackoverflow.com/a/59049461 */
-                        val fileData = ByteArray(fileInputStream?.available() ?: 0)
-                        val dataInputStream = DataInputStream(fileInputStream)
-                        if (type == MediaType.PHOTO)
-                            dataInputStream.readFully(fileData)
-                        else
-                            dataInputStream.readFully(
-                                fileData,
-                                0,
-                                2056
-                            ) // Read less of file for videos to reduce memory use
+                /* Decide album to use */
+                val album =
+                    fetchedAlbum ?: fetchedAbsoluteFilePath.substringBeforeLast("/").substringAfterLast("/")
 
-                        val hash: ByteArray = digest.digest(fileData)
-                        hash.toHexString()
-                    }
-                fileInputStream?.close()
+                // Check all conditions for media to be added, before then calling addMedia() to add it
 
-                if (numAdded < numToAdd) {
-                    /* Decide album to use */
-                    val album =
-                        fetchedAlbum ?: fetchedAbsoluteFilePath.substringBeforeLast("/").substringAfterLast("/")
+                val foundInSession = mediaAdded.find { it.id == fetchedId } != null
+                if (foundInSession) continue
 
-                    /** Create Media data class, pass into [onAddMedia] & add to app database */
-                    fun addMedia() {
-                        /* Decide which date to use */
-                        val lastModified = File(fetchedAbsoluteFilePath).lastModified()
-                        val date =
-                            if (fetchedDateTaken > 0)
-                                fetchedDateTaken
-                            else if (lastModified > 0)// if date taken is not found, use date added
-                                lastModified
-                            else null
-
-                        /* Find embedded lat/long of media using EXIF */
-                        var latLong: DoubleArray? = null
-                        val fileInputStream2 = contentResolver.openInputStream(fetchedUri)
-                        if (fileInputStream2 != null) {
-                            val exifInterface = ExifInterface(fileInputStream2)
-                            latLong = exifInterface.latLong
-                            fileInputStream2.close()
-                        }
-
-                        val mediaClassToAdd = Media(
-                            id = fetchedId,
-                            uri = fetchedUri,
-                            dateTaken = date,
-                            size = fetchedSize,
-                            type = type,
-                            location = latLong,
-                            album = album,
-                            description = fetchedDescription,
-                            title = fetchedDisplayName,
-                            resolution = fetchedResolution,
-                            status = MediaStatus.UNSET,
-                            fileHash = fileHash,
-                        )
-
-                        mediaAdded.add(mediaClassToAdd)
-                        numAdded++
-                        onAddMedia(mediaClassToAdd)
-                        Log.d("MediaStore", "Added media with uri $fetchedUri")
-                        CoroutineScope(Dispatchers.IO).launch {
-                            dao.insert(mediaClassToAdd.getMediaStatusEntity(statisticsEnabled)) // Add to database
-                        }
-                    }
-
-                    // Check all conditions for media to be added, before then calling addMedia() to add it
-
-                    val foundInSession = mediaAdded.find { it.id == fetchedId } != null
-                    if (foundInSession) continue
-
-                    val mediaSatisfiesFilters =
-                        fetchedAbsoluteFilePath.contains(mediaFilter.directory)
-                                && (fetchedDescription?.contains(mediaFilter.containsText) ?: false
-                                || fetchedDisplayName.contains(mediaFilter.containsText))
-                                && fetchedSize in mediaFilter.sizeRange
-                    if (!mediaSatisfiesFilters) continue
+                val mediaSatisfiesFilters =
+                    fetchedAbsoluteFilePath.contains(mediaFilter.directory)
+                            && (fetchedDescription?.contains(mediaFilter.containsText) ?: false
+                            || fetchedDisplayName.contains(mediaFilter.containsText))
+                            && fetchedSize in mediaFilter.sizeRange
+                if (!mediaSatisfiesFilters) continue
 
 //                    val findPhotoByHash = dao.findByHash(fileHash) TODO("Duplicate files feature: user can configure auto-delete or show both duplicates")
-                    val currentDate = Calendar.getInstance()
-                    val findById = dao.findByMediaStoreId(fetchedId)
-                    /** True when: media is not snoozed, or the snoozeUntil date has passed */
-                    val snoozeHasPassed = findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate.timeInMillis
-                    if (!snoozeHasPassed) continue
+                val currentDate = Calendar.getInstance()
+                val findById = dao.findByMediaStoreId(fetchedId)
 
-                    val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
-                        findById.status
-                    )
-                    val swipeRetentionTimeHasPassed =
-                        if (swipeRetentionTimeMillis != 0L) // value of 0 means remember swipes forever
-                            (findById?.dateModified?: Long.MAX_VALUE) <= currentDate.timeInMillis - swipeRetentionTimeMillis
-                        else false
-                    if (hasBeenSwiped && !swipeRetentionTimeHasPassed) continue
+                /** True when: media is not snoozed, or the snoozeUntil date has passed */
+                val snoozeHasPassed =
+                    findById?.snoozedUntil == null || findById.snoozedUntil <= currentDate.timeInMillis
+                if (!snoozeHasPassed) continue
 
-                    addMedia()
+                val hasBeenSwiped = findById != null && listOf(MediaStatus.DELETE, MediaStatus.KEEP).contains(
+                    findById.status
+                )
+                val swipeRetentionTimeHasPassed =
+                    if (swipeRetentionTimeMillis != 0L) // value of 0 means remember swipes forever
+                        (findById?.dateModified
+                            ?: Long.MAX_VALUE) <= currentDate.timeInMillis - swipeRetentionTimeMillis
+                    else false
+                if (hasBeenSwiped && !swipeRetentionTimeHasPassed) continue
+
+                addMedia(
+                    add = { mediaItem ->
+                        mediaAdded.add(mediaItem)
+                        numAdded++
+                        onAddMedia(mediaItem)
+                        if (mediaFilter.sortField != MediaSortField.RANDOM)
+                            Log.v("MediaStore", "Added ${type.toString().lowercase()} with ${mediaFilter.sortField.sortOrderString} of ${
+                                when (mediaFilter.sortField) {
+                                    MediaSortField.DATE -> mediaItem.getFormattedDate()
+                                    MediaSortField.SIZE -> mediaItem.size.toString() + "B"
+                                    else -> ""
+                                }
+                            }")
+                    },
+                    absoluteFilePath = fetchedAbsoluteFilePath,
+                    dateTaken = fetchedDateTaken,
+                    dateModified = fetchedDateModified,
+                    uri = fetchedUri,
+                    type = type,
+                    id = fetchedId,
+                    size = fetchedSize,
+                    album = fetchedAlbum,
+                    description = fetchedDescription,
+                    displayName = fetchedDisplayName,
+                    resolution = fetchedResolution,
+                    statisticsEnabled = statisticsEnabled
+                )
+
 //                    when {
 //                        /* Photo MediaStore ID is in the database AND has been swiped (DELETE OR KEEP) */
 //                        ((photoFoundInSession || photoInDatabaseAndSwiped)) -> {  }
@@ -346,12 +304,93 @@ class ContentResolverInterface(
 //                                addMedia()
 //                        }
 //                    }
-                } else {
-                    return 0
-                }
             }
         }
         return numToAdd - numAdded
+    }
+
+    /** Create Media data class, pass into [onAddMedia] & add to app database */
+    private fun addMedia(
+        absoluteFilePath: String,
+        dateTaken: Long,
+        dateModified: Long,
+        uri: Uri,
+        type: MediaType,
+        id: Long,
+        size: Long,
+        album: String?,
+        description: String?,
+        displayName: String?,
+        resolution: String?,
+        statisticsEnabled: Boolean,
+        add: (Media) -> Unit
+    ) {
+        /* Decide which date to use */
+        val date =
+            if (dateTaken > 0)
+                dateTaken
+            else if (dateModified > 0)// if date taken is not found, use date added
+                dateModified
+            else null
+
+        // Calculate hash value
+        val fileInputStream = contentResolver.openInputStream(uri)
+        val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
+        val fileHash =
+            if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val byteArrayToHash =
+                    if (type == MediaType.PHOTO)
+                        fileInputStream?.readAllBytes()
+                    else
+                        fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use
+                val hash: ByteArray = digest.digest(byteArrayToHash ?: ByteArray(0))
+                hash.toHexString()
+            } else {
+                /* Based on https://stackoverflow.com/a/59049461 */
+                val fileData = ByteArray(fileInputStream?.available() ?: 0)
+                val dataInputStream = DataInputStream(fileInputStream)
+                if (type == MediaType.PHOTO)
+                    dataInputStream.readFully(fileData)
+                else
+                    dataInputStream.readFully(
+                        fileData,
+                        0,
+                        2056
+                    ) // Read less of file for videos to reduce memory use
+
+                val hash: ByteArray = digest.digest(fileData)
+                hash.toHexString()
+            }
+        fileInputStream?.close()
+
+        /* Find embedded lat/long of media using EXIF */
+        var latLong: DoubleArray? = null
+        val fileInputStream2 = contentResolver.openInputStream(uri)
+        if (fileInputStream2 != null) {
+            val exifInterface = ExifInterface(fileInputStream2)
+            latLong = exifInterface.latLong
+            fileInputStream2.close()
+        }
+
+        val mediaClassToAdd = Media(
+            id = id,
+            uri = uri,
+            dateTaken = date,
+            size = size,
+            type = type,
+            location = latLong,
+            album = album,
+            description = description,
+            title = displayName,
+            resolution = resolution,
+            status = MediaStatus.UNSET,
+            fileHash = fileHash,
+        )
+
+        add(mediaClassToAdd)
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.insert(mediaClassToAdd.getMediaStatusEntity(statisticsEnabled)) // Add to database
+        }
     }
 
     suspend fun deleteMedia(
