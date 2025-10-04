@@ -105,6 +105,8 @@ fun PreferencesScreen(
 
     val statisticsEnabled by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting).collectAsState(true)
+    val reduceAnimations by DataStoreInterface(context.dataStore)
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
 
     var currentCategory: PreferencesCategory? by remember { mutableStateOf(null) }
     BackHandler(enabled = currentCategory != null) { currentCategory = null }
@@ -148,7 +150,8 @@ fun PreferencesScreen(
     AnimatedContent(
         currentCategory,
         transitionSpec = {
-            if (currentCategory != null)
+            if (reduceAnimations) fadeIn() togetherWith fadeOut()
+            else if (currentCategory != null)
                 slideInHorizontally(
                     spring(
                         Spring.DampingRatioNoBouncy,
