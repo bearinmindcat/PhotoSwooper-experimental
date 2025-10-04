@@ -97,6 +97,7 @@ fun ReviewScreen(
     val reviewUiState by reviewViewModel.uiState.collectAsState()
     val mainUiState by mainViewModel.uiState.collectAsState()
 
+    val itemsOfCurrentStatusFilter = mainUiState.mediaItems.filter { it.status == reviewUiState.currentStatusFilter }
     var floatingActionButtonSize by remember { mutableStateOf(DpSize(0.dp, 0.dp)) }
 
     fun performSelectItemHapticFeedback(mediaItem: Media) {
@@ -137,7 +138,7 @@ fun ReviewScreen(
             Box(Modifier.fillMaxSize()) {
                 key(mainUiState.mediaItems) {
                     LazyVerticalStaggeredGrid(columns = StaggeredGridCells.Fixed(3)) {
-                        items(mainUiState.mediaItems.filter { it.status == reviewUiState.currentStatusFilter }) { mediaItem ->
+                        items(itemsOfCurrentStatusFilter) { mediaItem ->
                             val coroutineScope = rememberCoroutineScope()
                             val imageScale = remember { Animatable(1f) }
                             fun animateImageSelect() {
@@ -324,7 +325,7 @@ fun ReviewScreen(
                                 onClick = {
                                     if (SDK_INT >= Build.VERSION_CODES.R)
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    mainUiState.mediaItems.forEach {
+                                    itemsOfCurrentStatusFilter.forEach {
                                         reviewViewModel.toggleMediaItemSelected(
                                             it,
                                             true
