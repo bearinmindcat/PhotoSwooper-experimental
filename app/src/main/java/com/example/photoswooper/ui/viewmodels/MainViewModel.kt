@@ -63,11 +63,13 @@ class MainViewModel(
     private val startActivity: (Intent) -> Unit,
     private val makeToast: (String) -> Unit,
     private val checkPermissions: (onPermissionsGranted: suspend () -> Unit) -> Unit,
-    private val uiCoroutineScope: CoroutineScope,
-    val bottomSheetScaffoldState: BottomSheetScaffoldState,
+    private var uiCoroutineScope: CoroutineScope,
+    var bottomSheetScaffoldState: BottomSheetScaffoldState,
     val player: ExoPlayer,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying))
+    fun setUiCoroutineScope(newCoroutineScope: CoroutineScope) {uiCoroutineScope = newCoroutineScope}
+
+    private val _uiState = MutableStateFlow(initialUiState)
     val uiState = _uiState.asStateFlow()
 
     // Initialise mediaFilters (Updated with stored values when resetAndGetNewMediaItems() is first called in MainActivity)
@@ -78,7 +80,7 @@ class MainViewModel(
 
     /* On first start, update the space saved in time frame value & set the filters from  */
     init {
-        CoroutineScope(Dispatchers.IO).launch { updateMediaFiltersFromDataStore() }
+        CoroutineScope(Dispatchers.IO).launch { updateMediaFilterFromDataStore() }
         viewModelScope.launch {
             _uiState.update { currentState ->
                 currentState.copy(
@@ -663,7 +665,7 @@ class MainViewModel(
         }
     }
 
-    suspend fun updateMediaFiltersFromDataStore() {
+    suspend fun updateMediaFilterFromDataStore() {
         val minSize = dataStoreInterface.getLongSettingValue(LongPreference.FILTER_MIN_FILE_SIZE.setting).first()
         val maxSize = dataStoreInterface.getLongSettingValue(LongPreference.FILTER_MAX_FILE_SIZE.setting).first()
         val includePhotos =
@@ -761,7 +763,10 @@ class MainViewModel(
                     secondDate = Long.MAX_VALUE,
                 )
             )
-           checkPermissions { resetAndGetNewMediaItems() }
+           checkPermissions {
+               updateMediaFilterFromDataStore()
+               resetAndGetNewMediaItems()
+           }
         }
     }
 }
