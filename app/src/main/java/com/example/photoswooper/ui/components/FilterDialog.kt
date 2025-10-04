@@ -109,7 +109,8 @@ fun FilterDialog(
 
     // Activity launcher to request user to select directory / album
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { result ->
-        filterDialogViewModel.updateDirectory(result?.toString() ?: StringPreference.FILTER_DIRECTORIES.default)
+        if (result != null)
+            filterDialogViewModel.updateDirectory(result.toString())
     }
 
     val sortIconRotation by animateFloatAsState(if (newFilters.sortAscending) 180f else 0f)
