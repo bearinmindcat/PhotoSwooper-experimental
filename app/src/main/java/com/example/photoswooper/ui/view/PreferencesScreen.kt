@@ -117,7 +117,8 @@ fun PreferencesScreen(
             leadingContent = { Icon(painterResource(R.drawable.arrow_left), null) },
             modifier = Modifier.clickable {
                 currentCategory = null
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                if (SDK_INT >= 30)
+                   view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
             }
         )
     }
@@ -302,7 +303,7 @@ fun PreferencesScreen(
                                     modifier = Modifier.clickable {
                                         currentCategory = category
                                         if (SDK_INT >= Build.VERSION_CODES.R)
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_START)
                                     }
                                 )
                             }
@@ -707,7 +708,7 @@ fun IntPreferenceEditorSlider(
                             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         }
                     },
-                    valueRange = acceptedValueRange.first.toFloat()..acceptedValueRange.last.toFloat(),
+                    valueRange = 10f..100f,
                     onValueChangeFinished = {
                         onUpdatePreference(displayedPreferenceValue.toInt())
                     },
