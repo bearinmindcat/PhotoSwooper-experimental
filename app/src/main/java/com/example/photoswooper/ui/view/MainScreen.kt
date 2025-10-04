@@ -13,7 +13,6 @@ import android.content.pm.PackageManager.PERMISSION_DENIED
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.content.res.Resources
 import android.os.Build
-import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.Toast
@@ -506,7 +505,6 @@ fun MainScreen(
     Box(Modifier.fillMaxSize()) {
         BottomSheetScaffold(
             content = { paddingValues ->
-                Log.d("UI", "Loading MainScreen")
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier

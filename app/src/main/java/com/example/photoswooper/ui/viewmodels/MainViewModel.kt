@@ -44,6 +44,7 @@ import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -154,7 +155,8 @@ class MainViewModel(
         _uiState.update { currentState ->
             currentState.copy(
                 mediaItems = mutableListOf(),
-                fetchingMedia = true
+                fetchingMedia = true,
+                fetchIteration = currentState.fetchIteration + 1
             )
         }
         uiCoroutineScope.launch { player.clearMediaItems() }
@@ -196,11 +198,13 @@ class MainViewModel(
             }
             if (_uiState.value.mediaItems.size < numPerStackPreference) {
                 // Add the rest asynchronously
-                viewModelScope.launch {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val currentFetchIteration = uiState.value.fetchIteration
                     val numPhotosToAddAsync = numPhotosToAddUsingFilters(numPerStackPreference)
                     contentResolverInterface.getAllMediaFromMediaStore(
                         onAddMedia = {
-                            insertMediaItemIntoListSorted(it)
+                            if (uiState.value.fetchIteration != currentFetchIteration) cancel("Cancelled previous media fetching coroutine")
+                            else insertMediaItemIntoListSorted(it)
                         },
                         targetNumPhotos = numPhotosToAddAsync - numPhotosToAddSynchronously,
                         targetNumVideos = numPerStackPreference - numPhotosToAddAsync - (maxMediaItemsToAddSynchronously - numPhotosToAddSynchronously),
@@ -237,7 +241,7 @@ class MainViewModel(
     ) {
         val mediaItems = uiState.value.mediaItems
 
-        if (mediaItems.isNotEmpty()) {
+        if (fromIndex < mediaItems.size) {
             val indexToInsertInto: Int
             // If random, select random index and insert
             if (mediaFilter.value.sortField == MediaSortField.RANDOM) {

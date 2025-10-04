@@ -42,6 +42,7 @@ import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
 import androidx.media3.common.C.USAGE_MEDIA
@@ -173,11 +174,13 @@ class MainActivity : AppCompatActivity() {
             ), // placeholder value
             dataStoreInterface = dataStoreInterface,
             makeToast = {
-                Toast.makeText(
-                    applicationContext,
-                    it,
-                    Toast.LENGTH_SHORT
-                ).show()
+                this.lifecycleScope.launch {
+                    Toast.makeText(
+                        applicationContext,
+                        it,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             },
             checkPermissions = { checkPermissions(this, it) },
             startActivity = { startActivity(it) },

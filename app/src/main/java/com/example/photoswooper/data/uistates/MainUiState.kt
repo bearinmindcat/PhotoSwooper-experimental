@@ -29,6 +29,7 @@ data class MainUiState(
     val isPlaying: Boolean,
     val previousIsPlaying: Boolean = false,
     val mediaItems: MutableList<Media> = mutableListOf(),
+    val fetchIteration: Int = 0, // Incremented every time new media items are fetched, so that background process for previous fetching can be cancelled
     val currentIndex: Int = 0,
     val numUnset: Int = 0,
     val tutorialCardTitle: String = "",
