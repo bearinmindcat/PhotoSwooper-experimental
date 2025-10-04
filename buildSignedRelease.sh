@@ -64,7 +64,6 @@ if [[ $git_url = "" ]]; then
 fi
 if [[ $commit_tag = "" ]]; then
   if [ -d ".git" ]; then
-    git fetch --tags
     commit_tag=$(git describe --tags "$(git rev-list --tags --max-count=1)")
   else
     echo For the latest tag to be automatically used, this script must be run from the local repository root directory.
@@ -110,5 +109,5 @@ echo "3/3 Signing your apk file"
 echo
 silent zipalign -v -p 4 app-release-unsigned.apk app-release-unsigned-aligned.apk & spinner
 apksigner sign --ks "$keystore_path" --out "$output_file" "$tempdir/repository/app/build/outputs/apk/release/app-release-unsigned-aligned.apk" && echo Your signed apk file can be found at $output_file
-rm -rf tempdir
+rm -rf $tempdir
 exit
