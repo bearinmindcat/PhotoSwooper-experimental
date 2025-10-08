@@ -55,6 +55,7 @@ class ContentResolverInterface(
         mediaFilter: MediaFilter,
         onAddMedia: (Media) -> Unit
     ) {
+        Log.i("MediaStore", "Fetching media from MediaStore with directory filter ${mediaFilter.directory}")
         var numVideosNotFound = 0
         var numPhotosNotFound = 0
         // Get videos and save remaining number of videos to add as variable (user's device may not have the desired number)
@@ -227,8 +228,10 @@ class ContentResolverInterface(
                 val foundInSession = mediaAdded.find { it.id == fetchedId } != null
                 if (foundInSession) continue
 
+                val mediaIsInAlbum = fetchedAbsoluteFilePath.contains(mediaFilter.directory)
+                Log.i("MediaStore", "current media's directory is ${fetchedAbsoluteFilePath.substringBeforeLast("/")}. Media in album? $mediaIsInAlbum")
                 val mediaSatisfiesFilters =
-                    fetchedAbsoluteFilePath.contains(mediaFilter.directory)
+                    mediaIsInAlbum
                             && (fetchedDescription?.contains(mediaFilter.containsText) ?: false
                             || fetchedDisplayName.contains(mediaFilter.containsText))
                             && fetchedSize in mediaFilter.sizeRange

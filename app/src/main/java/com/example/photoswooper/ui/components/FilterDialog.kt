@@ -113,7 +113,7 @@ fun FilterDialog(
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { result ->
         if (result != null) {
             val decodedDirectoryUri = Uri.decode(result.toString())
-            Log.i("Filters", "User has chosen album to filter. directory is $decodedDirectoryUri")
+            Log.i("Filters", "User has chosen album to filter. directory is ${decodedDirectoryUri.substringAfterLast(":")}")
             filterDialogViewModel.updateDirectory(decodedDirectoryUri.substringAfterLast(":"))
         }
     }
