@@ -634,7 +634,6 @@ fun MainScreen(
                     }
                 }
             },
-            topBar = {},
             sheetContent = {
                 ActionBar(
                     numToDelete = numToDelete,

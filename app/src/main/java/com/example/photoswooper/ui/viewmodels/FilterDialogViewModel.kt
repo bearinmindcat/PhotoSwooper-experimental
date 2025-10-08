@@ -66,8 +66,6 @@ class FilterDialogViewModel(initialFilter: MediaFilter) {
         _newFilters.update { currentFilters ->
             currentFilters.copy(
                 directory = newDirectory
-                    .substringAfterLast("%3A")
-                    .replace("%2F", "/")
             )
         }
     }

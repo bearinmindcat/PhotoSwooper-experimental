@@ -6,8 +6,10 @@
 
 package com.example.photoswooper.ui.components
 
+import android.net.Uri
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
+import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -109,8 +111,11 @@ fun FilterDialog(
 
     // Activity launcher to request user to select directory / album
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { result ->
-        if (result != null)
-            filterDialogViewModel.updateDirectory(result.toString())
+        if (result != null) {
+            val decodedDirectoryUri = Uri.decode(result.toString())
+            Log.i("Filters", "User has chosen album to filter. directory is $decodedDirectoryUri")
+            filterDialogViewModel.updateDirectory(decodedDirectoryUri.substringAfterLast(":"))
+        }
     }
 
     val sortIconRotation by animateFloatAsState(if (newFilters.sortAscending) 180f else 0f)
