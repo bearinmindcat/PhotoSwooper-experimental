@@ -1,0 +1,3 @@
+Fix filtering by album name with a space in it (and other characters)
+
+See PhotoSwooper Codeberg releases for changelog of previous versions
