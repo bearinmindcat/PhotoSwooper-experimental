@@ -42,6 +42,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -59,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -145,6 +147,11 @@ fun PreferencesScreen(
                     exitProcess(0)
                 }
             }
+        )
+    var showDonationDialog by remember { mutableStateOf(false) }
+    if (showDonationDialog)
+        DonationDialog(
+            onDismissRequest = { showDonationDialog = false },
         )
 
 
@@ -330,12 +337,7 @@ fun PreferencesScreen(
                                 icon = painterResource(R.drawable.heart),
                                 title = stringResource(R.string.donate),
                                 onClick = {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            "https://liberapay.com/loowiz".toUri()
-                                        )
-                                    )
+                                    showDonationDialog = true
                                 }
                             )
                             FooterItem(
@@ -353,6 +355,110 @@ fun PreferencesScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DonationDialog(
+    onDismissRequest: () -> Unit
+) {
+    val view = LocalView.current
+    val context = LocalContext.current
+
+    fun onDonate() {
+        Toast.makeText(context, R.string.thanks_for_donating, Toast.LENGTH_SHORT).show()
+    }
+
+    Dialog(onDismissRequest = { onDismissRequest() }) {
+        Card(
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(dimensionResource(R.dimen.padding_medium)),
+        ) {
+            Row(
+                Modifier
+                    .padding(
+                        top = dimensionResource(R.dimen.padding_medium),
+                        bottom = dimensionResource(R.dimen.padding_small),
+                    )
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.heart),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(dimensionResource(R.dimen.small_icon))
+                )
+                Text(
+                    stringResource(R.string.donate_to_loowiz),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(
+                        start = dimensionResource(R.dimen.padding_small),
+                    ),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Text(
+                stringResource(R.string.donate_to_loowiz_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(
+                    top = dimensionResource(R.dimen.padding_small),
+                    bottom = dimensionResource(R.dimen.padding_small),
+                    start = dimensionResource(R.dimen.padding_medium),
+                    end = dimensionResource(R.dimen.padding_medium)
+                ),
+                textAlign = TextAlign.Center
+            )
+            Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
+                FooterItem(
+                    icon = painterResource(R.drawable.kofi),
+                    title = stringResource(id = R.string.kofi),
+                    colouredIcon = true
+                ) {
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            "https://ko-fi.com/loowiz".toUri()
+                        )
+                    )
+                    onDonate()
+                }
+                FooterItem(
+                    icon = painterResource(R.drawable.liberapay_logo_black_on_yellow),
+                    title = stringResource(R.string.liberapay),
+                    colouredIcon = true
+                ) {
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            "https://liberapay.com/loowiz".toUri()
+                        )
+                    )
+                    onDonate()
+                }
+            }
+            OutlinedButton(
+                onClick = {
+                    if (SDK_INT >= Build.VERSION_CODES.R)
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    onDismissRequest()
+                },
+                modifier = Modifier
+                    .padding(dimensionResource(R.dimen.padding_small))
+                    .align(Alignment.CenterHorizontally),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.x),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(dimensionResource(R.dimen.xsmall_icon))
+                )
+                Text(stringResource(R.string.dismiss), Modifier.padding(start = dimensionResource(R.dimen.padding_small)),)
             }
         }
     }
@@ -505,6 +611,7 @@ private fun RestartRequiredDialog(
 private fun FooterItem(
     icon: Painter,
     title: String,
+    colouredIcon: Boolean = false,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -517,7 +624,12 @@ private fun FooterItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
         ) {
-            Icon(icon, null, modifier = Modifier.size(dimensionResource(R.dimen.small_icon)))
+            Icon(
+                painter = icon,
+                tint = if (colouredIcon) Color.Unspecified else LocalContentColor.current,
+                contentDescription = null,
+                modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
+            )
             Text(
                 title,
                 style = MaterialTheme.typography.bodyMedium

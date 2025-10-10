@@ -40,9 +40,21 @@
     <string name="options_for_current_preference">Options for current preference</string>
     <string name="value_for_above_preference">Value for above preference</string>
     <string name="donate">Donate!</string>
+    <string name="donate_to_loowiz">Donate to Loowiz!</string>
+    <string name="donate_to_loowiz_desc">Hi, I\'m Loowiz!\n\n
+        Making and maintaining PhotoSwooper takes a lot of time and effort, and, although I do very much enjoy it, A donation would be super appreciated :)\n\nIt shows me that people love and appreciate the work I do, and helps me out financially too - a struggle, being a student heh. \n\nIf you do choose to donate, Ko-fi is the easiest - providing one-time donations and a fun UI. Then there\'s LiberaPay - open source, but recurring donations only.\n\nIf not, no worries, I just hope you enjoy the app!</string>
+    <string name="kofi">Ko-fi</string>
+    <string name="liberapay">Liberapay</string>
+    <string name="dismiss">dismiss</string>
     <string name="report_bug">Report a bug</string>
     <string name="restart_tutorial">Restart tutorial</string>
     <string name="confirm_restart_tutorial">Are you sure you want to start the tutorial again?</string>
+    <string name="restart_later">Restart later</string>
+    <string name="restart_now">Restart now</string>
+    <string name="restart_required_for_preference">To apply this preference PhotoSwooper must be restarted</string>
+    <string name="this_will_discard_items_marked_as_deleted">Warning: This will unswipe items currently marked as deleted</string>
+    <string name="loop_videos">Loop video playback</string>
+    <string name="loop_videos_desc">Automatically replay videos when they reach the end</string>
 
     <string name="pause_current_video">Pause the current video</string>
     <string name="rewind">Rewind a configured number of seconds</string>
@@ -112,10 +124,5 @@
     <string name="press_back_again_to_exit">Press back again to exit</string>
     <string name="enable_statistics_desc">Warning: Disabling statistics also disables any custom photo retention periods</string>
     <string name="use_filter_dialog_buttons_to_exit">Use Cancel or Confirm button at the bottom of this dialog to exit</string>
-    <string name="restart_later">Restart later</string>
-    <string name="restart_now">Restart now</string>
-    <string name="restart_required_for_preference">To apply this preference PhotoSwooper must be restarted</string>
-    <string name="this_will_discard_items_marked_as_deleted">Warning: This will unswipe items currently marked as deleted</string>
-    <string name="loop_videos">Loop video playback</string>
-    <string name="loop_videos_desc">Automatically replay videos when they reach the end</string>
+    <string name="thanks_for_donating">Thank you so much!</string>
 </resources>
