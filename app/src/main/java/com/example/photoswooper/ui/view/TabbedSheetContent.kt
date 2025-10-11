@@ -19,7 +19,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +61,9 @@ import kotlinx.coroutines.launch
 enum class TabIndex {
     REVIEW, STATS, SETTINGS
 }
+
+private const val fractionOfScreenForContent = 0.9f
+
 /**
  * A tabbed screen containing the Review, stats & settings screens
  *
@@ -227,6 +230,7 @@ fun TabbedSheetContent(
                         )
                     )
             },
+            modifier = Modifier.fillMaxHeight(fractionOfScreenForContent) // Prevents bottom sheet drag handle being hidden by status bar due to height
         ) {
             when (it) {
                 TabIndex.REVIEW.ordinal -> {
@@ -243,7 +247,7 @@ fun TabbedSheetContent(
                 }
 
                 TabIndex.SETTINGS.ordinal -> {
-                    PreferencesScreen(Modifier.fillMaxSize())
+                    PreferencesScreen()
                 }
             }
         }
