@@ -6,10 +6,13 @@
 
 package com.example.photoswooper.data.uistates
 
+import android.os.Parcelable
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.text.AnnotatedString
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Media
+import kotlinx.parcelize.Parcelize
+import kotlinx.parcelize.RawValue
 
 enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
     DAY(86400000, R.drawable.calendar_dot),
@@ -20,6 +23,8 @@ enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
 // TODO("Add support for an 'all' time frame")
 }
 
+
+@Parcelize
 data class MainUiState(
     val permissionsGranted: Boolean? = null,
     val fetchingMedia: Boolean = true,
@@ -28,12 +33,13 @@ data class MainUiState(
 
     val isPlaying: Boolean,
     val previousIsPlaying: Boolean = false,
+    val videoPosition: Long = 0,
     val mediaItems: MutableList<Media> = mutableListOf(),
     val fetchIteration: Int = 0, // Incremented every time new media items are fetched, so that background process for previous fetching can be cancelled
     val currentIndex: Int = 0,
     val numUnset: Int = 0,
     val tutorialCardTitle: String = "",
-    val tutorialCardBody: AnnotatedString = AnnotatedString(""),
+    val tutorialCardBody: @RawValue AnnotatedString = AnnotatedString(""),
     @param:DrawableRes val tutorialCardIconDrawableId: Int? = null,
 
     val showInfoAndFloatingActionsRow: Boolean = false,
@@ -43,4 +49,4 @@ data class MainUiState(
 
     val currentStorageStatsTimeFrame: TimeFrame = TimeFrame.WEEK,
     val spaceSavedInTimeFrame: Long = 0,
-)
+) : Parcelable

@@ -49,6 +49,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +74,7 @@ import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.uistates.ReviewUiState
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.DropdownFilterChip
 import com.example.photoswooper.ui.components.FloatingAction
@@ -93,7 +95,11 @@ fun ReviewScreen(
     val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
 
-    val reviewViewModel = remember { ReviewViewModel() }
+    val savedUiState = rememberSaveable { mutableStateOf<ReviewUiState?>(ReviewUiState()) }
+    val reviewViewModel = remember { ReviewViewModel(
+        savedUiState = savedUiState.value,
+        updateSavedUiState = { savedUiState.value = it }
+    ) }
     val reviewUiState by reviewViewModel.uiState.collectAsState()
     val mainUiState by mainViewModel.uiState.collectAsState()
 

@@ -26,16 +26,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -55,8 +55,11 @@ import coil3.gif.GifDecoder
 import coil3.video.VideoFrameDecoder
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
+import com.example.photoswooper.data.models.MediaFilter
 import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.data.uistates.IntPreference
+import com.example.photoswooper.data.uistates.MainUiState
+import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
 import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.Onboardingcreen
@@ -70,6 +73,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+lateinit var player: ExoPlayer
 
 /** Permissions that should be granted for read access to all storage */
 val fullReadPermissions = if (SDK_INT >= Build.VERSION_CODES.TIRAMISU)
@@ -84,6 +88,7 @@ class MainActivity : AppCompatActivity() {
     @androidx.annotation.OptIn(UnstableApi::class)
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -105,7 +110,108 @@ class MainActivity : AppCompatActivity() {
             .memoryCache(null)
             .diskCache(null) // Disable cache so animation is called every time in AsyncImage (needs an onSuccess call)
             .build()
-        val player: ExoPlayer = ExoPlayer.Builder(this).build()
+
+        initialisePlayer()
+
+        val contentResolverInterface = ContentResolverInterface(
+            dao = mediaStatusDao,
+            contentResolver = contentResolver,
+            dataStoreInterface = dataStoreInterface,
+            activity = this as Activity
+        )
+        setContent {
+            // Get settings for UI
+            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting)
+                .collectAsState(!BooleanPreference.SYSTEM_FONT.default)
+            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting)
+                .collectAsState(BooleanPreference.DYNAMIC_THEME.default)
+            val skipReview by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SKIP_REVIEW.setting)
+                .collectAsState(BooleanPreference.SKIP_REVIEW.default)
+            val tutorialIndex by dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
+                .collectAsState(1000)
+
+            PhotoSwooperTheme(
+                systemFont = systemFont,
+                dynamicColor = dynamicTheme
+            ) {
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    if (tutorialIndex == 0) {
+                        Onboardingcreen(dataStoreInterface,)
+                    } else {
+                        // Create the mainViewModel
+                        val uiCoroutineScope = rememberCoroutineScope()
+                        val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
+                        val savedUiState = rememberSaveable { mutableStateOf(MainUiState(isPlaying = player.isPlaying)) }
+                        val savedMediaFilter = rememberSaveable { mutableStateOf<MediaFilter?>(null) }
+                        mainViewModel = remember { MainViewModel(
+                            contentResolverInterface = contentResolverInterface,
+                            mediaStatusDao = mediaStatusDao,
+                            player = player,
+                            uiCoroutineScope = uiCoroutineScope,
+                            bottomSheetScaffoldState = bottomSheetScaffoldState,
+                            dataStoreInterface = dataStoreInterface,
+                            makeToast = {
+                                this.lifecycleScope.launch {
+                                    Toast.makeText(
+                                        applicationContext,
+                                        it,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            checkPermissions = { checkPermissions(this, it) },
+                            startActivity = { startActivity(it) },
+                            savedUiState = savedUiState.value,
+                            updateSavedUiState = {
+                                savedUiState.value = it
+                            },
+                            savedMediaFilter = savedMediaFilter.value,
+                            updateSavedMediaFilter = {
+                                savedMediaFilter.value = it
+                            }
+                        ) }
+                        val savedStatsUiState = rememberSaveable { mutableStateOf<StatsUiState?>(null) }
+                        val statsViewModel = remember { StatsViewModel(
+                            mediaStatusDao = mediaStatusDao,
+                            formatDateTime = { epochMillis, flags ->
+                                DateUtils.formatDateTime(
+                                    this,
+                                    epochMillis,
+                                    flags
+                                )
+                            },
+                            formatDateTimeRange = { startMillis, endMillis, flags ->
+                                DateUtils.formatDateRange(
+                                    this,
+                                    startMillis,
+                                    endMillis,
+                                    flags
+                                )
+                            },
+                            savedUiState = savedStatsUiState.value,
+                            updateSavedUiState = { savedStatsUiState.value = it }
+                        ) }
+                        MainScreen(
+                            mainViewModel = mainViewModel,
+                            imageLoader = imageLoader,
+                            statsViewModel = statsViewModel,
+                            skipReview = skipReview
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun initialisePlayer() {
+        val dataStoreInterface = DataStoreInterface(this.dataStore)
+
+        player = ExoPlayer.Builder(this).build()
         player.prepare()
         player.addListener(
             object : Player.Listener {
@@ -133,120 +239,6 @@ class MainActivity : AppCompatActivity() {
             )
             player.repeatMode = if (loopVideos) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         }
-
-        val contentResolverInterface = ContentResolverInterface(
-            dao = mediaStatusDao,
-            contentResolver = contentResolver,
-            dataStoreInterface = dataStoreInterface,
-            activity = this as Activity
-        )
-        val statsViewModel = StatsViewModel(
-            mediaStatusDao = mediaStatusDao,
-            formatDateTime = { epochMillis, flags ->
-                DateUtils.formatDateTime(
-                    this,
-                    epochMillis,
-                    flags
-                )
-            },
-            formatDateTimeRange = { startMillis, endMillis, flags ->
-                DateUtils.formatDateRange(
-                    this,
-                    startMillis,
-                    endMillis,
-                    flags
-                )
-            }
-        )
-        mainViewModel = MainViewModel(
-            contentResolverInterface = contentResolverInterface,
-            mediaStatusDao = mediaStatusDao,
-            player = player,
-//            initialUiState = MainUiState(isPlaying = player.isPlaying),
-            uiCoroutineScope = CoroutineScope(Dispatchers.Main), // placeholder value
-            bottomSheetScaffoldState = BottomSheetScaffoldState(
-                SheetState(
-                    skipPartiallyExpanded = false,
-                    positionalThreshold = { 0f },
-                    velocityThreshold = {0f},
-                ),
-                snackbarHostState = SnackbarHostState()
-            ), // placeholder value
-            dataStoreInterface = dataStoreInterface,
-            makeToast = {
-                this.lifecycleScope.launch {
-                    Toast.makeText(
-                        applicationContext,
-                        it,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            },
-            checkPermissions = { checkPermissions(this, it) },
-            startActivity = { startActivity(it) },
-        )
-
-
-        CoroutineScope(Dispatchers.Main).launch {
-            val onboardingScreenInFocus =
-                (DataStoreInterface(this@MainActivity.dataStore).getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
-                    .first() == 0)
-            if (!onboardingScreenInFocus)
-                checkPermissions(
-                    context = this@MainActivity,
-                    onPermissionsGranted = {
-                        mainViewModel.resetAndGetNewMediaItems()
-                    }
-                )
-        }
-
-        setContent {
-            // Get settings for UI
-            val systemFont by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SYSTEM_FONT.setting)
-                .collectAsState(!BooleanPreference.SYSTEM_FONT.default)
-            val dynamicTheme by dataStoreInterface.getBooleanSettingValue(BooleanPreference.DYNAMIC_THEME.setting)
-                .collectAsState(BooleanPreference.DYNAMIC_THEME.default)
-            val skipReview by dataStoreInterface.getBooleanSettingValue(BooleanPreference.SKIP_REVIEW.setting)
-                .collectAsState(BooleanPreference.SKIP_REVIEW.default)
-            val tutorialIndex by dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
-                .collectAsState(1000)
-
-            // Set values for viewModel
-            val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
-            mainViewModel.bottomSheetScaffoldState = bottomSheetScaffoldState
-            mainViewModel.setUiCoroutineScope(rememberCoroutineScope())
-
-            PhotoSwooperTheme(
-                systemFont = systemFont,
-                dynamicColor = dynamicTheme
-            ) {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    if (tutorialIndex == 0) {
-                        Onboardingcreen(
-                            dataStoreInterface,
-                            onExit = {
-                                checkPermissions(
-                                    this@MainActivity,
-                                    { mainViewModel.resetAndGetNewMediaItems() }
-                                )
-                            },
-                        )
-                    } else {
-                        MainScreen(
-                            mainViewModel = mainViewModel,
-                            imageLoader = imageLoader,
-                            statsViewModel = statsViewModel,
-                            skipReview = skipReview
-                        )
-                    }
-                }
-            }
-        }
     }
 
     /* Pause video if the user leaves the app */
@@ -265,6 +257,11 @@ class MainActivity : AppCompatActivity() {
             mainViewModel.revertIsPlayingToBeforeTempPause()
         } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        player.release()
     }
 
     /* Handle permission request result */

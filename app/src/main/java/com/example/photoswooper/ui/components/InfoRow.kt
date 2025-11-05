@@ -56,6 +56,7 @@ import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
 import com.example.photoswooper.utils.DataStoreInterface
 
 data class InfoData(
@@ -174,15 +175,15 @@ fun InfoRow(
                     visible = !expanded.value,
                     enter = expandHorizontally(
                         animationSpec = spring(
-                            viewModel.defaultEntryAnimationSpec.dampingRatio,
-                            if (reduceAnimations) 0f else viewModel.defaultEntryAnimationSpec.stiffness
+                            defaultEntryAnimationSpec.dampingRatio,
+                            if (reduceAnimations) 0f else defaultEntryAnimationSpec.stiffness
                         ),
                         expandFrom = Alignment.Start
                     ) + fadeIn(),
                     exit = shrinkHorizontally(
                         animationSpec = spring(
-                            viewModel.defaultEntryAnimationSpec.dampingRatio,
-                            if (reduceAnimations) 0f else viewModel.defaultEntryAnimationSpec.stiffness
+                            defaultEntryAnimationSpec.dampingRatio,
+                            if (reduceAnimations) 0f else defaultEntryAnimationSpec.stiffness
                         ),
                         shrinkTowards = Alignment.End
                     ) + fadeOut(animationSpec = spring(stiffness = Spring.StiffnessHigh)),
@@ -206,13 +207,13 @@ fun InfoRow(
                 visible = expanded.value,
                 enter = expandVertically(
                     animationSpec = spring(
-                        viewModel.defaultEntryAnimationSpec.dampingRatio,
-                        if (reduceAnimations) 0f else viewModel.defaultEntryAnimationSpec.stiffness
+                        defaultEntryAnimationSpec.dampingRatio,
+                        if (reduceAnimations) 0f else defaultEntryAnimationSpec.stiffness
                     )
                 ) + fadeIn(),
                 exit = shrinkVertically(
                     animationSpec = spring(
-                        viewModel.defaultEntryAnimationSpec.dampingRatio,
+                        defaultEntryAnimationSpec.dampingRatio,
                         if (reduceAnimations) 0f else Spring.StiffnessLow
                     )
                 ) + fadeOut(),

@@ -123,6 +123,6 @@
     <string name="enable_stats_desc">Collect statistics about when and how much you swipe for you to look back on. This never leaves your device</string>
     <string name="press_back_again_to_exit">Press back again to exit</string>
     <string name="enable_statistics_desc">Warning: Disabling statistics also disables any custom photo retention periods</string>
-    <string name="use_filter_dialog_buttons_to_exit">Use Cancel or Confirm button at the bottom of this dialog to exit</string>
     <string name="thanks_for_donating">Thank you so much!</string>
+    <string name="tap_again_to_dismiss">Tap again to dismiss</string>
 </resources>

@@ -115,6 +115,7 @@ import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
+import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -663,13 +664,14 @@ fun MainScreen(
         )
         val tutorialVerticalAlignmentBias by animateFloatAsState(
             if (tutorialIndex < 6) -1f else 0.7f,
-            animationSpec = mainViewModel.defaultEntryAnimationSpec
+            animationSpec = defaultEntryAnimationSpec
         )
         if (uiState.tutorialMode)
             TutorialCard(
                 uiState.tutorialCardIconDrawableId,
                 uiState.tutorialCardTitle,
                 uiState.tutorialCardBody,
+                tutorialIndex,
                 onSkip = {
                     updateTutorialIndex(tutorialIndex + 1)
                     if (tutorialIndex + 1 > 0) {
@@ -691,6 +693,7 @@ fun TutorialCard(
     iconDrawableId: Int?,
     title: String,
     body: AnnotatedString,
+    tutorialIndex: Int,
     onSkip: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -734,7 +737,7 @@ fun TutorialCard(
                             style = MaterialTheme.typography.titleMedium
                         )
                         AnimatedExpandCollapseIcon(
-                            expanded = !bodyTextVisible,
+                            expanded = if (tutorialIndex >= 6) !bodyTextVisible else bodyTextVisible,
                             onClick = { bodyTextVisible = !bodyTextVisible },
                             contentDescription = "tutorial text"
                         )

@@ -6,9 +6,11 @@
 
 package com.example.photoswooper.data.models
 
+import android.os.Parcelable
 import android.provider.MediaStore
 import androidx.annotation.DrawableRes
 import com.example.photoswooper.R
+import kotlinx.parcelize.Parcelize
 
 /**
  * Enum class representing the possible fields to sort by
@@ -20,6 +22,7 @@ enum class MediaSortField(val sortOrderString: String, @param:DrawableRes val ic
     SIZE(MediaStore.MediaColumns.SIZE, R.drawable.hard_drives),
 }
 
+@Parcelize
 data class MediaFilter(
     val sizeRange: LongRange,
     val mediaTypes: Set<MediaType>,
@@ -27,10 +30,9 @@ data class MediaFilter(
     val sortField: MediaSortField,
     val sortAscending: Boolean,
     val containsText: String,
-
     // Advanced filters
 //    val location: DoubleArray?, // TODO("Implement filtering by location")
-)
+) : Parcelable
 
 val defaultMediaFilter = MediaFilter(
     sizeRange = 0L..0L,

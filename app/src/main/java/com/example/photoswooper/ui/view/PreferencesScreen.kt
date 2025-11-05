@@ -56,6 +56,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,7 +111,7 @@ fun PreferencesScreen(
     val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
 
-    var currentCategory: PreferencesCategory? by remember { mutableStateOf(null) }
+    var currentCategory by rememberSaveable { mutableStateOf<PreferencesCategory?>(null) }
     BackHandler(enabled = currentCategory != null) { currentCategory = null }
     @Composable
     fun BackButtonListItem() {

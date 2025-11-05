@@ -125,14 +125,6 @@ fun SwipeableMediaWithIndicatorIcons(
 //            showBufferingIndicator = true TODO("buffering indicator")
         } else {
             coroutineScope.launch {
-//                viewModel.animatedImageScaleEntry.snapTo(0f)
-                // Set video aspect ratio
-                if (media.type == MediaType.VIDEO)
-                    videoAspectRatio = if (viewModel.player.videoSize.height != 0) {
-                        viewModel.player.videoSize.width / viewModel.player.videoSize.height.toFloat()
-                    } else {
-                        1f
-                    }
                 // Animate entry
                 anchoredDraggableState.snapTo(DragAnchors.Center)
                 viewModel.enterImage()
@@ -283,7 +275,13 @@ fun SwipeableMediaWithIndicatorIcons(
                                 player = viewModel.player,
                                 surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
                                 modifier = Modifier
-                                    .aspectRatio(videoAspectRatio)
+                                    .aspectRatio(
+                                        if (viewModel.player.videoSize.height != 0) {
+                                            viewModel.player.videoSize.width / viewModel.player.videoSize.height.toFloat()
+                                        } else {
+                                            1f
+                                        }
+                                    )
                                     .fillMaxSize()
                             )
                         }

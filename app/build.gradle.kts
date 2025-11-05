@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     id("androidx.room")
     alias(libs.plugins.ksp)
+    id("org.jetbrains.kotlin.plugin.parcelize")
 }
 
 room {

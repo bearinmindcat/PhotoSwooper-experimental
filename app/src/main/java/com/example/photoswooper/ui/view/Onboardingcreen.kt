@@ -54,7 +54,7 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) {
+fun Onboardingcreen(dataStoreInterface: DataStoreInterface) {
     val context = LocalContext.current
     val view = LocalView.current
 
@@ -124,7 +124,6 @@ fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) 
                                     setting = IntPreference.TUTORIAL_INDEX.setting
                                 )
                             }
-                            onExit()
                         },
                     ) {
                         Text("Skip tutorial")
@@ -145,7 +144,6 @@ fun Onboardingcreen(dataStoreInterface: DataStoreInterface, onExit: () -> Unit) 
                                     setting = LongPreference.TUTORIAL_START_TIME.setting
                                 )
                             }
-                            onExit()
                         },
                     ) {
                         Text(

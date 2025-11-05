@@ -10,16 +10,36 @@ import androidx.lifecycle.ViewModel
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.uistates.ReviewUiState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * The viewModel used by the `ReviewScreen` function in [com.example.photoswooper.ui.view.TabbedSheetContent]
  */
-class ReviewViewModel() : ViewModel() {
+class ReviewViewModel(
+    private val savedUiState: ReviewUiState?,
+    private val updateSavedUiState: (ReviewUiState) -> Unit,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(ReviewUiState())
     val uiState = _uiState.asStateFlow()
+
+    init {
+        if (savedUiState != null) {
+            _uiState.update { savedUiState }
+        }
+        // Update saved UI state on each change for restoring after configuration change
+        CoroutineScope(Dispatchers.Main).launch {
+            _uiState.collect {
+                updateSavedUiState(it)
+                delay(500)
+            }
+        }
+    }
 
     fun updateCurrentStatusFilter(newStatusFilter: MediaStatus) {
         _uiState.update { currentState ->

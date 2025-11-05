@@ -8,10 +8,12 @@ package com.example.photoswooper.data.models
 
 import android.net.Uri
 import android.os.Build
+import android.os.Parcelable
 import android.text.format.DateFormat
 import androidx.annotation.DrawableRes
 import com.example.photoswooper.R
 import com.example.photoswooper.data.database.MediaEntity
+import kotlinx.parcelize.Parcelize
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -29,6 +31,7 @@ enum class MediaStatus(@param:DrawableRes val iconDrawableId: Int) {
     HIDE(R.drawable.check) // Used when an item is deleted so shouldnt be attempted to be fetched
 }
 
+@Parcelize
 data class Media(
     val id: Long,
     val uri: Uri,
@@ -42,7 +45,7 @@ data class Media(
     val title: String?,
     val resolution: String?,
     var status: MediaStatus
-) {
+) : Parcelable {
     fun getFormattedDate(): String {
         return if (dateTaken != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

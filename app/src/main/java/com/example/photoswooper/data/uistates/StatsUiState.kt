@@ -6,7 +6,9 @@
 
 package com.example.photoswooper.data.uistates
 
+import android.os.Parcelable
 import com.example.photoswooper.R
+import kotlinx.parcelize.Parcelize
 import java.util.Calendar
 
 /** Enum class of the types of data that can be shown in the stats graph */
@@ -24,10 +26,11 @@ enum class StatsData(val extraInfo: String = "", val iconDrawableId: Int) {
  * @property latestData The latest statistics data. keys: x-axis data (time), values: y-axis data  (no. of swipes)
  * @property currentDateShown A boolean for whether the data shown is of the current date & time
  */
+@Parcelize
 data class StatsUiState(
     val dateToFetchFromMillis: Long = Calendar.getInstance().timeInMillis,
     val timeFrame: TimeFrame = TimeFrame.WEEK,
     val dataType: StatsData = StatsData.SWIPE_COUNT,
     val latestData: List<Float> = listOf(),
     val currentDateShown: Boolean = true
-)
+) : Parcelable

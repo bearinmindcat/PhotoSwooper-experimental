@@ -51,11 +51,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.Calendar
 import java.util.Date
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 
+val defaultEntryAnimationSpec = spring<Float>(
+    stiffness = Spring.StiffnessMediumLow,
+    dampingRatio = Spring.DampingRatioLowBouncy,
+)
+val defaultExitAnimationSpec = spring<Float>(
+    Spring.DampingRatioNoBouncy,
+    Spring.StiffnessMedium
+)
+
+/**
+ * View model used by [com.example.photoswooper.ui.components.ActionBar] and [com.example.photoswooper.ui.view.MainScreen]
+ *
+ * @param savedUiState UI state saved before a configuration change, ready to be restored
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 class MainViewModel(
     private val contentResolverInterface: ContentResolverInterface,
@@ -64,24 +79,55 @@ class MainViewModel(
     private val startActivity: (Intent) -> Unit,
     private val makeToast: (String) -> Unit,
     private val checkPermissions: (onPermissionsGranted: suspend () -> Unit) -> Unit,
-    private var uiCoroutineScope: CoroutineScope,
+    private val uiCoroutineScope: CoroutineScope,
     var bottomSheetScaffoldState: BottomSheetScaffoldState,
     val player: ExoPlayer,
+    private val savedUiState: MainUiState,
+    private val updateSavedUiState: (MainUiState) -> Unit,
+    private val savedMediaFilter: MediaFilter?,
+    private val updateSavedMediaFilter: (MediaFilter) -> Unit
 //    val initialUiState: MainUiState,
 ) : ViewModel() {
-    fun setUiCoroutineScope(newCoroutineScope: CoroutineScope) {uiCoroutineScope = newCoroutineScope}
-
     private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying))
     val uiState = _uiState.asStateFlow()
 
     // Initialise mediaFilters (Updated with stored values when resetAndGetNewMediaItems() is first called in MainActivity)
     private val _mediaFilter = MutableStateFlow(
-        defaultMediaFilter
+        savedMediaFilter?: defaultMediaFilter
     )
     val mediaFilter = _mediaFilter.asStateFlow()
 
-    /* On first start, update the space saved in time frame value & set the filters from  */
+    val statisticsEnabled = dataStoreInterface.getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting)
+    val reduceAnimations = dataStoreInterface
+        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)
+
+    val animatedImageScaleEntry = Animatable(0f)
+
     init {
+        // Restore from values before configuration change, if they exist
+        runBlocking {
+            val onboardingScreenInFocus = dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
+                    .first() == 0
+            if (savedUiState.mediaItems.isEmpty() && !onboardingScreenInFocus)
+                checkPermissions{ resetAndGetNewMediaItems() }
+            else {
+                _uiState.update {
+                    savedUiState
+                }
+                // Restore video positions and state
+                if (getCurrentMedia()?.type == MediaType.VIDEO) {
+                    player.setMediaItem(
+                        MediaItem.fromUri(
+                            getCurrentMedia()?.uri
+                                ?: "android.resource://com.example.photoswooper/drawable/file_not_found_cat".toUri()
+                        )
+                    )
+                    player.seekTo(uiState.value.videoPosition)
+                    revertIsPlayingToBeforeTempPause()
+                }
+            }
+        }
+        // Update space saved statistics & whether tutorial should be shown
         CoroutineScope(Dispatchers.IO).launch { updateMediaFilterFromDataStore() }
         viewModelScope.launch {
             _uiState.update { currentState ->
@@ -89,12 +135,24 @@ class MainViewModel(
                     spaceSavedInTimeFrame = getSpaceSavedInTimeFrame(),
                     tutorialMode = dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
                         .first() < MAX_TUTORIAL_INDEX,
-                    fetchingMedia = getMediaToDelete().isEmpty()
                 )
             }
         }
+        // Update saved UI state on each change for restoring after configuration change
+        CoroutineScope(Dispatchers.Main).launch {
+            _uiState.collect {
+                updateSavedUiState(it)
+                delay(500)
+            }
+        }
+        // Update saved filters on each change for restoring after configuration change
+        CoroutineScope(Dispatchers.Main).launch {
+            _mediaFilter.collect {
+                updateSavedMediaFilter(it)
+            }
+        }
     }
-    val statisticsEnabled = dataStoreInterface.getBooleanSettingValue(BooleanPreference.STATISTICS_ENABLED.setting)
+
     fun getCurrentMedia() =
         try {
             _uiState.value.mediaItems[_uiState.value.currentIndex]
@@ -106,17 +164,6 @@ class MainViewModel(
         media.status == MediaStatus.DELETE
     }
 
-    val reduceAnimations = dataStoreInterface
-        .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)
-    val defaultEntryAnimationSpec = spring<Float>(
-        stiffness = Spring.StiffnessMediumLow,
-        dampingRatio = Spring.DampingRatioLowBouncy,
-    )
-    val defaultExitAnimationSpec = spring<Float>(
-        Spring.DampingRatioNoBouncy,
-        Spring.StiffnessMedium
-    )
-    val animatedImageScaleEntry = Animatable(0f)
     fun enterImage() {
         uiCoroutineScope.launch {
             animatedImageScaleEntry.snapTo(0f)
@@ -146,7 +193,7 @@ class MainViewModel(
         }
     }
 
-    /* Get new media items and add them to the UI state */
+    /** Get new media items and add them to the UI state */
     suspend fun resetAndGetNewMediaItems() {
         val numPerStackPreference =
             dataStoreInterface.getIntSettingValue(IntPreference.NUM_PHOTOS_PER_STACK.setting).first()
@@ -211,6 +258,7 @@ class MainViewModel(
                         mediaAdded = _uiState.value.mediaItems.toMutableSet(),
                         mediaFilter = mediaFilter.value
                     )
+
                     if (_uiState.value.mediaItems.size != numPerStackPreference) {
                         makeToast("Last round!")
                         // Update UI state with the actual number of media items found
@@ -286,7 +334,7 @@ class MainViewModel(
     fun markItem(status: MediaStatus, index: Int = _uiState.value.currentIndex) {
         // Set the status
         val mediaToMark = _uiState.value.mediaItems[index]
-        _uiState.value.mediaItems[index].status = status
+        mediaToMark.status = status
 
         // Update database only if keeping/unsetting the media. Only marked as DELETE when confirmed and the file is deleted
         if (status == MediaStatus.SNOOZE) {
@@ -672,33 +720,44 @@ class MainViewModel(
         }
     }
 
-    suspend fun updateMediaFilterFromDataStore() {
-        val minSize = dataStoreInterface.getLongSettingValue(LongPreference.FILTER_MIN_FILE_SIZE.setting).first()
-        val maxSize = dataStoreInterface.getLongSettingValue(LongPreference.FILTER_MAX_FILE_SIZE.setting).first()
-        val includePhotos =
-            dataStoreInterface.getBooleanSettingValue(BooleanPreference.FILTER_INCLUDE_PHOTOS.setting).first()
-        val includeVideos =
-            dataStoreInterface.getBooleanSettingValue(BooleanPreference.FILTER_INCLUDE_VIDEOS.setting).first()
-        val sortOrderStringFromDataStore =
-            dataStoreInterface.getStringSettingValue(StringPreference.FILTER_SORT_FIELD.setting).first()
-
-        _mediaFilter.update { currentState ->
+    fun updateVideoPosition(newPosition: Long = player.currentPosition) {
+        _uiState.update { currentState ->
             currentState.copy(
-                sizeRange = minSize..maxSize,
-                mediaTypes =
-                    when {
-                        includePhotos && includeVideos -> setOf(MediaType.PHOTO, MediaType.VIDEO)
-                        includePhotos -> setOf(MediaType.PHOTO)
-                        else -> setOf(MediaType.VIDEO)
-                    },
-                directory = dataStoreInterface.getStringSettingValue(StringPreference.FILTER_DIRECTORIES.setting)
-                    .first(),
-                sortField = MediaSortField.entries.first { it.sortOrderString == sortOrderStringFromDataStore },
-                sortAscending = dataStoreInterface.getBooleanSettingValue(BooleanPreference.FILTER_SORT_ASCENDING.setting)
-                    .first(),
-                containsText = dataStoreInterface.getStringSettingValue(StringPreference.FILTER_CONTAINS_TEXT.setting)
-                    .first()
+                videoPosition = newPosition
             )
+        }
+    }
+
+    suspend fun updateMediaFilterFromDataStore() {
+        // Only perform if there is no mediaFilter to restore from before a configuration change
+        if (savedMediaFilter == null) {
+            val minSize = dataStoreInterface.getLongSettingValue(LongPreference.FILTER_MIN_FILE_SIZE.setting).first()
+            val maxSize = dataStoreInterface.getLongSettingValue(LongPreference.FILTER_MAX_FILE_SIZE.setting).first()
+            val includePhotos =
+                dataStoreInterface.getBooleanSettingValue(BooleanPreference.FILTER_INCLUDE_PHOTOS.setting).first()
+            val includeVideos =
+                dataStoreInterface.getBooleanSettingValue(BooleanPreference.FILTER_INCLUDE_VIDEOS.setting).first()
+            val sortOrderStringFromDataStore =
+                dataStoreInterface.getStringSettingValue(StringPreference.FILTER_SORT_FIELD.setting).first()
+
+            _mediaFilter.update { currentState ->
+                currentState.copy(
+                    sizeRange = minSize..maxSize,
+                    mediaTypes =
+                        when {
+                            includePhotos && includeVideos -> setOf(MediaType.PHOTO, MediaType.VIDEO)
+                            includePhotos -> setOf(MediaType.PHOTO)
+                            else -> setOf(MediaType.VIDEO)
+                        },
+                    directory = dataStoreInterface.getStringSettingValue(StringPreference.FILTER_DIRECTORIES.setting)
+                        .first(),
+                    sortField = MediaSortField.entries.first { it.sortOrderString == sortOrderStringFromDataStore },
+                    sortAscending = dataStoreInterface.getBooleanSettingValue(BooleanPreference.FILTER_SORT_ASCENDING.setting)
+                        .first(),
+                    containsText = dataStoreInterface.getStringSettingValue(StringPreference.FILTER_CONTAINS_TEXT.setting)
+                        .first()
+                )
+            }
         }
     }
 

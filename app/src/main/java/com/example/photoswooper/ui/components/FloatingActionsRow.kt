@@ -68,6 +68,7 @@ import com.example.photoswooper.data.uistates.LongPreference
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -223,12 +224,14 @@ fun FloatingActionsRow(
         }
         AnimatedVisibility(showVideoPlaybackControls) {
             var userDragging by remember { mutableStateOf(false) }
-            val animatedDisplayedPlayerPosition by animateFloatAsState(displayedPlayerPosition, viewModel.defaultEntryAnimationSpec)
+            val animatedDisplayedPlayerPosition by animateFloatAsState(displayedPlayerPosition,
+                defaultEntryAnimationSpec)
             LaunchedEffect(null) { // When either of these two values (keys) change:
                 while (true) {
                     delay(150) // Only update every 150 milliseconds
                     if (!userDragging) {
                         displayedPlayerPosition = viewModel.player.currentPosition.toFloat()
+                        viewModel.updateVideoPosition()
                         playPauseIcon = when {
                             (uiState.isPlaying) -> R.drawable.pause
                             (endOfVideo()) -> R.drawable.arrow_counter_clockwise

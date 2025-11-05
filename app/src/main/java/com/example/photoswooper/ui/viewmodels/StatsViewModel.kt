@@ -14,6 +14,9 @@ import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.uistates.StatsData
 import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.data.uistates.TimeFrame
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -28,10 +31,25 @@ import kotlin.math.roundToLong
 class StatsViewModel(
     val mediaStatusDao: MediaStatusDao,
     val formatDateTime: (millis: Long, flags: Int) -> String,
-    val formatDateTimeRange: (startMillis: Long, endMillis: Long, flags: Int) -> String
+    val formatDateTimeRange: (startMillis: Long, endMillis: Long, flags: Int) -> String,
+    private val savedUiState: StatsUiState?,
+    private val updateSavedUiState: (StatsUiState) -> Unit,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState = _uiState.asStateFlow()
+
+    init {
+        if (savedUiState != null) {
+            _uiState.update { savedUiState }
+        }
+        // Update saved UI state on each change for restoring after configuration change
+        CoroutineScope(Dispatchers.Main).launch {
+            _uiState.collect {
+                updateSavedUiState(it)
+                delay(500)
+            }
+        }
+    }
 
     val daysOfTheWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     val monthsOfTheYear = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
