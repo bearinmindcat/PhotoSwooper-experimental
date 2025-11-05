@@ -8,7 +8,6 @@ package com.example.photoswooper.ui.components
 
 import android.net.Uri
 import android.os.Build
-import android.os.Build.VERSION.SDK_INT
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
@@ -74,6 +73,10 @@ import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.FileSize
 import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.utils.DataStoreInterface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.math.RoundingMode
 import kotlin.math.pow
 
@@ -121,15 +124,26 @@ fun FilterDialog(
     val sortIconRotation by animateFloatAsState(if (newFilters.sortAscending) 180f else 0f)
     val titleStyle = MaterialTheme.typography.titleMedium
 
+    var tapToDismissWarningEnabled by remember { mutableStateOf(true) }
+
     Dialog(
         onDismissRequest = {
-            if (SDK_INT >= Build.VERSION_CODES.R)
-            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-            Toast.makeText(
-                context,
-                R.string.use_filter_dialog_buttons_to_exit,
-                Toast.LENGTH_SHORT
-            ).show()
+            if (tapToDismissWarningEnabled) {
+                tapToDismissWarningEnabled = false
+                Toast.makeText(
+                    context,
+                    R.string.tap_again_to_dismiss,
+                    Toast.LENGTH_SHORT
+                ).show()
+                // Enable warning again after 3 seconds
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(2000)
+                    tapToDismissWarningEnabled = true
+                }
+            }
+            else {
+                onDismiss()
+            }
         },
     ) {
         Card(
