@@ -35,13 +35,14 @@ import java.security.MessageDigest
 import java.util.Calendar
 import kotlin.time.Duration.Companion.days
 
-
 class ContentResolverInterface(
     private val dao: MediaStatusDao,
     private val contentResolver: ContentResolver,
     private val dataStoreInterface: DataStoreInterface, //
     private val activity: Activity, // For delete/trash intent
 ) {
+    // File extensions not supported by Coil
+    val unsupportedFileExtensions = arrayOf("psd", "esd")
 
     /** Calls [getMediaOfTypeFromMediaStore] twice - once for photos and once for videos
      *
@@ -226,6 +227,9 @@ class ContentResolverInterface(
 
                 val foundInSession = mediaAdded.find { it.id == fetchedId } != null
                 if (foundInSession) continue
+
+                if (unsupportedFileExtensions.contains(fetchedDisplayName.substringAfterLast(".")))
+                    continue
 
                 val mediaSatisfiesFilters =
                     fetchedAbsoluteFilePath.contains(mediaFilter.directory)
