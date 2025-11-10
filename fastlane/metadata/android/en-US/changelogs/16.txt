@@ -1,0 +1,9 @@
+2025.11.2:
+Quick fix for videos not playing after switching apps or locking the device
+
+2025.11.1:
+Small update with a few cool features :)
+
+- Session now persists after screen rotation and dark mode change
+- Support for svg files
+- Fixes height of expanded bottom sheet
