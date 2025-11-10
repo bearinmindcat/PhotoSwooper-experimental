@@ -1,0 +1,5 @@
+Small update with a few cool features :)
+
+- Session now persists after screen rotation and dark mode change
+- Support for svg files
+- Fixes height of expanded bottom sheet
