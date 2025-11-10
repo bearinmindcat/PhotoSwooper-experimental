@@ -7,7 +7,7 @@
 package com.example.photoswooper.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
-import com.example.photoswooper.data.uistates.IntPreference
+import com.example.photoswooper.data.IntPreference
 import com.example.photoswooper.data.uistates.PrefsUiState
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope

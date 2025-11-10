@@ -63,11 +63,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.photoswooper.R
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.StringPreference
 import com.example.photoswooper.data.models.MediaFilter
 import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaType
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.StringPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.FileSize

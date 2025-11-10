@@ -48,7 +48,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import com.example.photoswooper.R
-import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.utils.DataStoreInterface

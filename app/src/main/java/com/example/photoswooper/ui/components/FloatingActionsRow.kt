@@ -61,10 +61,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.photoswooper.R
+import com.example.photoswooper.data.LongPreference
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
-import com.example.photoswooper.data.uistates.LongPreference
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.viewmodels.MainViewModel

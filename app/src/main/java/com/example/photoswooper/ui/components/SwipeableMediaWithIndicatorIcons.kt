@@ -68,10 +68,10 @@ import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
+import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
-import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.view.DragAnchors
 import com.example.photoswooper.ui.viewmodels.MainViewModel

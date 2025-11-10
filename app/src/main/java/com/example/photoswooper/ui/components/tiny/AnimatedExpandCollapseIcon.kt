@@ -22,7 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import com.example.photoswooper.R
-import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.utils.DataStoreInterface
 

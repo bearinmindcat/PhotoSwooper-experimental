@@ -13,14 +13,14 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.IntPreference
-import com.example.photoswooper.data.uistates.LongPreference
-import com.example.photoswooper.data.uistates.StringPreference
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.IntPreference
+import com.example.photoswooper.data.LongPreference
+import com.example.photoswooper.data.StringPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class DataStoreInterface(val dataStore: DataStore<Preferences>) {
+class DataStoreInterface(private val dataStore: DataStore<Preferences>) {
     fun getBooleanSettingValue(setting: String): Flow<Boolean> {
         val settingKey = booleanPreferencesKey(setting)
         return dataStore.data

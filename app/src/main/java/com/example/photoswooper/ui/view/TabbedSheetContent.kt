@@ -47,7 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
-import com.example.photoswooper.data.uistates.BooleanPreference
+import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel

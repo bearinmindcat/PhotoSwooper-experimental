@@ -125,4 +125,14 @@
     <string name="enable_statistics_desc">Warning: Disabling statistics also disables any custom photo retention periods</string>
     <string name="thanks_for_donating">Thank you so much!</string>
     <string name="tap_again_to_dismiss">Tap again to dismiss</string>
+    <string name="email_bug_report">Email bug report</string>
+    <string name="online_bug_report">Online bug report</string>
+    <string name="photoswooper_has_crashed">Oh no, PhotoSwooper has crashed! :(</string>
+    <string name="crash_log">Crash log</string>
+    <string name="photoswooper_crash_log">PhotoSwooper crash log</string>
+    <string name="copy_crash_log_contents">Copy crash log contents</string>
+    <string name="share_crash_log">Share crash log</string>
+    <string name="crash_reporting_options">You may report this crash online via codeberg, or by email:</string>
+    <string name="create_issue_url">https://codeberg.org/Loowiz/PhotoSwooper/issues/new</string>
+    <string name="restart_photoswooper">Restart PhotoSwooper</string>
 </resources>

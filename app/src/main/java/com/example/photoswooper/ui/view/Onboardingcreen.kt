@@ -43,10 +43,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.example.photoswooper.R
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.IntPreference
+import com.example.photoswooper.data.LongPreference
 import com.example.photoswooper.data.MAX_TUTORIAL_INDEX
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.IntPreference
-import com.example.photoswooper.data.uistates.LongPreference
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -75,9 +75,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
 import com.example.photoswooper.MainActivity
 import com.example.photoswooper.R
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.IntPreference
-import com.example.photoswooper.data.uistates.LongPreference
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.IntPreference
+import com.example.photoswooper.data.LongPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.DropdownFilterChip
 import com.example.photoswooper.utils.DataStoreInterface
@@ -348,7 +348,7 @@ fun PreferencesScreen(
                                     context.startActivity(
                                         Intent(
                                             Intent.ACTION_VIEW,
-                                            "https://codeberg.org/Loowiz/PhotoSwooper/issues/new".toUri()
+                                            context.getString(R.string.create_issue_url).toUri()
                                         )
                                     )
                                 }
@@ -609,7 +609,7 @@ private fun RestartRequiredDialog(
 
 /** Composable containing a clickable icon & text, used as footer links in [PreferencesScreen] */
 @Composable
-private fun FooterItem(
+fun FooterItem(
     icon: Painter,
     title: String,
     colouredIcon: Boolean = false,
@@ -619,7 +619,7 @@ private fun FooterItem(
     Box(
         modifier = Modifier
             .clip(MaterialTheme.shapes.large)
-            .clickable { onClick() }
+            .clickable(onClickLabel = title) { onClick() }
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

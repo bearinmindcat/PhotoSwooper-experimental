@@ -26,7 +26,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.IntPreference
+import com.example.photoswooper.data.LongPreference
 import com.example.photoswooper.data.MAX_TUTORIAL_INDEX
+import com.example.photoswooper.data.StringPreference
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaFilter
@@ -34,11 +38,7 @@ import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.models.defaultMediaFilter
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.IntPreference
-import com.example.photoswooper.data.uistates.LongPreference
 import com.example.photoswooper.data.uistates.MainUiState
-import com.example.photoswooper.data.uistates.StringPreference
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface

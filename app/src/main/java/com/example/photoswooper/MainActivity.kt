@@ -53,11 +53,12 @@ import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import coil3.video.VideoFrameDecoder
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.IntPreference
+import com.example.photoswooper.data.StringPreference
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.data.models.MediaFilter
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
@@ -71,6 +72,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 lateinit var player: ExoPlayer
@@ -97,7 +99,21 @@ class MainActivity : AppCompatActivity() {
 
         val dataStoreInterface = DataStoreInterface(dataStore)
 
-        /* Custom image loader for animated GIFs */
+        // Show user crash log if app crashes, rather than immediately crashing
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            CoroutineScope(Dispatchers.IO).launch {
+                // Store stack trace
+                dataStoreInterface.setStringSettingValue(throwable.stackTraceToString(), StringPreference.CRASH_LOG.setting)
+
+                // Start activity which shows the user the crash log
+                startActivity(Intent(this@MainActivity, CrashActivity::class.java))
+
+                // Exit current crashed activity
+                exitProcess(10)
+            }
+        }
+
+        // Custom image loader for animated GIFs
         val imageLoader = ImageLoader.Builder(this)
             .components {
                 if (SDK_INT >= 28) {

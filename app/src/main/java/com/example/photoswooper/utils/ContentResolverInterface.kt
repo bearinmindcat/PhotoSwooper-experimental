@@ -18,14 +18,14 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.core.app.ActivityCompat.startIntentSenderForResult
 import androidx.exifinterface.media.ExifInterface
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.IntPreference
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaFilter
 import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.IntPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

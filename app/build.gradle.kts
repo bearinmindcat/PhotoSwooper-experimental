@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.androidx.ui.util.android)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.exifinterface)
     implementation(libs.coil.compose) // For loading images
@@ -82,7 +83,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.media3.exoplayer) // For video playback
     implementation(libs.androidx.media3.ui.compose) // For video playback UI
-    implementation(libs.wavy.slider) // Provides android-like slider composable
+
+    debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)
     testImplementation(libs.androidx.room.testing)

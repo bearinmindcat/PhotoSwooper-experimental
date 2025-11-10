@@ -51,8 +51,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
+import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.data.models.Media
-import com.example.photoswooper.data.uistates.BooleanPreference
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.MainViewModel

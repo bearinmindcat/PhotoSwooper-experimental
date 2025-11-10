@@ -97,11 +97,11 @@ import androidx.core.content.ContextCompat.checkSelfPermission
 import coil3.ImageLoader
 import com.example.photoswooper.R
 import com.example.photoswooper.checkPermissions
+import com.example.photoswooper.data.BooleanPreference
+import com.example.photoswooper.data.IntPreference
 import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
-import com.example.photoswooper.data.uistates.BooleanPreference
-import com.example.photoswooper.data.uistates.IntPreference
 import com.example.photoswooper.data.uistates.StatsData
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
