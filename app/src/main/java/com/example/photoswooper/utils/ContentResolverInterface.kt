@@ -31,9 +31,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.DataInputStream
+import java.io.FileNotFoundException
+import java.io.InputStream
 import java.security.MessageDigest
 import java.util.Calendar
 import kotlin.time.Duration.Companion.days
+
+/** Intent request code used by android version 10 */
+val DELETE_FILE_REQUEST_CODE = 102
+/** Intent request code used by android versions > 11 */
+val DELETE_FILE_GROUP_REQUEST_CODE = 100
 
 class ContentResolverInterface(
     private val dao: MediaStatusDao,
@@ -41,6 +48,7 @@ class ContentResolverInterface(
     private val dataStoreInterface: DataStoreInterface, //
     private val activity: Activity, // For delete/trash intent
 ) {
+
     // File extensions not supported by Coil
     val unsupportedFileExtensions = arrayOf("psd", "esd")
 
@@ -329,6 +337,18 @@ class ContentResolverInterface(
         statisticsEnabled: Boolean,
         add: (Media) -> Unit
     ) {
+        /** Function called if file is not found in storage.
+         *
+         * It is assumed that the file has been deleted externally. If this was not the case, it will be read again
+         * from a future MediaStore query
+         * */
+        fun deleteMediaFromDatabaseIfPresent() =
+            CoroutineScope(Dispatchers.IO).launch {
+                val mediaInDatabase = dao.findByMediaStoreId(id)
+                if (mediaInDatabase != null) {
+                    dao.delete(listOf(mediaInDatabase))
+                }
+            }
         /* Decide which date to use */
         val date =
             if (dateTaken > 0)
@@ -338,42 +358,32 @@ class ContentResolverInterface(
             else null
 
         // Calculate hash value
-        val fileInputStream = contentResolver.openInputStream(uri)
-        val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
-        val fileHash =
-            if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val byteArrayToHash =
-                    if (type == MediaType.PHOTO)
-                        fileInputStream?.readAllBytes()
-                    else
-                        fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use
-                val hash: ByteArray = digest.digest(byteArrayToHash ?: ByteArray(0))
-                hash.toHexString()
-            } else {
-                /* Based on https://stackoverflow.com/a/59049461 */
-                val fileData = ByteArray(fileInputStream?.available() ?: 0)
-                val dataInputStream = DataInputStream(fileInputStream)
-                if (type == MediaType.PHOTO)
-                    dataInputStream.readFully(fileData)
-                else
-                    dataInputStream.readFully(
-                        fileData,
-                        0,
-                        2056
-                    ) // Read less of file for videos to reduce memory use
-
-                val hash: ByteArray = digest.digest(fileData)
-                hash.toHexString()
+        val fileHash: String
+        try {
+            contentResolver.openInputStream(uri).use { fileInputStream ->
+                fileHash = calculateMediaHash(type, fileInputStream)
             }
-        fileInputStream?.close()
+        }
+        // If the file is not found, delete from app's database if present as it no longer exists
+        catch (_: FileNotFoundException) {
+            deleteMediaFromDatabaseIfPresent()
+            return
+        }
 
-        /* Find embedded lat/long of media using EXIF */
+        // Find embedded lat/long of media using EXIF
         var latLong: DoubleArray? = null
-        val fileInputStream2 = contentResolver.openInputStream(uri)
-        if (fileInputStream2 != null) {
-            val exifInterface = ExifInterface(fileInputStream2)
-            latLong = exifInterface.latLong
-            fileInputStream2.close()
+        try {
+            contentResolver.openInputStream(uri).use {
+                if (it != null) {
+                    val exifInterface = ExifInterface(it)
+                    latLong = exifInterface.latLong
+                }
+            }
+        }
+        // If the file is not found, delete from app's database if present as it no longer exists
+        catch (_: FileNotFoundException) {
+            deleteMediaFromDatabaseIfPresent()
+            return
         }
 
         val mediaClassToAdd = Media(
@@ -419,18 +429,22 @@ class ContentResolverInterface(
                     )
 
             // Launch a system prompt requesting user permission for the operation.
-            startIntentSenderForResult(activity, editPendingIntent.intentSender, 100, null, 0, 0, 0, Bundle.EMPTY)
+            startIntentSenderForResult(activity, editPendingIntent.intentSender, DELETE_FILE_GROUP_REQUEST_CODE, null, 0, 0, 0, Bundle.EMPTY)
             // onDelete() is called in onActivityResult, defined in MainActivity.kt
-        } else {
+        }
+        else {
             val deletedMediaUris = mutableListOf<Uri>()
             uris.forEach { uri ->
                 var outputtedRows: Int
 
+                // Try directly deleting files
                 try {
                     outputtedRows = contentResolver.delete(
                         uri, null, null
                     )
-                } catch (securityException: SecurityException) {
+                }
+                // Ask user for permission if app does not have required permissions to delete file
+                catch (securityException: SecurityException) {
                     if (SDK_INT >= Build.VERSION_CODES.Q) {
                         val recoverableSecurityException =
                             securityException as? RecoverableSecurityException ?: throw RuntimeException(
@@ -442,7 +456,7 @@ class ContentResolverInterface(
                         startIntentSenderForResult(
                             activity,
                             intentSender,
-                            102,
+                            DELETE_FILE_REQUEST_CODE,
                             null,
                             0,
                             0,
@@ -475,3 +489,35 @@ class ContentResolverInterface(
         return contentResolver.getType(uri)
     }
 }
+
+    private fun calculateMediaHash(
+        type: MediaType,
+        fileInputStream: InputStream?,
+    ): String {
+        val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
+
+        if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val byteArrayToHash =
+                if (type == MediaType.PHOTO)
+                    fileInputStream?.readAllBytes()
+                else
+                    fileInputStream?.readNBytes(2056) // Read less of file for videos to reduce memory use
+            val hash: ByteArray = digest.digest(byteArrayToHash ?: ByteArray(0))
+            return hash.toHexString()
+        } else {
+            /* Based on https://stackoverflow.com/a/59049461 */
+            val fileData = ByteArray(fileInputStream?.available() ?: 0)
+            val dataInputStream = DataInputStream(fileInputStream)
+            if (type == MediaType.PHOTO)
+                dataInputStream.readFully(fileData)
+            else
+                dataInputStream.readFully(
+                    fileData,
+                    0,
+                    2056
+                ) // Read less of file for videos to reduce memory use
+
+            val hash: ByteArray = digest.digest(fileData)
+            return hash.toHexString()
+        }
+    }

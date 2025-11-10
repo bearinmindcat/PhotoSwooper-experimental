@@ -75,6 +75,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
 
+val REQUEST_PERMISSIONS_REQUEST_CODE = 101
+
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 lateinit var player: ExoPlayer
 
@@ -350,7 +352,8 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         when (requestCode) {
-            in 100..102 -> { // Delete/trash a file
+            // Delete a file
+            in 100..102 -> {
                 if (resultCode != RESULT_CANCELED) {
                     if (SDK_INT >= Build.VERSION_CODES.R)
                         CoroutineScope(Dispatchers.Main).launch {
@@ -360,13 +363,9 @@ class MainActivity : AppCompatActivity() {
                         CoroutineScope(Dispatchers.Main).launch {
                             mainViewModel.deleteMarkedMedia() // Delete the rest if on lower android versions
                         }
-                } else
-                    if (SDK_INT >= Build.VERSION_CODES.R)
-                        CoroutineScope(Dispatchers.Main).launch {
-                            mainViewModel.onDeletion(listOf(), true)
-                        }
-                    else
-                        CoroutineScope(Dispatchers.Main).launch {
+                }
+                else
+                    CoroutineScope(Dispatchers.Main).launch {
                             mainViewModel.onDeletion(listOf(), true)
                         }
             }
@@ -420,7 +419,7 @@ fun checkPermissions(
         ActivityCompat.requestPermissions(
             context as Activity,
             permissionsToRequest.toTypedArray(),
-            101
+            REQUEST_PERMISSIONS_REQUEST_CODE
         ) // The result of this is handled in the onRequestPermissionsResult() function
     else
         CoroutineScope(Dispatchers.IO).launch {
