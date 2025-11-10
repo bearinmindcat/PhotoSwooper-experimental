@@ -14,6 +14,7 @@ import androidx.annotation.DrawableRes
 import com.example.photoswooper.R
 import com.example.photoswooper.data.database.MediaEntity
 import kotlinx.parcelize.Parcelize
+import java.math.RoundingMode
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -59,7 +60,9 @@ data class Media(
         }
     }
 
-    fun getFormattedLocation() = location?.joinToString(", ") { it.toString().substring(0, 8) }
+    fun getFormattedLocation() = location?.joinToString(", ") {
+        it.toBigDecimal().setScale(3, RoundingMode.HALF_UP).toString()
+    }
 
     fun getMediaStatusEntity(statisticsEnabled: Boolean): MediaEntity {
         return MediaEntity(
