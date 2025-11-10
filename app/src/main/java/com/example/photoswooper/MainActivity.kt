@@ -262,15 +262,13 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         try {
-            if (player.isReleased)
-                initialisePlayer()
             mainViewModel.revertIsPlayingToBeforeTempPause()
         } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */
         }
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onDestroy() {
+        super.onDestroy()
         player.release()
     }
 
