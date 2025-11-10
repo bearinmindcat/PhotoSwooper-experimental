@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     implementation(libs.coil.compose) // For loading images
     implementation(libs.coil.gif) // For animated GIFs
+    implementation(libs.coil.svg)
     implementation(libs.coil.video) // For video thumbnails
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx) // for database

@@ -50,8 +50,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import coil3.ImageLoader
-import coil3.gif.AnimatedImageDecoder
-import coil3.gif.GifDecoder
 import coil3.video.VideoFrameDecoder
 import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.data.IntPreference
@@ -116,11 +114,6 @@ class MainActivity : AppCompatActivity() {
         // Custom image loader for animated GIFs
         val imageLoader = ImageLoader.Builder(this)
             .components {
-                if (SDK_INT >= 28) {
-                    add(AnimatedImageDecoder.Factory())
-                } else {
-                    add(GifDecoder.Factory())
-                }
                 add(VideoFrameDecoder.Factory())
             }
             .memoryCache(null)
