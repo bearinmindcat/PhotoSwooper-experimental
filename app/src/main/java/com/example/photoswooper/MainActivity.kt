@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -46,6 +47,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
 import androidx.media3.common.C.USAGE_MEDIA
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -57,6 +59,7 @@ import com.example.photoswooper.data.StringPreference
 import com.example.photoswooper.data.database.MediaStatusDao
 import com.example.photoswooper.data.database.MediaStatusDatabase
 import com.example.photoswooper.data.models.MediaFilter
+import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.StatsUiState
 import com.example.photoswooper.ui.theme.PhotoSwooperTheme
@@ -150,7 +153,7 @@ class MainActivity : AppCompatActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (tutorialIndex == 0) {
-                        Onboardingcreen(dataStoreInterface,)
+                        Onboardingcreen(dataStoreInterface)
                     } else {
                         // Create the mainViewModel
                         val uiCoroutineScope = rememberCoroutineScope()
@@ -259,16 +262,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     /* Unpause the video when the user opens the app from the background */
+    @androidx.annotation.OptIn(UnstableApi::class)
     override fun onResume() {
         super.onResume()
         try {
+            if (player.isReleased) {
+                initialisePlayer()
+                if (mainViewModel.getCurrentMedia()?.type == MediaType.VIDEO) {
+                    player.setMediaItem(
+                        MediaItem.fromUri(
+                            mainViewModel.getCurrentMedia()?.uri
+                                ?: "android.resource://com.example.photoswooper/drawable/file_not_found_cat".toUri()
+                        )
+                    )
+                    player.seekTo(mainViewModel.uiState.value.videoPosition)
+                    if (mainViewModel.uiState.value.isPlaying)
+                        player.play()
+                    else
+                        player.pause()
+                }
+            }
             mainViewModel.revertIsPlayingToBeforeTempPause()
         } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onStop() {
+        super.onStop()
         player.release()
     }
 
