@@ -697,7 +697,7 @@ fun TutorialCard(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var bodyTextVisible by remember { mutableStateOf(true) }
+    var bodyTextVisible by rememberSaveable { mutableStateOf(true) }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)

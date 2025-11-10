@@ -67,6 +67,7 @@ import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
+import com.example.photoswooper.player
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
 import com.example.photoswooper.utils.DataStoreInterface
@@ -86,8 +87,8 @@ fun FloatingActionsRow(
     val uiState by viewModel.uiState.collectAsState()
 
     // player position used in bottom slider
-    var displayedPlayerPosition by remember { mutableFloatStateOf(viewModel.player.currentPosition.toFloat()) }
-    fun endOfVideo() = viewModel.player.currentPosition >= viewModel.player.duration
+    var displayedPlayerPosition by remember { mutableFloatStateOf(player.currentPosition.toFloat()) }
+    fun endOfVideo() = player.currentPosition >= player.duration
     var playPauseIcon by remember { mutableStateOf(
         when {
             (uiState.isPlaying) -> R.drawable.pause
@@ -172,7 +173,7 @@ fun FloatingActionsRow(
                         actionTitle = null,
                         actionDescription = stringResource(R.string.rewind),
                         onClick = {
-                            viewModel.player.seekBack()
+                            player.seekBack()
                         },
 //                            onLongPress = { TODO("Configurable rewind amount") }
                     )
@@ -182,9 +183,9 @@ fun FloatingActionsRow(
                             actionDescription = stringResource(R.string.pause_current_video),
                             onClick = {
                                 when {
-                                    (viewModel.player.isPlaying) -> viewModel.safePause()
+                                    (player.isPlaying) -> viewModel.safePause()
                                     (endOfVideo()) -> {
-                                        viewModel.player.seekTo(0)
+                                        player.seekTo(0)
                                         viewModel.safePlay()
                                     }
 
@@ -199,7 +200,7 @@ fun FloatingActionsRow(
                         actionTitle = null,
                         actionDescription = stringResource(R.string.fast_forward),
                         onClick = {
-                            viewModel.player.seekForward()
+                            player.seekForward()
                         },
 //                            onLongPress = { TODO("Configurable fast forward amount") }
                     )
@@ -230,7 +231,7 @@ fun FloatingActionsRow(
                 while (true) {
                     delay(150) // Only update every 150 milliseconds
                     if (!userDragging) {
-                        displayedPlayerPosition = viewModel.player.currentPosition.toFloat()
+                        displayedPlayerPosition = player.currentPosition.toFloat()
                         viewModel.updateVideoPosition()
                         playPauseIcon = when {
                             (uiState.isPlaying) -> R.drawable.pause
@@ -239,7 +240,7 @@ fun FloatingActionsRow(
                         }
                     }
                     else
-                        viewModel.player.seekTo(displayedPlayerPosition.toLong())
+                        player.seekTo(displayedPlayerPosition.toLong())
                 }
             }
             Row(
@@ -257,7 +258,7 @@ fun FloatingActionsRow(
                 )
                 androidx.compose.material.Slider(
                     value = if (userDragging) displayedPlayerPosition else animatedDisplayedPlayerPosition,
-                    valueRange = 0f..if (viewModel.player.duration > 0L) viewModel.player.duration.toFloat() else Float.MAX_VALUE,
+                    valueRange = 0f..if (player.duration > 0L) player.duration.toFloat() else Float.MAX_VALUE,
                     onValueChange = {
                         if (!userDragging) // Only run when user first starts dragging
                             viewModel.tempPause()
@@ -265,7 +266,7 @@ fun FloatingActionsRow(
                         displayedPlayerPosition = it
                     },
                     onValueChangeFinished = {
-                        viewModel.player.seekTo(displayedPlayerPosition.toLong())
+                        player.seekTo(displayedPlayerPosition.toLong())
                         if (!endOfVideo()) // Prevents play/pause button going wack as play -> immediate pause as end of video
                             viewModel.revertIsPlayingToBeforeTempPause()
                         if (SDK_INT >= Build.VERSION_CODES.R)
@@ -287,7 +288,7 @@ fun FloatingActionsRow(
                     modifier = Modifier.weight(0.7f)
                 )
                 DurationText(
-                    if (viewModel.player.duration > 0L) viewModel.player.duration else 0,
+                    if (player.duration > 0L) player.duration else 0,
                     Color.White,
                     Modifier
                         .width(dimensionResource(R.dimen.duration_text_width))

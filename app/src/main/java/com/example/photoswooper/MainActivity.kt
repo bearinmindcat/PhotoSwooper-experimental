@@ -167,7 +167,6 @@ class MainActivity : AppCompatActivity() {
                         mainViewModel = remember { MainViewModel(
                             contentResolverInterface = contentResolverInterface,
                             mediaStatusDao = mediaStatusDao,
-                            player = player,
                             uiCoroutineScope = uiCoroutineScope,
                             bottomSheetScaffoldState = bottomSheetScaffoldState,
                             dataStoreInterface = dataStoreInterface,
@@ -270,6 +269,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         try {
+            if (player.isReleased)
+                initialisePlayer()
             mainViewModel.revertIsPlayingToBeforeTempPause()
         } catch (_: RuntimeException) {/* mainViewModel is not yet initialised (first start) */
         }

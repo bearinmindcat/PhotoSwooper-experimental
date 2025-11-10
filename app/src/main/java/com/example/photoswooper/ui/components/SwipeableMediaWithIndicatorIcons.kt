@@ -45,6 +45,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,9 +74,12 @@ import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.dataStore
+import com.example.photoswooper.player
 import com.example.photoswooper.ui.view.DragAnchors
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.utils.DataStoreInterface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -102,6 +106,18 @@ fun SwipeableMediaWithIndicatorIcons(
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val uiState by viewModel.uiState.collectAsState()
 
+    /** The id of the most recently loaded image
+     *
+     * Used to ensure the image that is loaded is actually a new one crazy haptic feedback on configuration change */
+    var cachedMediaId by rememberSaveable { mutableStateOf(media.id) }
+    var mediaAspectRatio by rememberSaveable { mutableStateOf(
+        if (player.videoSize.height != 0) {
+            player.videoSize.width / player.videoSize.height.toFloat()
+        } else {
+            1f
+        }
+    ) }
+
     // TODO("Add SwipeableMediaUiState")
     var videoAspectRatio by remember { mutableFloatStateOf(1f) }
     var alphaValue by remember { mutableFloatStateOf(1f) }
@@ -127,10 +143,20 @@ fun SwipeableMediaWithIndicatorIcons(
             coroutineScope.launch {
                 // Animate entry
                 anchoredDraggableState.snapTo(DragAnchors.Center)
+                if (cachedMediaId != media.id) {
+                    view.performHapticFeedback(
+                        HapticFeedbackConstants.CLOCK_TICK
+                    )
+                    cachedMediaId = media.id
+                    // Await video size, then calculate aspect ratio
+                    CoroutineScope(Dispatchers.Main).launch {
+                        while (player.videoSize.height == 0) {
+                            delay(50)
+                        }
+                        mediaAspectRatio = player.videoSize.width / player.videoSize.height.toFloat()
+                    }
+                }
                 viewModel.enterImage()
-                view.performHapticFeedback(
-                    HapticFeedbackConstants.CLOCK_TICK
-                )
             }
         }
     }
@@ -272,16 +298,10 @@ fun SwipeableMediaWithIndicatorIcons(
 
                         MediaType.VIDEO -> {
                             PlayerSurface(
-                                player = viewModel.player,
+                                player = player,
                                 surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
                                 modifier = Modifier
-                                    .aspectRatio(
-                                        if (viewModel.player.videoSize.height != 0) {
-                                            viewModel.player.videoSize.width / viewModel.player.videoSize.height.toFloat()
-                                        } else {
-                                            1f
-                                        }
-                                    )
+                                    .aspectRatio(mediaAspectRatio)
                                     .fillMaxSize()
                             )
                         }

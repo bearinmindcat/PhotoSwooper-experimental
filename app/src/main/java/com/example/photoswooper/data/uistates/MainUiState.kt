@@ -11,8 +11,8 @@ import androidx.annotation.DrawableRes
 import androidx.compose.ui.text.AnnotatedString
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Media
+import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
-import kotlinx.parcelize.RawValue
 
 enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
     DAY(86400000, R.drawable.calendar_dot),
@@ -39,7 +39,7 @@ data class MainUiState(
     val currentIndex: Int = 0,
     val numUnset: Int = 0,
     val tutorialCardTitle: String = "",
-    val tutorialCardBody: @RawValue AnnotatedString = AnnotatedString(""),
+    @IgnoredOnParcel val tutorialCardBody: AnnotatedString = AnnotatedString(""),
     @param:DrawableRes val tutorialCardIconDrawableId: Int? = null,
 
     val showInfoAndFloatingActionsRow: Boolean = false,

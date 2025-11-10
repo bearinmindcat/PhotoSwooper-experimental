@@ -25,7 +25,6 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.data.IntPreference
 import com.example.photoswooper.data.LongPreference
@@ -40,6 +39,7 @@ import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.data.models.defaultMediaFilter
 import com.example.photoswooper.data.uistates.MainUiState
 import com.example.photoswooper.data.uistates.TimeFrame
+import com.example.photoswooper.player
 import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
@@ -81,7 +81,6 @@ class MainViewModel(
     private val checkPermissions: (onPermissionsGranted: suspend () -> Unit) -> Unit,
     private val uiCoroutineScope: CoroutineScope,
     var bottomSheetScaffoldState: BottomSheetScaffoldState,
-    val player: ExoPlayer,
     private val savedUiState: MainUiState,
     private val updateSavedUiState: (MainUiState) -> Unit,
     private val savedMediaFilter: MediaFilter?,
@@ -123,7 +122,10 @@ class MainViewModel(
                         )
                     )
                     player.seekTo(uiState.value.videoPosition)
-                    revertIsPlayingToBeforeTempPause()
+                    if (uiState.value.isPlaying)
+                        player.play()
+                    else
+                        player.pause()
                 }
             }
         }
