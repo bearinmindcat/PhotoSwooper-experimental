@@ -6,6 +6,7 @@
 
 package com.example.photoswooper.ui.view
 
+import android.content.res.Resources
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.view.HapticFeedbackConstants
@@ -19,8 +20,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeGestures
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -62,14 +67,13 @@ enum class TabIndex {
     REVIEW, STATS, SETTINGS
 }
 
-private const val fractionOfScreenForContent = 0.9f
 
 /**
  * A tabbed screen containing the Review, stats & settings screens
  *
  * @param expandBottomSheet Function to call when the user clicks on a tab, to expand the bottom sheet if it isn't already
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TabbedSheetContent(
     tabIndex: Int,
@@ -81,7 +85,14 @@ fun TabbedSheetContent(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
+    val density = LocalDensity.current
     val currentCoroutineScope = rememberCoroutineScope()
+
+    val statusBarHeight = WindowInsets.safeGestures.getTop(density)
+    val screenHeight = Resources.getSystem().displayMetrics.heightPixels.toFloat()
+    val fractionOfScreenForContent = 1 - statusBarHeight / screenHeight
+
+    // Preferences
     val reduceAnimations by DataStoreInterface(context.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val statisticsEnabled by DataStoreInterface(context.dataStore)
