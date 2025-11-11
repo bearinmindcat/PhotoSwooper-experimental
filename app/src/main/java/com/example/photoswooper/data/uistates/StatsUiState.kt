@@ -19,12 +19,12 @@ enum class StatsData(val extraInfo: String = "", val iconDrawableId: Int) {
 }
 
 /**
- * The uiState used by the StatsCard function in [com.example.photoswooper.ui.view.TabbedSheetContent]
+ * The uiState used by the [com.example.photoswooper.ui.view.StatsScreen] composable
  *
  * @property dateToFetchFromMillis The date chosen by the user to fetch data for. Data will be fetched for the whole
  * [timeFrame] e.g. If the [dateToFetchFromMillis] is a tuesday, all data for monday-sunday will be fetched
  * @property latestData The latest statistics data. keys: x-axis data (time), values: y-axis data  (no. of swipes)
- * @property currentDateShown A boolean for whether the data shown is of the current date & time
+ * @property isToday A boolean for whether the data shown is of the current date & time
  */
 @Parcelize
 data class StatsUiState(
@@ -32,5 +32,5 @@ data class StatsUiState(
     val timeFrame: TimeFrame = TimeFrame.WEEK,
     val dataType: StatsData = StatsData.SWIPE_COUNT,
     val latestData: List<Float> = listOf(),
-    val currentDateShown: Boolean = true
+    val isToday: Boolean = true
 ) : Parcelable

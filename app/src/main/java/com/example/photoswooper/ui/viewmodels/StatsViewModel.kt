@@ -25,9 +25,7 @@ import java.math.RoundingMode
 import java.util.Calendar
 import kotlin.math.roundToLong
 
-/**
- * The viewModel used by the `StatsScreen` function in [com.example.photoswooper.ui.view.TabbedSheetContent]
- */
+/** The viewModel used by [com.example.photoswooper.ui.view.StatsScreen] */
 class StatsViewModel(
     val mediaStatusDao: MediaStatusDao,
     val formatDateTime: (millis: Long, flags: Int) -> String,
@@ -54,6 +52,9 @@ class StatsViewModel(
     val daysOfTheWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     val monthsOfTheYear = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
+    /**
+     * Returns the range of integer values for the x-axis based on the current time frame..
+     */
     fun getXAxisRange(): IntRange {
         return when (uiState.value.timeFrame) {
             TimeFrame.DAY -> (0..23)
@@ -88,44 +89,34 @@ class StatsViewModel(
         val currentTimeFrame = uiState.value.timeFrame
 
         /** milliseconds to increment by to get next set of data */
-        val intervalMilliseconds: Long
+        val intervalMilliseconds = when (currentTimeFrame) {
+            TimeFrame.DAY -> 3600000 // Number of milliseconds in an hour
+            TimeFrame.WEEK -> TimeFrame.DAY.milliseconds
+            else /*TimeFrame.YEAR*/ -> TimeFrame.MONTH.milliseconds
+        }
 
 
         /** Calendar field to zero & max e.g. Calendar.HOUR_OF_DAY to get the start & end of each day for the week timeframe */
-        val fieldToZeroAndMaxOnIteration: Int
+        val fieldToZeroAndMaxOnIteration = when (currentTimeFrame) {
+            TimeFrame.DAY -> Calendar.MINUTE
+            TimeFrame.WEEK -> Calendar.HOUR_OF_DAY
+            else /*TimeFrame.YEAR*/ -> Calendar.DAY_OF_MONTH
+        }
 
         /** Calendar field to zero & max to find the start & end of the current time frame */
-        val fieldToZeroAndMaxForTimeFrame: Int
+        val fieldToZeroAndMaxForTimeFrame = when (currentTimeFrame) {
+            TimeFrame.DAY -> Calendar.HOUR_OF_DAY
+            TimeFrame.WEEK -> Calendar.DAY_OF_WEEK
+            else -> Calendar.DAY_OF_YEAR
+        }
 
         /** The current x-axis value for the data being fetched e.g. when fetching data for 2am, currentXValue would be 2.*/
-        var currentXValue: Int
-
-        /* Obtain  values required to fetch data */
-        when (currentTimeFrame) {
-            TimeFrame.DAY -> {
-                intervalMilliseconds = 3600000 // Number of milliseconds in an hour
-                fieldToZeroAndMaxOnIteration = Calendar.MINUTE
-                fieldToZeroAndMaxForTimeFrame = Calendar.HOUR_OF_DAY
-                currentXValue = 0 // First hour of day
-            }
-
-            TimeFrame.WEEK -> {
-                intervalMilliseconds = TimeFrame.DAY.milliseconds
-                fieldToZeroAndMaxOnIteration = Calendar.HOUR_OF_DAY
-                fieldToZeroAndMaxForTimeFrame = Calendar.DAY_OF_WEEK
-                currentXValue = 1 // First day of week
-            }
-
-            else -> { // TimeFrame.YEAR ->
-                intervalMilliseconds = TimeFrame.MONTH.milliseconds
-                fieldToZeroAndMaxOnIteration = Calendar.DAY_OF_MONTH
-                fieldToZeroAndMaxForTimeFrame = Calendar.DAY_OF_YEAR
-                currentXValue = 0 // First month of year (classed as 0)
-            }
+        var currentXValue = when (currentTimeFrame) {
+            TimeFrame.WEEK -> 1
+            else -> 0
         }
 
         /* Fetch & return data */
-
         suspend fun getDataFromDatabase(firstDateMillis: Long, secondDateMillis: Long): Float {
             return when (uiState.value.dataType) {
                 StatsData.SWIPE_COUNT -> mediaStatusDao.getSwipedMediaBetweenDates(
@@ -255,8 +246,7 @@ class StatsViewModel(
         }
     }
 
-    /** Changes date to fetch data from to one day/week/year in the past (amount depends on current time frame),
-     * prompting stats update */
+    /** Decrements [StatsUiState.dateToFetchFromMillis] depending on current time frame, prompting stats update.*/
     fun previousDate() {
         _uiState.update { currentState ->
             val newDateToFetchFromMillis = currentState.dateToFetchFromMillis - currentState.timeFrame.milliseconds
@@ -264,11 +254,14 @@ class StatsViewModel(
                 dateToFetchFromMillis = newDateToFetchFromMillis
             )
         }
-        checkCurrentDateShown()
+        updateIsToday()
     }
 
-    /** Changes date to fetch data from to one day/week/year in the future (amount depends on current time frame),
-     * prompting stats update */
+    /** Increments [StatsUiState.dateToFetchFromMillis] based on current time frame,
+     * prompting stats update
+     *
+     * @return The outcome. False if the next date is in the future (there will be no stats data so not allowed)
+     * */
     fun nextDate(): Boolean {
         val newDateToFetchFromMillis = uiState.value.dateToFetchFromMillis + uiState.value.timeFrame.milliseconds
         if (newDateToFetchFromMillis < Calendar.getInstance().timeInMillis) { // If the new date is not in the future
@@ -277,7 +270,7 @@ class StatsViewModel(
                     dateToFetchFromMillis = newDateToFetchFromMillis
                 )
             }
-            checkCurrentDateShown()
+            updateIsToday()
             return true
         } else return false
     }
@@ -288,15 +281,15 @@ class StatsViewModel(
         _uiState.update { currentState ->
             currentState.copy(
                 dateToFetchFromMillis = Calendar.getInstance().timeInMillis,
-                currentDateShown = true
+                isToday = true
             )
         }
     }
 
-    private fun checkCurrentDateShown() {
+    private fun updateIsToday() {
         _uiState.update { currentState ->
             currentState.copy(
-                currentDateShown = Calendar.getInstance().timeInMillis.floorDiv(86000000)
+                isToday = Calendar.getInstance().timeInMillis.floorDiv(86000000)
                         == currentState.dateToFetchFromMillis.floorDiv(86000000) // currentTime ≈ newTime
             )
         }

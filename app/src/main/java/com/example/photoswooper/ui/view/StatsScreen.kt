@@ -221,7 +221,7 @@ fun StatsScreen(
                     if (SDK_INT >= Build.VERSION_CODES.R)
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                 },
-                enabled = !uiState.currentDateShown
+                enabled = !uiState.isToday
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -251,7 +251,7 @@ fun StatsScreen(
                             view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
                     }
                 },
-                enabled = !uiState.currentDateShown
+                enabled = !uiState.isToday
             ) {
                 Icon(
                     painter = painterResource(R.drawable.caret_right),

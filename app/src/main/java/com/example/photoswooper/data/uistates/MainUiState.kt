@@ -26,17 +26,31 @@ enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
 
 @Parcelize
 data class MainUiState(
+    /** Whether the user has granted permissions to access photos/videos. Value is null when the state is unknown */
     val permissionsGranted: Boolean? = null,
+    /** Boolean for whether media to swipe on is currently being fetched from the device (UI shows a loading indicator
+     * when true) */
     val fetchingMedia: Boolean = true,
+    /** Whether the current media is being decoded/loaded */
     val mediaBuffering: Boolean = true,
     val tutorialMode: Boolean = false,
 
+    /** Whether a video is playing (not paused) */
     val isPlaying: Boolean,
+    /** Cached isPlaying value used to temporarily pause a video when e.g. switching apps */
     val previousIsPlaying: Boolean = false,
     val videoPosition: Long = 0,
+    /** List of mediaItems iterated through by [com.example.photoswooper.ui.viewmodels.MainViewModel] from 0 */
     val mediaItems: MutableList<Media> = mutableListOf(),
-    val fetchIteration: Int = 0, // Incremented every time new media items are fetched, so that background process for previous fetching can be cancelled
+    /** Index of the current media item being shown in [mediaItems] */
     val currentIndex: Int = 0,
+    /** Incremented every time new media items are fetched, so that background process for previous fetching can be
+     * cancelled.
+     *
+     * This is useful e.g. when a user confirms a filter while the app is still fetching media.
+     * */
+    val fetchIteration: Int = 0,
+    /** Number of photos marked as unset. TODO: Is this needed? Can we not use a mediaItems.filter()? */
     val numUnset: Int = 0,
     val tutorialCardTitle: String = "",
     @IgnoredOnParcel val tutorialCardBody: AnnotatedString = AnnotatedString(""),

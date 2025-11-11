@@ -270,14 +270,6 @@ class ContentResolverInterface(
                         mediaAdded.add(mediaItem)
                         numAdded++
                         onAddMedia(mediaItem)
-                        if (mediaFilter.sortField != MediaSortField.RANDOM)
-                            Log.v("MediaStore", "Added ${type.toString().lowercase()} with ${mediaFilter.sortField.sortOrderString} of ${
-                                when (mediaFilter.sortField) {
-                                    MediaSortField.DATE -> mediaItem.getFormattedDate()
-                                    MediaSortField.SIZE -> mediaItem.size.toString() + "B"
-                                    else -> ""
-                                }
-                            }")
                     },
                     absoluteFilePath = fetchedAbsoluteFilePath,
                     dateTaken = fetchedDateTaken,

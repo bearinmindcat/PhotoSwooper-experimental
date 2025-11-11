@@ -15,6 +15,13 @@ import com.example.photoswooper.R
 import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.uistates.TimeFrame
 
+/** Preferences with boolean values used within the app
+ *
+ * @param default The default value of the preference
+ * @param setting The preference key used in the dataStore
+ * [title], [description] and [icon] are resource ids of descriptors and icons of the preference
+ * [com.example.photoswooper.ui.view.BooleanPreferenceEditor]
+ */
 enum class BooleanPreference(
     val default: Boolean,
     val setting: String,

@@ -190,7 +190,7 @@ fun FilterDialog(
                         FilterChip(
                             selected = newFilters.mediaTypes.contains(mediaType),
                             onClick = {
-                                filterDialogViewModel.toggleType(
+                                filterDialogViewModel.toggleMediaType(
                                     mediaType,
                                     onError = {
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)

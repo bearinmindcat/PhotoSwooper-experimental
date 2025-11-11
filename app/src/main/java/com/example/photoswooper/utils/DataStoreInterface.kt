@@ -20,6 +20,7 @@ import com.example.photoswooper.data.StringPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+/** A class containing a collection of functions to read/write preferences to the dataStore */
 class DataStoreInterface(private val dataStore: DataStore<Preferences>) {
     fun getBooleanSettingValue(setting: String): Flow<Boolean> {
         val settingKey = booleanPreferencesKey(setting)
