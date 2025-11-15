@@ -8,6 +8,7 @@ package com.example.photoswooper.ui.components
 
 import android.content.res.Resources
 import android.view.HapticFeedbackConstants
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -23,7 +24,6 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,8 +32,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +64,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -78,9 +85,6 @@ import com.example.photoswooper.player
 import com.example.photoswooper.ui.view.DragAnchors
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.utils.DataStoreInterface
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -98,74 +102,58 @@ fun SwipeableMediaWithIndicatorIcons(
     viewModel: MainViewModel,
     imageLoader: ImageLoader,
     anchoredDraggableState: AnchoredDraggableState<DragAnchors>,
+    displayDeleteHint: Boolean,
+    displayKeepHint: Boolean,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val reduceAnimations by DataStoreInterface(LocalContext.current.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
     val uiState by viewModel.uiState.collectAsState()
+    val currentMediaItem =
+        try {
+            uiState.mediaItems[uiState.currentIndex]
+        } catch (_: IndexOutOfBoundsException) {
+            null
+        }
 
     /** The id of the most recently loaded image
      *
      * Used to ensure the image that is loaded is actually a new one crazy haptic feedback on configuration change */
-    var cachedMediaId by rememberSaveable { mutableStateOf(media.id) }
-    var mediaAspectRatio by rememberSaveable { mutableStateOf(
-        if (player.videoSize.height != 0) {
-            player.videoSize.width / player.videoSize.height.toFloat()
-        } else {
-            1f
-        }
-    ) }
-
-    // TODO("Add SwipeableMediaUiState")
-    var videoAspectRatio by remember { mutableFloatStateOf(1f) }
+    var cachedMediaId by rememberSaveable { mutableLongStateOf(0) }
+    /** Alpha used to give the illusion of a photo swiping away and disappearing*/
     var alphaValue by remember { mutableFloatStateOf(1f) }
     var indicatorIconsAlpha by remember { mutableFloatStateOf(0f) }
 
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    val swipingEnabled = scale == 1f
-    var displayDeleteHint by remember { mutableStateOf(false) }
-    var displayKeepHint by remember { mutableStateOf(false) }
+    // Variables used for zooming
+    var zoomScale by remember { mutableFloatStateOf(1f) }
+    var zoomOffset by remember { mutableStateOf(Offset.Zero) }
+    val animatableOffsetX = animateFloatAsState(targetValue = zoomOffset.x)
+    val animatableOffsetY = animateFloatAsState(targetValue = zoomOffset.y)
+    val animatableScale = animateFloatAsState(targetValue = zoomScale)
+    val swipingEnabled = zoomScale == 1f
 
-    // Animated for smooth transitions
-    val animatableOffsetX = animateFloatAsState(targetValue = offset.x)
-    val animatableOffsetY = animateFloatAsState(targetValue = offset.y)
-    val animatableScale = animateFloatAsState(targetValue = scale)
-
-    /* Animate image entry  */
-    LaunchedEffect(uiState.mediaBuffering) {
-        if (uiState.mediaBuffering) {
-//            delay(1000)
-//            showBufferingIndicator = true TODO("buffering indicator")
-        } else {
+    // Perform haptic feedback based on whether a new media item has been loaded (i.e. not a reload from config change)
+    LaunchedEffect(uiState.mediaReady) {
+        if (uiState.mediaReady) {
             coroutineScope.launch {
-                // Animate entry
-                anchoredDraggableState.snapTo(DragAnchors.Center)
                 if (cachedMediaId != media.id) {
+                    cachedMediaId = media.id
                     view.performHapticFeedback(
                         HapticFeedbackConstants.CLOCK_TICK
                     )
-                    cachedMediaId = media.id
-                    // Await video size, then calculate aspect ratio
-                    CoroutineScope(Dispatchers.Main).launch {
-                        while (player.videoSize.height == 0) {
-                            delay(50)
-                        }
-                        mediaAspectRatio = player.videoSize.width / player.videoSize.height.toFloat()
-                    }
                 }
-                viewModel.enterImage()
             }
         }
     }
 
-    /* Animate image depending on how far the user has swiped */
+    /* Animate image size & alpha depending on how far the user has swiped */
     LaunchedEffect(anchoredDraggableState.requireOffset()) {
         if (!reduceAnimations) {
-            if (!uiState.mediaBuffering) // This prevents interference with entry animation
-                viewModel.animatedImageScaleEntry.snapTo(
+            if (uiState.mediaReady) // This prevents interference with entry animation
+                viewModel.animatedImageScale.snapTo(
                     ((1.25f - (anchoredDraggableState.requireOffset().absoluteValue) / DragAnchors.Right.offset / 2f))
                         .coerceIn(0.8f, 1f),
                 )
@@ -176,39 +164,20 @@ fun SwipeableMediaWithIndicatorIcons(
             .coerceIn(0f, 1f)
     }
 
-    LaunchedEffect(scale) {
-        if (swipingEnabled) offset = Offset.Zero
-    }
-    /* Show usage hints after a delay */
-    LaunchedEffect(anchoredDraggableState.targetValue) {
-        when (anchoredDraggableState.targetValue) {
-            DragAnchors.Left -> {
-                delay(1000)
-                displayDeleteHint = true
-            }
-
-            DragAnchors.Right -> {
-                delay(1000)
-                displayKeepHint = true
-            }
-
-            DragAnchors.Center -> {
-                displayKeepHint = false
-                displayDeleteHint = false
-            }
-
-        }
+    LaunchedEffect(zoomScale) {
+        if (swipingEnabled) zoomOffset = Offset.Zero
     }
 
     Box(contentAlignment = Alignment.Center) {
-        if (swipingEnabled) {
+        if (swipingEnabled)
             IndicatorIconRow(
                 anchoredDraggableState.targetValue,
                 displayKeepHint = displayKeepHint,
                 displayDeleteHint = displayDeleteHint,
                 modifier = Modifier.alpha(indicatorIconsAlpha)
             )
-        }
+        if (!uiState.mediaReady)
+            CircularProgressIndicator( )
         /* Swipeable box containing video or image */
         Box(
             contentAlignment = Alignment.Center,
@@ -221,11 +190,11 @@ fun SwipeableMediaWithIndicatorIcons(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onDoubleTap = { clickOffset ->
-                            if (scale > 1f) {
-                                scale = 1f
+                            if (zoomScale > 1f) {
+                                zoomScale = 1f
                             } else {
-                                scale = 2f
-                                offset = clickOffset.copy(
+                                zoomScale = 2f
+                                zoomOffset = clickOffset.copy(
                                     x = -clickOffset.x - Resources.getSystem().displayMetrics.widthPixels.toFloat() / 25,
                                     y = -clickOffset.y + (media.resolution?.substringAfterLast("×")?.toFloat()
                                         ?: 0f) / 25,
@@ -259,10 +228,10 @@ fun SwipeableMediaWithIndicatorIcons(
                             .pointerInput(Unit) {
                                 detectTransformGestures(
                                     onGesture = { centroid, pan, gestureZoom, _ ->
-                                        val oldScale = scale
-                                        val newScale = (scale * gestureZoom).coerceIn(1f, 5f)
-                                        offset += (pan + centroid * (oldScale - newScale))
-                                        scale = newScale
+                                        val oldScale = zoomScale
+                                        val newScale = (zoomScale * gestureZoom).coerceIn(1f, 5f)
+                                        zoomOffset += (pan + centroid * (oldScale - newScale))
+                                        zoomScale = newScale
                                     }
                                 )
                             }
@@ -279,31 +248,68 @@ fun SwipeableMediaWithIndicatorIcons(
 
         ) {
             // Container setting scale of either the photo or video
-                Box (Modifier.scale(viewModel.animatedImageScaleEntry.value)) {
-                    when (media.type) {
-                        MediaType.PHOTO -> {
-                            AsyncImage(
-                                model = media.uri,
-                                imageLoader = imageLoader,
-                                contentDescription = null,
-                                onSuccess = {
-                                    /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
-                                    viewModel.onMediaLoaded()
-                                },
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                            )
-                        }
+                Box (Modifier.scale(viewModel.animatedImageScale.value)) {
+                    if (currentMediaItem?.decodingError == null) {
+                        when (media.type) {
+                            MediaType.PHOTO -> {
+                                AsyncImage(
+                                    model = media.uri,
+                                    imageLoader = imageLoader,
+                                    contentDescription = null,
+                                    onSuccess = {
+                                        /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
+                                        viewModel.onMediaLoaded()
+                                    },
+                                    onError = { error ->
+                                        viewModel.onMediaError(
+                                            error.result.throwable.localizedMessage
+                                                ?: error.result.throwable.message
+                                        )
+                                    },
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                )
+                            }
 
-                        MediaType.VIDEO -> {
-                            PlayerSurface(
-                                player = player,
-                                surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-                                modifier = Modifier
-                                    .aspectRatio(mediaAspectRatio)
-                                    .fillMaxSize()
+                            MediaType.VIDEO -> {
+                                PlayerSurface(
+                                    player = player,
+                                    surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+                                    modifier = Modifier
+                                        .aspectRatio(uiState.mediaAspectRatio)
+                                        .fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                    // If there is an error loading the media, display the error message
+                    else {
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Text(
+                                text = buildAnnotatedString {
+                                    append("PhotoSwooper was unable to load this file with error:\n")
+                                    pushStyle(SpanStyle(fontFamily = FontFamily.Monospace))
+                                    append(currentMediaItem.decodingError)
+                                    pop()
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
                             )
+                            if (viewModel.getCurrentMedia()?.size == 0L)
+                                Text(
+                                    text = "This was likely because the file is empty",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(top = dimensionResource(R.dimen.padding_large))
+                                )
                         }
                     }
                 }
@@ -420,4 +426,8 @@ private fun IndicatorIconRow(
             }
         }
     }
+}
+
+enum class MediaError(@param:StringRes val reason: Int) {
+    FileEmpty(R.string.the_file_is_empty),
 }

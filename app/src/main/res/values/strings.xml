@@ -45,6 +45,7 @@
         Making and maintaining PhotoSwooper takes a lot of time and effort, and, although I do very much enjoy it, A donation would be super appreciated :)\n\nIt shows me that people love and appreciate the work I do, and helps me out financially too - a struggle, being a student heh. \n\nIf you do choose to donate, Ko-fi is the easiest - providing one-time donations and a fun UI. Then there\'s LiberaPay - open source, but recurring donations only.\n\nIf not, no worries, I just hope you enjoy the app!</string>
     <string name="kofi">Ko-fi</string>
     <string name="liberapay">Liberapay</string>
+    <string name="thanks_for_donating">Thank you so much!</string>
     <string name="dismiss">dismiss</string>
     <string name="report_bug">Report a bug</string>
     <string name="restart_tutorial">Restart tutorial</string>
@@ -123,8 +124,8 @@
     <string name="enable_stats_desc">Collect statistics about when and how much you swipe for you to look back on. This never leaves your device</string>
     <string name="press_back_again_to_exit">Press back again to exit</string>
     <string name="enable_statistics_desc">Warning: Disabling statistics also disables any custom photo retention periods</string>
-    <string name="thanks_for_donating">Thank you so much!</string>
     <string name="tap_again_to_dismiss">Tap again to dismiss</string>
+    <!--  Crash screen  -->
     <string name="email_bug_report">Email bug report</string>
     <string name="online_bug_report">Online bug report</string>
     <string name="photoswooper_has_crashed">Oh no, PhotoSwooper has crashed! :(</string>
@@ -135,4 +136,7 @@
     <string name="crash_reporting_options">You may report this crash online via codeberg, or by email:</string>
     <string name="create_issue_url">https://codeberg.org/Loowiz/PhotoSwooper/issues/new</string>
     <string name="restart_photoswooper">Restart PhotoSwooper</string>
+    <string name="go_to_permission_settings">Go to permission settings</string>
+    <string name="the_file_is_empty">the file is empty</string>
+    <string name="unable_to_load_image">PhotoSwooper was unable to display this image</string>
 </resources>

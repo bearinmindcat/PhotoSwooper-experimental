@@ -45,7 +45,8 @@ data class Media(
     val description: String?,
     val title: String?,
     val resolution: String?,
-    var status: MediaStatus
+    val status: MediaStatus,
+    val decodingError: String? = null,
 ) : Parcelable {
     fun getFormattedDate(): String {
         return if (dateTaken != null) {

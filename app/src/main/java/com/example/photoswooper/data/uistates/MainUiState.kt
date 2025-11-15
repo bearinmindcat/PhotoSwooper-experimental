@@ -31,8 +31,10 @@ data class MainUiState(
     /** Boolean for whether media to swipe on is currently being fetched from the device (UI shows a loading indicator
      * when true) */
     val fetchingMedia: Boolean = true,
-    /** Whether the current media is being decoded/loaded */
-    val mediaBuffering: Boolean = true,
+    /** Whether the current media has been decoded/loaded */
+    val mediaReady: Boolean = false,
+    /** The aspect ratio is used by the PlayerSurface composable to ensure the video isn't stretched/squished */
+    val mediaAspectRatio: Float = 1f,
     val tutorialMode: Boolean = false,
 
     /** Whether a video is playing (not paused) */

@@ -48,6 +48,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
 import androidx.media3.common.C.USAGE_MEDIA
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -230,12 +231,25 @@ class MainActivity : AppCompatActivity() {
             object : Player.Listener {
                 override fun onRenderedFirstFrame() {
                     super.onRenderedFirstFrame()
-                    mainViewModel.onMediaLoaded()
+                    mainViewModel.onMediaLoaded(
+                        player.videoSize.width / player.videoSize.height.toFloat()
+                    )
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     super.onIsPlayingChanged(isPlaying)
                     mainViewModel.updateIsPlaying(isPlaying)
+                }
+
+                override fun onPlayerErrorChanged(error: PlaybackException?) {
+                    super.onPlayerErrorChanged(error)
+                    if (error != null)
+                        mainViewModel.onMediaError(error.localizedMessage?: error.message)
+                }
+
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    super.onPlaybackStateChanged(playbackState)
+
                 }
             }
         )
@@ -377,6 +391,7 @@ fun checkPermissions(
     context: Context,
     onPermissionsGranted: suspend () -> Unit = { }
 ) {
+    Log.i("Permissions", "Checking permissions")
     val permissionsToRequest = mutableListOf<String>()
     /* Permissions to check depending on the android version */
     val readPermissions =
@@ -423,6 +438,7 @@ fun checkPermissions(
         ) // The result of this is handled in the onRequestPermissionsResult() function
     else
         CoroutineScope(Dispatchers.IO).launch {
+            Log.i("Permissions", "Permissions already granted - calling onPermissionsGranted()")
             onPermissionsGranted()
         }
 }

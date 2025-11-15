@@ -260,7 +260,7 @@ class StatsViewModel(
     /** Increments [StatsUiState.dateToFetchFromMillis] based on current time frame,
      * prompting stats update
      *
-     * @return The outcome. False if the next date is in the future (there will be no stats data so not allowed)
+     * @return The outcome. False if the next date is in the future (there will be no stats data     so not allowed)
      * */
     fun nextDate(): Boolean {
         val newDateToFetchFromMillis = uiState.value.dateToFetchFromMillis + uiState.value.timeFrame.milliseconds

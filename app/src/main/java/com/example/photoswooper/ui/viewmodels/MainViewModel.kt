@@ -80,7 +80,7 @@ class MainViewModel(
     private val makeToast: (String) -> Unit,
     private val checkPermissions: (onPermissionsGranted: suspend () -> Unit) -> Unit,
     private val uiCoroutineScope: CoroutineScope,
-    var bottomSheetScaffoldState: BottomSheetScaffoldState,
+    val bottomSheetScaffoldState: BottomSheetScaffoldState,
     private val savedUiState: MainUiState,
     private val updateSavedUiState: (MainUiState) -> Unit,
     private val savedMediaFilter: MediaFilter?,
@@ -100,7 +100,7 @@ class MainViewModel(
     val reduceAnimations = dataStoreInterface
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)
 
-    val animatedImageScaleEntry = Animatable(0f)
+    val animatedImageScale = Animatable(0f)
 
     init {
         // Restore from values before configuration change, if they exist
@@ -108,24 +108,20 @@ class MainViewModel(
             val onboardingScreenInFocus = dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
                     .first() == 0
             if (savedUiState.mediaItems.isEmpty() && !onboardingScreenInFocus)
-                checkPermissions{ resetAndGetNewMediaItems() }
+                CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
             else {
                 _uiState.update {
                     savedUiState
                 }
                 // Restore video positions and state
                 if (getCurrentMedia()?.type == MediaType.VIDEO) {
-                    player.setMediaItem(
-                        MediaItem.fromUri(
-                            getCurrentMedia()?.uri
-                                ?: "android.resource://com.example.photoswooper/drawable/file_not_found_cat".toUri()
-                        )
-                    )
-                    player.seekTo(uiState.value.videoPosition)
-                    if (uiState.value.isPlaying)
-                        player.play()
-                    else
-                        player.pause()
+                    if(safeSetMediaItem()) {
+                        player.seekTo(uiState.value.videoPosition)
+                        if (uiState.value.isPlaying)
+                            player.play()
+                        else
+                            player.pause()
+                    }
                 }
             }
         }
@@ -166,33 +162,44 @@ class MainViewModel(
         media.status == MediaStatus.DELETE
     }
 
-    fun enterImage() {
+    fun animateMediaEntry() {
         uiCoroutineScope.launch {
-            animatedImageScaleEntry.snapTo(0f)
-            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(1f)
-            else animatedImageScaleEntry.animateTo(
+            animatedImageScale.snapTo(0f)
+            if (reduceAnimations.first()) animatedImageScale.snapTo(1f)
+            else animatedImageScale.animateTo(
                 1f,
                 defaultEntryAnimationSpec
             )
         }
     }
 
-    fun exitImage() {
+    fun animateMediaExit() {
         uiCoroutineScope.launch {
-            if (reduceAnimations.first()) animatedImageScaleEntry.snapTo(0f)
-            else animatedImageScaleEntry.animateTo(
+            if (reduceAnimations.first()) animatedImageScale.snapTo(0f)
+            else animatedImageScale.animateTo(
                 0f,
                 defaultExitAnimationSpec
             )
         }
     }
 
-    fun onMediaLoaded() {
+    fun onMediaLoaded(mediaAspectRatio: Float = 1f) {
         _uiState.update { currentState ->
             currentState.copy(
-                mediaBuffering = false
+                mediaReady = true,
+                mediaAspectRatio = mediaAspectRatio
             )
         }
+        animateMediaEntry()
+    }
+
+    fun onMediaError(errorMessage: String?) {
+        val currentIndex = uiState.value.currentIndex
+        _uiState.update { currentState ->
+            currentState.mediaItems[currentIndex] = currentState.mediaItems[currentIndex].copy(decodingError = errorMessage)
+            currentState.copy(mediaReady = true)
+        }
+        animateMediaEntry()
     }
 
     /** Get new media items and add them to the UI state */
@@ -209,7 +216,7 @@ class MainViewModel(
             )
         }
         uiCoroutineScope.launch { player.clearMediaItems() }
-        animatedImageScaleEntry.snapTo(0f)
+        animatedImageScale.snapTo(0f)
         // Add the first media synchronously
         val maxMediaItemsToAddSynchronously = minOf(numPerStackPreference, 2)
         val numPhotosToAddSynchronously = numPhotosToAddUsingFilters(maxMediaItemsToAddSynchronously)
@@ -239,7 +246,6 @@ class MainViewModel(
                     currentIndex = 0,
                     numUnset = numPerStackPreference,
                     fetchingMedia = false,
-                    mediaBuffering = true
                 )
             }
             if (getCurrentMedia()?.type == MediaType.VIDEO) {
@@ -295,7 +301,7 @@ class MainViewModel(
             val indexToInsertInto: Int
             // If random, select random index and insert
             if (mediaFilter.value.sortField == MediaSortField.RANDOM) {
-                val random = Random(17530163829) // Random number generator}
+                val random = Random(17530163829) // Random number generator
                 indexToInsertInto = random.nextInt(fromIndex, mediaItems.size)
             }
             // If not random, use sort field to insert
@@ -335,8 +341,11 @@ class MainViewModel(
 
     fun markItem(status: MediaStatus, index: Int = _uiState.value.currentIndex) {
         // Set the status
-        val mediaToMark = _uiState.value.mediaItems[index]
-        mediaToMark.status = status
+        _uiState.update { currentState ->
+            currentState.mediaItems.set(index, currentState.mediaItems[index].copy(status = status))
+            currentState
+        }
+        val markedMediaItem = _uiState.value.mediaItems[index]
 
         // Update database only if keeping/unsetting the media. Only marked as DELETE when confirmed and the file is deleted
         if (status == MediaStatus.SNOOZE) {
@@ -346,7 +355,7 @@ class MainViewModel(
             CoroutineScope(Dispatchers.IO).launch {
                 val snoozeEndDate = Calendar.getInstance().timeInMillis + snoozeLength.first()
                 mediaStatusDao.update(
-                    mediaToMark.getMediaStatusEntity(statisticsEnabled.first()).copy(
+                    markedMediaItem.getMediaStatusEntity(statisticsEnabled.first()).copy(
                         snoozedUntil = snoozeEndDate
                     )
                 )
@@ -358,22 +367,22 @@ class MainViewModel(
             }
         } else if (status != MediaStatus.DELETE)
             CoroutineScope(Dispatchers.IO).launch {
-                mediaStatusDao.update(mediaToMark.getMediaStatusEntity(statisticsEnabled.first()))
+                mediaStatusDao.update(markedMediaItem.getMediaStatusEntity(statisticsEnabled.first()))
             }
 
         // If item being marked as UNSET (e.g. in the review screen), insert the unset photo to the index before the
         // current one, and seek to it. This preserves undo functionality
-        Log.d("Media marking", "Media at index $index marked as ${mediaToMark.status}")
+        Log.d("Media marking", "Media at index $index marked as ${markedMediaItem.status}")
         if (status == MediaStatus.UNSET) {
             _uiState.value.mediaItems.removeAt(index)
             val indexToInsertItem = if (_uiState.value.currentIndex - 1 < 0) 0 else _uiState.value.currentIndex - 1
-            _uiState.value.mediaItems.add(indexToInsertItem, mediaToMark)
+            _uiState.value.mediaItems.add(indexToInsertItem, markedMediaItem)
             _uiState.update { currentState ->
                 currentState.copy(
                     numUnset = currentState.numUnset + 1,
-                    currentIndex = currentState.currentIndex - 1
                 )
             }
+            seekToIndex(indexToInsertItem)
         } else {
             _uiState.update { currentState ->
                 currentState.copy(
@@ -384,18 +393,8 @@ class MainViewModel(
     }
 
     fun next() {
-        revertShowFloatingActionsToPreviousState()
-        if (getCurrentMedia()?.type == MediaType.VIDEO)
-            player.pause()
         // Increment currentIndex
-        _uiState.update { currentState ->
-            currentState.copy(
-                currentIndex = currentState.currentIndex + 1,
-                mediaBuffering = true
-            )
-        }
-        if (getCurrentMedia()?.type == MediaType.VIDEO)
-            onCurrentMediaIsVideo()
+        seekToIndex(uiState.value.currentIndex + 1)
         Log.v(
             "MainViewModel",
             "Seeking to next media item, new index = ${_uiState.value.currentIndex}/${_uiState.value.mediaItems.size}"
@@ -403,48 +402,29 @@ class MainViewModel(
         Log.v("MainViewModel", "Media items left to swipe on = ${_uiState.value.numUnset}")
     }
 
-    fun seekToUnsetItemOrFalse(): Boolean {
-        val unsetItemIndex = _uiState.value.mediaItems.indexOfFirst { it.status == MediaStatus.UNSET }
-        if (unsetItemIndex != -1) {
-            _uiState.update { currentState ->
-                currentState.copy(
-                    currentIndex = unsetItemIndex,
-                    mediaBuffering = true
-                )
-            }
-            if (getCurrentMedia()?.type == MediaType.VIDEO)
-                onCurrentMediaIsVideo()
-            return true
-        } else return false
-    }
-
     fun undo(): Boolean {
         val listOfMediaBeforeCurrent = _uiState.value.mediaItems.subList(0, _uiState.value.currentIndex)
-        var canUndo = _uiState.value.currentIndex > 0 && !listOfMediaBeforeCurrent.all { it.status == MediaStatus.HIDE }
+        val canUndo = _uiState.value.currentIndex > 0 && !listOfMediaBeforeCurrent.all { it.status == MediaStatus.HIDE }
         if (canUndo) { // First check if there is an action to undo
-            viewModelScope.launch {
-                exitImage()
+            CoroutineScope(Dispatchers.Main).launch {
+                animateMediaExit()
                 delay(100)
                 // Check if undo valid again, after the above delay
                 if (canUndo) {
-                    if (getCurrentMedia()?.type == MediaType.VIDEO)
-                        player.pause()
+                    // Calculate which index to go to next
                     var indexToSeekTo = _uiState.value.currentIndex - 1
                     while (uiState.value.mediaItems[indexToSeekTo].status == MediaStatus.HIDE)
                         indexToSeekTo--
                     // Unset the status
-                    _uiState.value.mediaItems[indexToSeekTo].status = MediaStatus.UNSET
-
-                    // Decrement currentIndex
+                    _uiState.value.mediaItems[indexToSeekTo] = _uiState.value.mediaItems[indexToSeekTo].copy(status = MediaStatus.UNSET)
+                    // Update numUnset
                     _uiState.update { currentState ->
                         currentState.copy(
-                            currentIndex = indexToSeekTo,
-                            numUnset = currentState.numUnset + 1,
-                            mediaBuffering = true
+                            numUnset = currentState.numUnset + 1
                         )
                     }
-                    if (getCurrentMedia()?.type == MediaType.VIDEO)
-                        onCurrentMediaIsVideo()
+                    // Seek to the calculated index
+                    seekToIndex(indexToSeekTo)
                     /* Update database  */
                     CoroutineScope(Dispatchers.IO).launch {
                         val mediaItem = _uiState.value.mediaItems[indexToSeekTo]
@@ -458,6 +438,41 @@ class MainViewModel(
             return false
         }
     }
+
+    fun seekToUnsetItemOrFalse(): Boolean {
+        val unsetItemIndex = _uiState.value.mediaItems.indexOfFirst { it.status == MediaStatus.UNSET }
+        if (unsetItemIndex != -1) {
+            seekToIndex(unsetItemIndex)
+            return true
+        } else
+            return false
+    }
+
+    /** Set [MainUiState.currentIndex] to [index] and perform shared required actions after changing index  */
+    fun seekToIndex(index: Int) {
+        // Revert floating action state to state before temporarily showing it for a video (if current item was video)
+        revertShowFloatingActionsToPreviousState()
+        // Pause the current video
+        if (getCurrentMedia()?.type == MediaType.VIDEO)
+            player.pause()
+        _uiState.update { currentState ->
+            currentState.copy(
+                currentIndex = index,
+                mediaReady = false
+            )
+        }
+        if (getCurrentMedia()?.type == MediaType.VIDEO)
+            onCurrentMediaIsVideo()
+        // Check if the new media has an error to show
+        try {
+            val targetMediaItem = uiState.value.mediaItems[index]
+            if (targetMediaItem.decodingError != null) {
+                onMediaError(targetMediaItem.decodingError)
+            }
+        }
+        catch (_: IndexOutOfBoundsException) {}
+    }
+
 
     fun deleteMarkedMedia() {
         val mediaToDelete = getMediaToDelete()
@@ -676,15 +691,36 @@ class MainViewModel(
     private fun onCurrentMediaIsVideo() {
         uiCoroutineScope.launch {
             player.clearMediaItems()
+            if(safeSetMediaItem()) {
+                player.play()
+                tempShowFloatingActions()
+            }
+        }
+        // Add timeout error (default timeout is way too long)
+        CoroutineScope(Dispatchers.Unconfined).launch {
+            val indexBeforeCheckingTimeout = uiState.value.currentIndex
+            delay(5000)
+            if (!uiState.value.mediaReady && getCurrentMedia()?.decodingError == null && indexBeforeCheckingTimeout == uiState.value.currentIndex)
+                onMediaError("Timeout")
+        }
+    }
+    /** Set the current mediaItem in ExoPlayer, first checking if the media file is empty
+     * (avoiding [androidx.media3.exoplayer.source.UnrecognizedInputFormatException])
+     *
+     * @return Whether the mediaItem was set or not
+     * */
+    private fun safeSetMediaItem(
+        media: Media? = getCurrentMedia()
+    ): Boolean {
+        if ((media?.size ?: 1) > 0) {
             player.setMediaItem(
                 MediaItem.fromUri(
-                    getCurrentMedia()?.uri
-                        ?: "android.resource://com.example.photoswooper/drawable/file_not_found_cat".toUri()
+                    media?.uri ?: "android.resource://com.example.photoswooper/drawable/file_not_found_cat".toUri()
                 )
             )
-            player.play()
-            tempShowFloatingActions()
+            return true
         }
+        return false
     }
 
     /* Ensures video is being shown before playing */
@@ -831,10 +867,10 @@ class MainViewModel(
                     secondDate = Long.MAX_VALUE,
                 )
             )
-           checkPermissions {
-               updateMediaFilterFromDataStore()
-               resetAndGetNewMediaItems()
-           }
+            checkPermissions {
+                updateMediaFilterFromDataStore()
+                resetAndGetNewMediaItems()
+            }
         }
     }
 }

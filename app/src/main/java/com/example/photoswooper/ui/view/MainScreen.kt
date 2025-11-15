@@ -211,11 +211,40 @@ fun MainScreen(
         )
     }
 
+    /** Whether to display a hint to "release to delete" */
+    var displayDeleteHint by remember { mutableStateOf(false) }
+    /** Whether to display a hint to "release to keep" */
+    var displayKeepHint by remember { mutableStateOf(false) }
+
     /* When user drags to one of the anchors, without releasing yet */
     LaunchedEffect(anchoredDraggableState) {
         snapshotFlow { anchoredDraggableState.targetValue }
             .collectLatest { position ->
-                performDragHapticFeedback(position, view, anchoredDraggableState)
+                when (position) {
+                    DragAnchors.Left -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+                        delay(1000)
+                        displayDeleteHint = true
+                    }
+
+                    DragAnchors.Center -> {
+                        if (
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                            && anchoredDraggableState.settledValue == DragAnchors.Center
+                        )
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
+                        displayKeepHint = false
+                        displayDeleteHint = false
+                    }
+
+                    DragAnchors.Right -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+                        delay(1000)
+                        displayKeepHint = true
+                    }
+                }
             }
     }
 
@@ -226,7 +255,7 @@ fun MainScreen(
                 when (position) {
                     DragAnchors.Left -> {
                         mainViewModel.markItem(MediaStatus.DELETE)
-                        mainViewModel.animatedImageScaleEntry.snapTo(0f)
+                        mainViewModel.animatedImageScale.snapTo(0f)
                         mainViewModel.next()
                         anchoredDraggableState.snapTo(
                             DragAnchors.Center,
@@ -235,7 +264,7 @@ fun MainScreen(
 
                     DragAnchors.Right -> {
                         mainViewModel.markItem(MediaStatus.KEEP)
-                        mainViewModel.animatedImageScaleEntry.snapTo(0f)
+                        mainViewModel.animatedImageScale.snapTo(0f)
                         mainViewModel.next()
                         anchoredDraggableState.snapTo(
                             DragAnchors.Center
@@ -539,6 +568,8 @@ fun MainScreen(
                                 mainViewModel,
                                 imageLoader,
                                 anchoredDraggableState,
+                                displayDeleteHint = displayDeleteHint,
+                                displayKeepHint = displayKeepHint,
                             )
                         }
 
@@ -849,7 +880,7 @@ private fun RequestPermissionsScreen(
                     bottomEnd = CornerSize(4.dp)
                 )
             ) {
-                Text("Go to app settings")
+                Text(stringResource(R.string.go_to_permission_settings))
             }
             Spacer(Modifier.width(2.dp))
             OutlinedButton(
@@ -875,32 +906,6 @@ private fun RequestPermissionsScreen(
                     modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
                 )
             }
-        }
-    }
-}
-
-private fun performDragHapticFeedback(
-    position: DragAnchors,
-    view: View,
-    anchoredDraggableState: AnchoredDraggableState<DragAnchors>
-) {
-    when (position) {
-        DragAnchors.Left -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-        }
-
-        DragAnchors.Center -> {
-            if (
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                && anchoredDraggableState.settledValue == DragAnchors.Center
-            )
-                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
-        }
-
-        DragAnchors.Right -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
         }
     }
 }

@@ -81,6 +81,7 @@ import java.math.RoundingMode
 import kotlin.math.pow
 
 
+// TODO: Change to a scrollable horizontal list of filter chip menus?
 @Composable
 fun FilterDialog(
     onDismiss: () -> Unit,
