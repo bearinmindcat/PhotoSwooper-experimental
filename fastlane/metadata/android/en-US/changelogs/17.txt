@@ -1,0 +1,3 @@
+Squashed some bugs, and prevented some crashes :)
+
+Got lots of reports from the last update adding a crash screen, thanks!
