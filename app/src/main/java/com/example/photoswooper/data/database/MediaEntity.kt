@@ -48,7 +48,7 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 
         //insert data from old table into new table
         db.execSQL(
-            "INSERT INTO media_status_ver_3(fileHash," +
+            "REPLACE INTO media_status_ver_3(fileHash," +
                     " mediaStoreId," +
                     " status," +
                     " type," +
