@@ -506,6 +506,12 @@ class MainViewModel(
                 mediaStatusDao.update(*deletedMediaItems.map {
                     it.getMediaStatusEntity(statisticsEnabled.first())
                 }.toTypedArray())
+                /* Update space saved in the current time frame */
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
+                    )
+                }
             }
             _uiState.update { currentState ->
                 currentState.copy(
@@ -514,12 +520,6 @@ class MainViewModel(
                             it.copy(status = MediaStatus.HIDE)
                         else it
                     }.toMutableList()
-                )
-            }
-            /* Update space saved in the current time frame */
-            _uiState.update { currentState ->
-                currentState.copy(
-                    spaceSavedInTimeFrame = getSpaceSavedInTimeFrame()
                 )
             }
             // Hide the bottom sheet so user can immediately return to swiping
