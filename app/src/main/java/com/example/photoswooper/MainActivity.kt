@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
             .memoryCache(null)
             .diskCache(null) // Disable cache so animation is called every time in AsyncImage (needs an onSuccess call)
             .build()
-
+        // Initialise video player
         initialisePlayer()
 
         val contentResolverInterface = ContentResolverInterface(
@@ -246,11 +246,6 @@ class MainActivity : AppCompatActivity() {
                     if (error != null)
                         mainViewModel.onMediaError(error.localizedMessage?: error.message)
                 }
-
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    super.onPlaybackStateChanged(playbackState)
-
-                }
             }
         )
         // Set player attributes using user preferences
@@ -339,19 +334,23 @@ class MainActivity : AppCompatActivity() {
         /* If permissions denied, notify user. Else, get media from storage */
         if (!readAccess || !writeAccess) {
             if (!readAccess) {
-                Toast.makeText(
-                    this, // context
-                    "Cannot read photos & videos without read permissions",
-                    Toast.LENGTH_LONG
-                ).show()
+                this.lifecycleScope.launch {
+                    Toast.makeText(
+                        this@MainActivity, // context
+                        "Cannot read photos & videos without read permissions",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
                 mainViewModel.updatePermissionsGranted(false)
             }
             if (!writeAccess) {
-                Toast.makeText(
-                    this, // context
-                    "Cannot delete photos & videos without write permissions",
-                    Toast.LENGTH_LONG
-                ).show()
+                this.lifecycleScope.launch {
+                    Toast.makeText(
+                        this@MainActivity, // context
+                        "Cannot delete photos & videos without write permissions",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
                 mainViewModel.updatePermissionsGranted(false)
             }
         } else {
