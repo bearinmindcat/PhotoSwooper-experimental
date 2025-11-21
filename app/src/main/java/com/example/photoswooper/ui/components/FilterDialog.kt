@@ -193,6 +193,14 @@ fun FilterDialog(
                             onClick = {
                                 filterDialogViewModel.toggleMediaType(
                                     mediaType,
+                                    onSuccess = {
+                                        if (Build.VERSION.SDK_INT >= 34) {
+                                            if (newFilters.mediaTypes.contains(mediaType))
+                                                view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
+                                            else
+                                                view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
+                                        }
+                                    },
                                     onError = {
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                                             view.performHapticFeedback(HapticFeedbackConstants.REJECT)
@@ -203,12 +211,6 @@ fun FilterDialog(
                                         ).show()
                                     }
                                 )
-                                if (Build.VERSION.SDK_INT >= 34) {
-                                    if (newFilters.mediaTypes.contains(mediaType))
-                                        view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_OFF)
-                                    else
-                                        view.performHapticFeedback(HapticFeedbackConstants.TOGGLE_ON)
-                                }
                             },
                             label = {
                                 Text(

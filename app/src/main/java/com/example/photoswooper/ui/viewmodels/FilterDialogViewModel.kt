@@ -39,7 +39,7 @@ class FilterDialogViewModel(initialFilter: MediaFilter) {
      * @param type The media type in the filter to toggle whether it is filtered out.
      * @param onError A callback function to execute if the filter is invalid.
      */
-    fun toggleMediaType(type: MediaType, onError: () -> Unit) {
+    fun toggleMediaType(type: MediaType, onError: () -> Unit, onSuccess: () -> Unit) {
         val newMediaTypes = if (newFilters.value.mediaTypes.contains(type))
             newFilters.value.mediaTypes.minus(type)
         else
@@ -52,6 +52,7 @@ class FilterDialogViewModel(initialFilter: MediaFilter) {
                     mediaTypes = newMediaTypes
                 )
             }
+            onSuccess()
         } else
             onError()
     }
