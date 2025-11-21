@@ -353,7 +353,7 @@ class ContentResolverInterface(
         val fileHash: String
         try {
             contentResolver.openInputStream(uri).use { fileInputStream ->
-                fileHash = calculateMediaHash(type, fileInputStream)
+                fileHash = calculateMediaHash(fileInputStream)
             }
         }
         // If the file is not found, delete from app's database if present as it no longer exists
@@ -482,52 +482,34 @@ class ContentResolverInterface(
     }
 }
 
-// TODO: Reduce amount of bytes used to calculate hash. This will improve efficiency
-    private fun calculateMediaHash(
-        type: MediaType,
-        fileInputStream: InputStream?,
-    ): String {
+fun calculateMediaHash(fileInputStream: InputStream?): String {
     val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
 
     /** Limit on the number of bytes to hash of a video file to reduce memory use */
-    val numVideoBytesToBeHashed = 2056
+    val numBytesToHash = 128
     val availableBytes = fileInputStream?.available() ?: 0
     val fileBytes: ByteArray
 
-    when (type) {
-        MediaType.PHOTO -> {
-            if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                fileBytes = fileInputStream?.readAllBytes() ?: ByteArray(0)
-            } else {
-                fileBytes = ByteArray(availableBytes)
-                val dataInputStream = DataInputStream(fileInputStream)
 
-                dataInputStream.readFully(fileBytes)
-            }
-        }
-
-        MediaType.VIDEO -> {
-            if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                fileBytes =
-                    if (availableBytes > numVideoBytesToBeHashed)
-                        fileInputStream?.readNBytes(numVideoBytesToBeHashed) ?: ByteArray(0)
-                    else
-                        fileInputStream?.readAllBytes() ?: ByteArray(0)
-            } else {
-                val hashLength =
-                    if (availableBytes > numVideoBytesToBeHashed)
-                        numVideoBytesToBeHashed
-                    else
-                        availableBytes
-                fileBytes = ByteArray(hashLength)
-                val dataInputStream = DataInputStream(fileInputStream)
-                dataInputStream.readFully(
-                    fileBytes,
-                    0,
-                    hashLength
-                ) // Read less of file for videos to reduce memory use
-            }
-        }
+    if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        fileBytes =
+            if (availableBytes > numBytesToHash)
+                fileInputStream?.readNBytes(numBytesToHash) ?: ByteArray(0)
+            else
+                fileInputStream?.readAllBytes() ?: ByteArray(0)
+    } else {
+        val hashLength =
+            if (availableBytes > numBytesToHash)
+                numBytesToHash
+            else
+                availableBytes
+        fileBytes = ByteArray(hashLength)
+        val dataInputStream = DataInputStream(fileInputStream)
+        dataInputStream.readFully(
+            fileBytes,
+            0,
+            hashLength
+        ) // Read less of file for videos to reduce memory use
     }
     val hash: ByteArray = digest.digest(fileBytes)
     return hash.toHexString()
