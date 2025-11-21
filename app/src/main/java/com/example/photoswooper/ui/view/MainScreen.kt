@@ -11,7 +11,6 @@ import android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
 import android.content.Context
 import android.content.pm.PackageManager.PERMISSION_DENIED
 import android.content.pm.PackageManager.PERMISSION_GRANTED
-import android.content.res.Resources
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.View
@@ -32,9 +31,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.AnchoredDraggableState
-import androidx.compose.foundation.gestures.DraggableAnchors
-import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,7 +70,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -86,12 +81,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.checkSelfPermission
 import coil3.ImageLoader
@@ -99,11 +89,7 @@ import com.example.photoswooper.R
 import com.example.photoswooper.checkPermissions
 import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.data.IntPreference
-import com.example.photoswooper.data.models.MediaSortField
 import com.example.photoswooper.data.models.MediaStatus
-import com.example.photoswooper.data.models.MediaType
-import com.example.photoswooper.data.uistates.StatsData
-import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.ui.components.ActionBar
 import com.example.photoswooper.ui.components.FilterDialog
@@ -115,12 +101,12 @@ import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
+import com.example.photoswooper.ui.viewmodels.TutorialController
 import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 enum class DragAnchors(val offset: Float) {
@@ -146,23 +132,15 @@ fun MainScreen(
     val view = LocalView.current
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
+
     val dataStoreInterface = DataStoreInterface(context.dataStore)
     val reduceAnimations by dataStoreInterface
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
+
+    val tutorialController = remember { TutorialController(dataStoreInterface) }
+    val tutorialUiState by tutorialController.uiState.collectAsState()
     val tutorialIndex by dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
         .collectAsState(1)
-
-    fun updateTutorialIndex(newIndex: Int) {
-        if (newIndex > 0) {
-            coroutineScope.launch {
-                dataStoreInterface.setIntSettingValue(
-                    newIndex,
-                    IntPreference.TUTORIAL_INDEX.setting
-                )
-            }
-        }
-    }
-
 
     val uiState by mainViewModel.uiState.collectAsState()
     val numToDelete = uiState.mediaItems.count { it.status == MediaStatus.DELETE }
@@ -699,12 +677,12 @@ fun MainScreen(
         )
         if (uiState.tutorialMode)
             TutorialCard(
-                uiState.tutorialCardIconDrawableId,
-                uiState.tutorialCardTitle,
-                uiState.tutorialCardBody,
+                tutorialUiState.tutorialCardIconDrawableId,
+                tutorialUiState.tutorialCardTitle,
+                tutorialUiState.tutorialCardBody,
                 tutorialIndex,
                 onSkip = {
-                    updateTutorialIndex(tutorialIndex + 1)
+                    tutorialController.updateTutorialIndex(tutorialIndex + 1)
                     if (tutorialIndex + 1 > 0) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

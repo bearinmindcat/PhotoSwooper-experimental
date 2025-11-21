@@ -845,16 +845,6 @@ class MainViewModel(
         CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
     }
 
-    fun updateTutorialCardContent(title: String, body: AnnotatedString, iconDrawableId: Int) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                tutorialCardIconDrawableId = iconDrawableId,
-                tutorialCardTitle = title,
-                tutorialCardBody = body
-            )
-        }
-    }
-
     fun onEndTutorial() {
         _uiState.update { currentState ->
             currentState.copy(tutorialMode = false)
@@ -870,6 +860,10 @@ class MainViewModel(
             checkPermissions {
                 updateMediaFilterFromDataStore()
                 resetAndGetNewMediaItems()
+            }
+            uiCoroutineScope.launch {  bottomSheetScaffoldState.bottomSheetState.partialExpand() }
+            _uiState.update { currentState ->
+                currentState.copy(tutorialMode = false)
             }
         }
     }

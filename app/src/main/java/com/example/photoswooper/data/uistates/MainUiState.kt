@@ -7,11 +7,8 @@
 package com.example.photoswooper.data.uistates
 
 import android.os.Parcelable
-import androidx.annotation.DrawableRes
-import androidx.compose.ui.text.AnnotatedString
 import com.example.photoswooper.R
 import com.example.photoswooper.data.models.Media
-import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 
 enum class TimeFrame(val milliseconds: Long, val iconDrawableId: Int) {
@@ -54,9 +51,6 @@ data class MainUiState(
     val fetchIteration: Int = 0,
     /** Number of photos marked as unset. TODO: Is this needed? Can we not use a mediaItems.filter()? */
     val numUnset: Int = 0,
-    val tutorialCardTitle: String = "",
-    @IgnoredOnParcel val tutorialCardBody: AnnotatedString = AnnotatedString(""),
-    @param:DrawableRes val tutorialCardIconDrawableId: Int? = null,
 
     val showInfoAndFloatingActionsRow: Boolean = false,
     val previousShowInfoAndFloatingActionsRow: Boolean = false, // Used for showing/hiding floating actions for videos
