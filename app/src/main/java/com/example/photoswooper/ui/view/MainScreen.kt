@@ -109,12 +109,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-enum class DragAnchors(val offset: Float) {
-    Left(-Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2),
-    Center(0f),
-    Right(Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
-}
-
 /**
  * A composable containing the main UI of the app, within a BottomSheetScaffold composable
  *
@@ -176,309 +170,20 @@ fun MainScreen(
         }
     }
 
-    /* For anchored draggable (dragging photo/video left/right) */
-
-    val anchoredDraggableState = remember {
-        AnchoredDraggableState(
-            initialValue = DragAnchors.Center,
-            anchors = DraggableAnchors {
-                DragAnchors.Left at DragAnchors.Left.offset
-                DragAnchors.Center at DragAnchors.Center.offset
-                DragAnchors.Right at DragAnchors.Right.offset
-            },
-        )
-    }
-
-    /** Whether to display a hint to "release to delete" */
-    var displayDeleteHint by remember { mutableStateOf(false) }
-    /** Whether to display a hint to "release to keep" */
-    var displayKeepHint by remember { mutableStateOf(false) }
-
-    /* When user drags to one of the anchors, without releasing yet */
-    LaunchedEffect(anchoredDraggableState) {
-        snapshotFlow { anchoredDraggableState.targetValue }
-            .collectLatest { position ->
-                when (position) {
-                    DragAnchors.Left -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-                        delay(1000)
-                        displayDeleteHint = true
-                    }
-
-                    DragAnchors.Center -> {
-                        if (
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                            && anchoredDraggableState.settledValue == DragAnchors.Center
-                        )
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
-                        displayKeepHint = false
-                        displayDeleteHint = false
-                    }
-
-                    DragAnchors.Right -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
-                        delay(1000)
-                        displayKeepHint = true
-                    }
-                }
-            }
-    }
-
-    /* When user releases drag motion */
-    LaunchedEffect(anchoredDraggableState) {
-        snapshotFlow { anchoredDraggableState.settledValue }
-            .collectLatest { position ->
-                when (position) {
-                    DragAnchors.Left -> {
-                        mainViewModel.markItem(MediaStatus.DELETE)
-                        mainViewModel.animatedImageScale.snapTo(0f)
-                        mainViewModel.next()
-                        anchoredDraggableState.snapTo(
-                            DragAnchors.Center,
-                        )
-                    }
-
-                    DragAnchors.Right -> {
-                        mainViewModel.markItem(MediaStatus.KEEP)
-                        mainViewModel.animatedImageScale.snapTo(0f)
-                        mainViewModel.next()
-                        anchoredDraggableState.snapTo(
-                            DragAnchors.Center
-                        )
-                    }
-
-                    else -> { /* Maybe add a markPhotoUnset() function if necessary? */
-                    }
-                }
-            }
-    }
-
     /* LaunchedEffect to make tutorial interactive */
     if (uiState.tutorialMode) {
         val tertiaryColor = MaterialTheme.colorScheme.tertiary
-        fun onStepComplete(showToast: Boolean = true) {
-            if (showToast)
-                Toast.makeText(
-                    context,
-                    "Nice! :) \uD83C\uDF89",
-                    Toast.LENGTH_SHORT
-                ).show()
-            updateTutorialIndex(tutorialIndex + 1)
-        }
         LaunchedEffect(tutorialIndex) {
-            // TODO("Clean this up by placing it in a separate function, or in the viewModel")
-            when (tutorialIndex) {
-                // Swipe right to keep
-                1 -> {
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.bookmark_simple,
-                        title = context.getString(R.string.tutorial_swipe_right_title),
-                        body = buildAnnotatedString {
-                            append(context.getString(R.string.tutorial_swipe_right_desc) + "\n\n")
-                            pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.try_it))
-                            pop()
-                        }
-                    )
-                    while ((uiState.mediaItems.getOrElse(uiState.currentIndex - 1, { currentMediaItem })?.status
-                            ?: MediaStatus.DELETE) != MediaStatus.KEEP
-                    ) {
-                        delay(500)
-                    }
-                    onStepComplete()
-                }
-                // Swipe left to mark item to be deleted
-                2 -> {
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.trash,
-                        title = context.getString(R.string.tutorial_swipe_left_title),
-                        body = buildAnnotatedString {
-                            append(context.getString(R.string.tutorial_swipe_left_desc) + "\n\n")
-                            pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.try_it))
-                            pop()
-                        }
-                    )
-                    while ((uiState.mediaItems.getOrElse(uiState.currentIndex - 1, { currentMediaItem })?.status
-                            ?: MediaStatus.KEEP) != MediaStatus.DELETE
-                    ) {
-                        delay(500)
-                    }
-                    onStepComplete()
-                }
-                // Tap on the photo/video to view more actions. See the wiki for more info on each of these.
-                3 -> {
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.info,
-                        title = context.getString(R.string.tutorial_tap_title),
-                        body = buildAnnotatedString {
-                            append(context.getString(R.string.see) + " ")
-                            pushLink(LinkAnnotation.Url("https://codeberg.org/Loowiz/PhotoSwooper/wiki/Extra-actions"))
-                            pushStyle(SpanStyle(color = tertiaryColor, textDecoration = TextDecoration.Underline))
-                            append(context.getString(R.string.the_wiki))
-                            pop()
-                            pop()
-                            append(" " + context.getString(R.string.for_info_about_these_actions) + "\n\n")
-                            pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.try_it))
-                            pop()
-                        },
-                    )
-                    delay(500)
-                    mainViewModel.toggleInfoAndFloatingActionsRow(false)
-                    delay(500)
-                    while (!uiState.showInfoAndFloatingActionsRow) {
-                        delay(500)
-                    }
-                    delay(1000) // Delay so user doesn't think that tapping brings up bottom sheet (seeking to next step does this)
-                    onStepComplete()
-                }
-                // Undo button to undo the previous swipe (bring the swiped photo/video back)
-                4 -> {
-                    // If first start-up, wait for media items to be fetched
-                    while (uiState.mediaItems.size < 3) {
-                        delay(200)
-                    }
-                    if (uiState.currentIndex == 0) {
-                        mainViewModel.markItem(MediaStatus.DELETE)
-                        mainViewModel.next()
-                        delay(200) // Allow time to update currentIndex
-                    }
-                    val initialIndex = uiState.currentIndex
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.undo,
-                        title = context.getString(R.string.tutorial_bottom_sheet_title),
-                        body = buildAnnotatedString {
-                            append(
-                                context.getString(R.string.tutorial_bottom_sheet_desc) +
-                                        "\n\n"
-                            )
-                            pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.tutorial_bottom_sheet_try))
-                            pop()
-                        }
-                    )
-                    while (uiState.currentIndex != 0) {
-                        delay(500)
-                    }
-                    onStepComplete()
-                }
-                // Filter button shows a dialog to choose what you media want to see (e.g. swipe only videos)
-                5 -> {
-                    delay(500)
-                    mainViewModel.bottomSheetScaffoldState.bottomSheetState.partialExpand()
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.funnel,
-                        title = context.getString(R.string.tutorial_filter_sort_title),
-                        body = buildAnnotatedString {
-                            append(context.getString(R.string.tutorial_filter_sort_desc) + "\n\n")
-                            pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.tutorial_filter_sort_try))
-                            pop()
-                        }
-                    )
-                    while (
-                        mainViewModel.mediaFilter.value.sortAscending
-                        || mainViewModel.mediaFilter.value.mediaTypes != setOf(MediaType.PHOTO)
-                        || mainViewModel.mediaFilter.value.sortField != MediaSortField.DATE
-                    ) {
-                        delay(500)
-                    }
-                    onStepComplete()
-                }
-                // Review screen shows media marked as deleted. To actually delete media, click the delete button in the bottom right
-                6 -> {
-                    // If first start-up, wait for media items to be fetched
-                    while (uiState.mediaItems.size < 3) {
-                        delay(200)
-                    }
-                    delay(400)
-                    if (mainViewModel.getMediaToDelete().isEmpty()) {
-                        mainViewModel.markItem(MediaStatus.DELETE)
-                        mainViewModel.next()
-                        mainViewModel.markItem(MediaStatus.DELETE)
-                        mainViewModel.next()
-                    }
-                    delay(1000)
-                    val initialNumToDelete = mainViewModel.getMediaToDelete().size
-                    mainViewModel.expandBottomSheet(coroutineScope)
-                    sheetContentTabIndex = TabIndex.REVIEW.ordinal
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.check,
-                        title = context.getString(R.string.review_screen),
-                        body = buildAnnotatedString {
-                            append(
-                                context.getString(R.string.tutorial_review_desc) + "\n\n"
-                            )
-                            pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.tutorial_review_try))
-                            pop()
-                        }
-                    )
-                    while (mainViewModel.getMediaToDelete().size >= initialNumToDelete) {
-                        delay(500)
-                    }
-                    onStepComplete()
-                }
-                // Stats screen shows you how much you have swiped in the past
-                7 -> {
-                    mainViewModel.expandBottomSheet(coroutineScope)
-                    sheetContentTabIndex = TabIndex.STATS.ordinal
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.chart,
-                        title = context.getString(R.string.statistics_screen),
-                        body = buildAnnotatedString {
-                            append(context.getString(R.string.tutorial_statistics_desc) + "\n\n")
-                            pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                            append(context.getString(R.string.tutorial_statistics_try))
-                            pop()
-                        }
-                    )
-                    while (
-                        statsViewModel.uiState.value.dataType != StatsData.SPACE_SAVED
-                        || statsViewModel.uiState.value.timeFrame != TimeFrame.DAY
-                    ) {
-                        delay(500)
-                    }
-                    onStepComplete()
-                }
-                // Settings screen lets you customise the app
-                8 -> {
-                    mainViewModel.expandBottomSheet(coroutineScope)
-                    sheetContentTabIndex = TabIndex.SETTINGS.ordinal
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.gear,
-                        title = context.getString(R.string.settings_screen),
-                        body = buildAnnotatedString {
-                            append(context.getString(R.string.settings_desc))
-                        }
-                    )
-                    delay(5000)
-                    onStepComplete(showToast = false)
-                }
-
-                9 -> {
-                    mainViewModel.updateTutorialCardContent(
-                        iconDrawableId = R.drawable.check,
-                        title = context.getString(R.string.tutorial_end_title),
-                        body = buildAnnotatedString {
-                            append(context.getString(R.string.tutorial_end_desc))
-                        }
-                    )
-                    Toast.makeText(
-                        context,
-                        "Fin :) \uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    delay(5000)
-                    mainViewModel.onEndTutorial()
-                }
-                else -> {
-                    mainViewModel.onEndTutorial()
-                }
-            }
+            tutorialController.awaitUserInteractionAndControlTutorial(
+                tutorialIndex,
+                mainViewModel,
+                context,
+                currentMediaItem,
+                tertiaryColor,
+                coroutineScope,
+                { sheetContentTabIndex = it },
+                statsViewModel
+            )
         }
     }
     if (uiState.showFilterDialog)
@@ -545,9 +250,6 @@ fun MainScreen(
                                 currentMediaItem,
                                 mainViewModel,
                                 imageLoader,
-                                anchoredDraggableState,
-                                displayDeleteHint = displayDeleteHint,
-                                displayKeepHint = displayKeepHint,
                             )
                         }
 

@@ -20,7 +20,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
-import androidx.compose.ui.text.AnnotatedString
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -100,7 +99,7 @@ class MainViewModel(
     val reduceAnimations = dataStoreInterface
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)
 
-    val animatedImageScale = Animatable(0f)
+    val animatedMediaScale = Animatable(0f)
 
     init {
         // Restore from values before configuration change, if they exist
@@ -108,7 +107,7 @@ class MainViewModel(
             val onboardingScreenInFocus = dataStoreInterface.getIntSettingValue(IntPreference.TUTORIAL_INDEX.setting)
                     .first() == 0
             if (savedUiState.mediaItems.isEmpty() && !onboardingScreenInFocus)
-                CoroutineScope(Dispatchers.IO).launch { checkPermissions { resetAndGetNewMediaItems() } }
+                CoroutineScope(Dispatchers.Main).launch { checkPermissions { resetAndGetNewMediaItems() } }
             else {
                 _uiState.update {
                     savedUiState
@@ -164,9 +163,9 @@ class MainViewModel(
 
     fun animateMediaEntry() {
         uiCoroutineScope.launch {
-            animatedImageScale.snapTo(0f)
-            if (reduceAnimations.first()) animatedImageScale.snapTo(1f)
-            else animatedImageScale.animateTo(
+            animatedMediaScale.snapTo(0f)
+            if (reduceAnimations.first()) animatedMediaScale.snapTo(1f)
+            else animatedMediaScale.animateTo(
                 1f,
                 defaultEntryAnimationSpec
             )
@@ -175,8 +174,8 @@ class MainViewModel(
 
     fun animateMediaExit() {
         uiCoroutineScope.launch {
-            if (reduceAnimations.first()) animatedImageScale.snapTo(0f)
-            else animatedImageScale.animateTo(
+            if (reduceAnimations.first()) animatedMediaScale.snapTo(0f)
+            else animatedMediaScale.animateTo(
                 0f,
                 defaultExitAnimationSpec
             )
@@ -216,7 +215,7 @@ class MainViewModel(
             )
         }
         uiCoroutineScope.launch { player.clearMediaItems() }
-        animatedImageScale.snapTo(0f)
+        animatedMediaScale.snapTo(0f)
         // Add the first media synchronously
         val maxMediaItemsToAddSynchronously = minOf(numPerStackPreference, 2)
         val numPhotosToAddSynchronously = numPhotosToAddUsingFilters(maxMediaItemsToAddSynchronously)
@@ -846,9 +845,6 @@ class MainViewModel(
     }
 
     fun onEndTutorial() {
-        _uiState.update { currentState ->
-            currentState.copy(tutorialMode = false)
-        }
         CoroutineScope(Dispatchers.IO).launch {
             mediaStatusDao.delete(
                 mediaEntityList = mediaStatusDao.getSwipedMediaBetweenDates(

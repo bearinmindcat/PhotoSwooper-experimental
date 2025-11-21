@@ -7,8 +7,8 @@
 package com.example.photoswooper.ui.components
 
 import android.content.res.Resources
+import android.os.Build
 import android.view.HapticFeedbackConstants
-import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -20,10 +20,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -82,12 +85,14 @@ import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.player
-import com.example.photoswooper.ui.view.DragAnchors
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.utils.DataStoreInterface
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+
 
 
 /**
@@ -101,9 +106,6 @@ fun SwipeableMediaWithIndicatorIcons(
     media: Media,
     viewModel: MainViewModel,
     imageLoader: ImageLoader,
-    anchoredDraggableState: AnchoredDraggableState<DragAnchors>,
-    displayDeleteHint: Boolean,
-    displayKeepHint: Boolean,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -127,6 +129,11 @@ fun SwipeableMediaWithIndicatorIcons(
     var alphaValue by remember { mutableFloatStateOf(1f) }
     var indicatorIconsAlpha by remember { mutableFloatStateOf(0f) }
 
+    /** Whether to display a hint to "release to delete" */
+    var displayDeleteHint by remember { mutableStateOf(false) }
+    /** Whether to display a hint to "release to keep" */
+    var displayKeepHint by remember { mutableStateOf(false) }
+
     // Variables used for zooming
     var zoomScale by remember { mutableFloatStateOf(1f) }
     var zoomOffset by remember { mutableStateOf(Offset.Zero) }
@@ -149,11 +156,86 @@ fun SwipeableMediaWithIndicatorIcons(
         }
     }
 
+    /* State of media's dragged position (dragging photo/video left/right) */
+    val anchoredDraggableState = remember {
+        AnchoredDraggableState(
+            initialValue = DragAnchors.Center,
+            anchors = DraggableAnchors {
+                DragAnchors.Left at DragAnchors.Left.offset
+                DragAnchors.Center at DragAnchors.Center.offset
+                DragAnchors.Right at DragAnchors.Right.offset
+            },
+        )
+    }
+
+    /* When user drags to one of the anchors, without releasing yet */
+    LaunchedEffect(anchoredDraggableState) {
+        snapshotFlow { anchoredDraggableState.targetValue }
+            .collectLatest { position ->
+                // Only perform haptic feedback if media is visible
+                if (viewModel.animatedMediaScale.value != 0f) {
+                    when (position) {
+                        DragAnchors.Left -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+                            delay(1000)
+                            displayDeleteHint = true
+                        }
+
+                        DragAnchors.Center -> {
+                            if (
+                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                                && anchoredDraggableState.settledValue == DragAnchors.Center
+                            )
+                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE)
+                            displayKeepHint = false
+                            displayDeleteHint = false
+                        }
+
+                        DragAnchors.Right -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE)
+                            delay(1000)
+                            displayKeepHint = true
+                        }
+                    }
+                }            }
+    }
+
+    /* When user releases drag motion */
+    LaunchedEffect(anchoredDraggableState) {
+        snapshotFlow { anchoredDraggableState.settledValue }
+            .collectLatest { position ->
+                when (position) {
+                    DragAnchors.Left -> {
+                        viewModel.markItem(MediaStatus.DELETE)
+                        viewModel.animatedMediaScale.snapTo(0f)
+                        viewModel.next()
+                        anchoredDraggableState.snapTo(
+                            DragAnchors.Center,
+                        )
+                    }
+
+                    DragAnchors.Right -> {
+                        viewModel.markItem(MediaStatus.KEEP)
+                        viewModel.animatedMediaScale.snapTo(0f)
+                        viewModel.next()
+                        anchoredDraggableState.snapTo(
+                            DragAnchors.Center
+                        )
+                    }
+
+                    else -> { /* Maybe add a markPhotoUnset() function if necessary? */
+                    }
+                }
+            }
+    }
+    
     /* Animate image size & alpha depending on how far the user has swiped */
     LaunchedEffect(anchoredDraggableState.requireOffset()) {
         if (!reduceAnimations) {
             if (uiState.mediaReady) // This prevents interference with entry animation
-                viewModel.animatedImageScale.snapTo(
+                viewModel.animatedMediaScale.snapTo(
                     ((1.25f - (anchoredDraggableState.requireOffset().absoluteValue) / DragAnchors.Right.offset / 2f))
                         .coerceIn(0.8f, 1f),
                 )
@@ -248,7 +330,7 @@ fun SwipeableMediaWithIndicatorIcons(
 
         ) {
             // Container setting scale of either the photo or video
-                Box (Modifier.scale(viewModel.animatedImageScale.value)) {
+                Box (Modifier.scale(viewModel.animatedMediaScale.value)) {
                     if (currentMediaItem?.decodingError == null) {
                         when (media.type) {
                             MediaType.PHOTO -> {
@@ -428,6 +510,8 @@ private fun IndicatorIconRow(
     }
 }
 
-enum class MediaError(@param:StringRes val reason: Int) {
-    FileEmpty(R.string.the_file_is_empty),
+enum class DragAnchors(val offset: Float) {
+    Left(-Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2),
+    Center(0f),
+    Right(Resources.getSystem().displayMetrics.widthPixels.toFloat() / 2)
 }
