@@ -210,6 +210,7 @@ class MainViewModel(
         _uiState.update { currentState ->
             currentState.copy(
                 mediaItems = mutableListOf(),
+                currentIndex = 0,
                 fetchingMedia = true,
                 fetchIteration = currentState.fetchIteration + 1
             )
@@ -242,7 +243,6 @@ class MainViewModel(
         else {
             _uiState.update { currentState ->
                 currentState.copy(
-                    currentIndex = 0,
                     numUnset = numPerStackPreference,
                     fetchingMedia = false,
                 )
@@ -403,7 +403,7 @@ class MainViewModel(
 
     fun undo(): Boolean {
         val listOfMediaBeforeCurrent = _uiState.value.mediaItems.subList(0, _uiState.value.currentIndex)
-        val canUndo = _uiState.value.currentIndex > 0 && !listOfMediaBeforeCurrent.all { it.status == MediaStatus.HIDE }
+        val canUndo = !listOfMediaBeforeCurrent.all { it.status == MediaStatus.HIDE }
         if (canUndo) { // First check if there is an action to undo
             CoroutineScope(Dispatchers.Main).launch {
                 animateMediaExit()
@@ -472,7 +472,6 @@ class MainViewModel(
         catch (_: IndexOutOfBoundsException) {}
     }
 
-
     fun deleteMarkedMedia() {
         val mediaToDelete = getMediaToDelete()
         // Delete the media in user's storage
@@ -493,7 +492,7 @@ class MainViewModel(
         }
     }
 
-    suspend fun onDeletion(deletedMediaUris: List<Uri>, deletionCancelled: Boolean = false) {
+    fun onDeletion(deletedMediaUris: List<Uri>, deletionCancelled: Boolean = false) {
         /* If at least one media item was successfully deleted and android version != 10 */
         if (deletedMediaUris.isNotEmpty()) {
             if (Build.VERSION.SDK_INT != Build.VERSION_CODES.Q) // Prevents spam of Toasts to user
