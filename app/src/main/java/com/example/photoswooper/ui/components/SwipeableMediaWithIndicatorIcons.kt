@@ -14,6 +14,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -94,7 +95,6 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 
-
 /**
  * Composable function containing a swipeable & zoomable image, with icons behind it showing what each swipe does
  *
@@ -137,9 +137,8 @@ fun SwipeableMediaWithIndicatorIcons(
     // Variables used for zooming
     var zoomScale by remember { mutableFloatStateOf(1f) }
     var zoomOffset by remember { mutableStateOf(Offset.Zero) }
-    val animatableOffsetX = animateFloatAsState(targetValue = zoomOffset.x)
-    val animatableOffsetY = animateFloatAsState(targetValue = zoomOffset.y)
-    val animatableScale = animateFloatAsState(targetValue = zoomScale)
+    val animatedOffset = animateOffsetAsState(zoomOffset)
+    val animatedScale = animateFloatAsState(targetValue = zoomScale)
     val swipingEnabled = zoomScale == 1f
 
     // Perform haptic feedback based on whether a new media item has been loaded (i.e. not a reload from config change)
@@ -246,10 +245,6 @@ fun SwipeableMediaWithIndicatorIcons(
             .coerceIn(0f, 1f)
     }
 
-    LaunchedEffect(zoomScale) {
-        if (swipingEnabled) zoomOffset = Offset.Zero
-    }
-
     Box(contentAlignment = Alignment.Center) {
         if (swipingEnabled)
             IndicatorIconRow(
@@ -259,7 +254,7 @@ fun SwipeableMediaWithIndicatorIcons(
                 modifier = Modifier.alpha(indicatorIconsAlpha)
             )
         if (!uiState.mediaReady)
-            CircularProgressIndicator( )
+            CircularProgressIndicator()
         /* Swipeable box containing video or image */
         Box(
             contentAlignment = Alignment.Center,
@@ -268,6 +263,38 @@ fun SwipeableMediaWithIndicatorIcons(
                 .alpha(alphaValue)
                 // Allow panning to be visible outside original bounds
                 .clipToBounds()
+                // Detect zoom & pan using transformable
+                .pointerInput(Unit) {
+                    detectTransformGestures(
+                        onGesture = { centroid, pan, gestureZoom, _ ->
+                            val oldScale = zoomScale
+                            val newScale = (zoomScale * gestureZoom).coerceIn(1f, 5f)
+                            zoomOffset += (pan + centroid * (oldScale - newScale))
+                            zoomScale = newScale
+                        },
+                    )
+                }
+                // Apply zoom on double tap
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = { clickOffset ->
+                            if (zoomScale == 1f) {
+                                zoomScale = 2f
+                                zoomOffset = clickOffset / zoomScale
+                            } else {
+                                zoomScale = 1f
+                            }
+                        }
+
+                    )
+                }
+                .graphicsLayer {
+                    scaleX = animatedScale.value
+                    scaleY = animatedScale.value
+                    translationX = animatedOffset.value.x
+                    translationY = animatedOffset.value.y
+                    transformOrigin = TransformOrigin(0f, 0f)
+                }
                 // Double-tap to toggle zoom
                 .pointerInput(Unit) {
                     detectTapGestures(
@@ -289,6 +316,7 @@ fun SwipeableMediaWithIndicatorIcons(
                 .then(
                     // Only enable swiping when not zoomed
                     if (swipingEnabled) {
+                        zoomOffset = Offset.Zero
                         Modifier
                             .anchoredDraggable(
                                 state = anchoredDraggableState,
@@ -307,24 +335,7 @@ fun SwipeableMediaWithIndicatorIcons(
                     } else {
                         Modifier
                             // Detect zoom & pan using transformable
-                            .pointerInput(Unit) {
-                                detectTransformGestures(
-                                    onGesture = { centroid, pan, gestureZoom, _ ->
-                                        val oldScale = zoomScale
-                                        val newScale = (zoomScale * gestureZoom).coerceIn(1f, 5f)
-                                        zoomOffset += (pan + centroid * (oldScale - newScale))
-                                        zoomScale = newScale
-                                    }
-                                )
-                            }
                             // Apply zoom + pan
-                            .graphicsLayer {
-                                scaleX = animatableScale.value
-                                scaleY = animatableScale.value
-                                translationX = animatableOffsetX.value
-                                translationY = animatableOffsetY.value
-                                transformOrigin = TransformOrigin(0f, 0f)
-                            }
                     }
                 )
 
