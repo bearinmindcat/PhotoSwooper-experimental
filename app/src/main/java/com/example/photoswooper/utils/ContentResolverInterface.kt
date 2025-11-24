@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.DataInputStream
+import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.security.MessageDigest
@@ -153,8 +154,7 @@ class ContentResolverInterface(
         }
         val projection = mutableListOf(
             MediaStore.MediaColumns._ID,
-            if (SDK_INT >= Build.VERSION_CODES.BAKLAVA) MediaStore.MediaColumns.INFERRED_DATE
-            else MediaStore.MediaColumns.DATE_TAKEN,
+            MediaStore.MediaColumns.DATE_TAKEN,
             MediaStore.MediaColumns.DATE_MODIFIED,
             MediaStore.MediaColumns.SIZE,
             if (type == MediaType.PHOTO) MediaStore.Images.ImageColumns.DESCRIPTION
@@ -273,7 +273,7 @@ class ContentResolverInterface(
                     },
                     absoluteFilePath = fetchedAbsoluteFilePath,
                     dateTaken = fetchedDateTaken,
-                    dateModified = fetchedDateModified,
+                    mediaStoreDateModified = fetchedDateModified,
                     uri = fetchedUri,
                     type = type,
                     id = fetchedId,
@@ -317,7 +317,7 @@ class ContentResolverInterface(
     private fun addMedia(
         absoluteFilePath: String,
         dateTaken: Long,
-        dateModified: Long,
+        mediaStoreDateModified: Long,
         uri: Uri,
         type: MediaType,
         id: Long,
@@ -341,13 +341,25 @@ class ContentResolverInterface(
                     dao.delete(listOf(mediaInDatabase))
                 }
             }
-        /* Decide which date to use */
+        // Decide which date to use
+        val dateThreshold = 1823452331 // This is the minimum value a date must be to be used (20 days after epoch)
         val date =
-            if (dateTaken > 0)
+            // If date taken exists, use that
+            if (dateTaken > dateThreshold)
                 dateTaken
-            else if (dateModified > 0)// if date taken is not found, use date added
-                dateModified
-            else null
+            // Else use the date modified field from MediaStore
+            else if (mediaStoreDateModified > dateThreshold)// if date taken is not found, use date added
+                mediaStoreDateModified
+            // Finally, try extracting date from the file's date modified field/
+            else try {
+                val fileLastModified = File(absoluteFilePath).lastModified()
+                if (fileLastModified == 0L)
+                    null
+                else fileLastModified
+            }
+            catch (_: FileNotFoundException) {
+                null
+            }
 
         // Calculate hash value
         val fileHash: String
