@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import com.example.photoswooper.data.uistates.StatsData
 import com.example.photoswooper.data.uistates.StatsUiState
@@ -41,9 +42,9 @@ import com.example.photoswooper.data.uistates.TimeFrame
 import com.example.photoswooper.ui.components.DropdownFilterChip
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import io.github.koalaplot.core.ChartLayout
-import io.github.koalaplot.core.bar.DefaultVerticalBar
+import io.github.koalaplot.core.bar.DefaultBar
+import io.github.koalaplot.core.bar.DefaultBarPosition
 import io.github.koalaplot.core.bar.DefaultVerticalBarPlotEntry
-import io.github.koalaplot.core.bar.DefaultVerticalBarPosition
 import io.github.koalaplot.core.bar.VerticalBarPlot
 import io.github.koalaplot.core.bar.VerticalBarPlotEntry
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
@@ -147,8 +148,8 @@ fun StatsScreen(
                             DefaultVerticalBarPlotEntry(
                                 xAxisValues[index],
                                 if (uiState.latestData.size == viewModel.getXAxisRange().last + 1) // If the data has been updated to the new time frame
-                                    DefaultVerticalBarPosition(0f, data[index])
-                                else DefaultVerticalBarPosition(0f, 0f)
+                                    DefaultBarPosition(0f, data[index])
+                                else DefaultBarPosition(0f, 0f)
                             )
                         )
                     }
@@ -163,27 +164,29 @@ fun StatsScreen(
             ) {
                 VerticalBarPlot(
                     data = barChartEntries(),
-                    bar = { index ->
-                        DefaultVerticalBar(
+                    bar = { index, _, _ ->
+                        DefaultBar(
                             brush = SolidColor(MaterialTheme.colorScheme.primary),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
                                     Toast.makeText(
                                         context,
-                                        if (currentDataType == StatsData.SPACE_SAVED) barChartEntries()[index].y.yMax.toString() + " MB"
-                                        else barChartEntries()[index].y.yMax.toString(),
+                                        if (currentDataType == StatsData.SPACE_SAVED) barChartEntries()[index].y.end.toString() + " MB"
+                                        else barChartEntries()[index].y.end.toString(),
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 },
                         ) {
                             Surface(
+                                shadowElevation = 2.dp,
                                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
                                 shape = MaterialTheme.shapes.medium,
-                                modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))
+                                modifier = Modifier
+                                    .padding(dimensionResource(R.dimen.padding_small))
                             ) {
                                 Box(modifier = Modifier.padding(dimensionResource(R.dimen.padding_small))) {
-                                    Text(barChartEntries()[index].y.yMax.toString())
+                                    Text(barChartEntries()[index].y.end.toString())
                                 }
                             }
                         }
