@@ -34,11 +34,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,12 +68,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
@@ -87,12 +87,12 @@ import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.player
 import com.example.photoswooper.ui.viewmodels.MainViewModel
+import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
-import kotlin.math.roundToInt
 
 
 /**
@@ -140,6 +140,12 @@ fun SwipeableMediaWithIndicatorIcons(
     val animatedOffset = animateOffsetAsState(zoomOffset)
     val animatedScale = animateFloatAsState(targetValue = zoomScale)
     val swipingEnabled = zoomScale == 1f
+
+    // Show "reset zoom" button if currently zooming
+    val resetZoomButtonScale: Float by animateFloatAsState(
+        if (zoomScale != 1f) 1f else 0f,
+        animationSpec = defaultEntryAnimationSpec
+    )
 
     // Perform haptic feedback based on whether a new media item has been loaded (i.e. not a reload from config change)
     LaunchedEffect(uiState.mediaReady) {
@@ -246,6 +252,7 @@ fun SwipeableMediaWithIndicatorIcons(
     }
 
     Box(contentAlignment = Alignment.Center) {
+        // If swiping, show indicators in the background
         if (swipingEnabled)
             IndicatorIconRow(
                 anchoredDraggableState.targetValue,
@@ -284,16 +291,8 @@ fun SwipeableMediaWithIndicatorIcons(
                             } else {
                                 zoomScale = 1f
                             }
-                        }
-
+                        },
                     )
-                }
-                .graphicsLayer {
-                    scaleX = animatedScale.value
-                    scaleY = animatedScale.value
-                    translationX = animatedOffset.value.x
-                    translationY = animatedOffset.value.y
-                    transformOrigin = TransformOrigin(0f, 0f)
                 }
                 // Double-tap to toggle zoom
                 .pointerInput(Unit) {
@@ -313,6 +312,14 @@ fun SwipeableMediaWithIndicatorIcons(
                         onTap = { viewModel.toggleInfoAndFloatingActionsRow() }
                     )
                 }
+                // Apply effects of zoom
+                .graphicsLayer {
+                    scaleX = animatedScale.value
+                    scaleY = animatedScale.value
+                    translationX = animatedOffset.value.x + anchoredDraggableState.requireOffset()
+                    translationY = animatedOffset.value.y
+                    transformOrigin = TransformOrigin(0f, 0f)
+                }
                 .then(
                     // Only enable swiping when not zoomed
                     if (swipingEnabled) {
@@ -326,16 +333,8 @@ fun SwipeableMediaWithIndicatorIcons(
                                     animationSpec = tween(100),
                                 )
                             )
-                            .offset {
-                                IntOffset(
-                                    x = anchoredDraggableState.requireOffset().roundToInt(),
-                                    y = 0
-                                )
-                            }
                     } else {
                         Modifier
-                            // Detect zoom & pan using transformable
-                            // Apply zoom + pan
                     }
                 )
 
@@ -406,6 +405,21 @@ fun SwipeableMediaWithIndicatorIcons(
                         }
                     }
                 }
+        }
+        // If zooming, show reset zoom button
+        if (!swipingEnabled) {
+            FloatingActionButton(
+                onClick = { zoomScale = 1f },
+                modifier = Modifier
+                    .scale(resetZoomButtonScale)
+                    .padding(dimensionResource(R.dimen.padding_medium))
+                    .align(Alignment.BottomEnd)
+            ) {
+                Icon(
+                    painterResource(R.drawable.arrows_out_simple),
+                    contentDescription = stringResource(R.string.reset_zoom),
+                )
+            }
         }
     }
 }
