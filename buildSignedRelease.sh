@@ -30,11 +30,12 @@ spinner()
 
 Help() {
   echo
+  echo -h Displays this help message
   echo -k Path to java keystore to sign with
   echo -u link to git repo of the app to build
-  echo -t Commit tag to build from \(default: Most recent tag\)
+  echo -v Verbose mode
   echo -o Output file name/path \(default: ~/Downloads/app-release.apk
-  echo -h Displays this help message
+  echo -t Commit tag to build from \(default: Most recent tag\)
   echo
 }
 
@@ -43,11 +44,12 @@ if [ "$1" == "-h" ]; then
   exit 0
 fi
 
-while getopts ":k:u:t:o:" option; do
+while getopts ":k:u:t:v:o:" option; do
    case $option in
       k) keystore_path=$OPTARG;;
       u) git_url=$OPTARG;;
       t) commit_tag=$OPTARG;;
+      v) verbose=true;;
       o) output_file=$OPTARG;;
       \?) # incorrect option
          echo "Error: Invalid option: -${OPTARG}"
@@ -89,7 +91,12 @@ echo "1/3 Cloning git repo and checking out tag ${commit_tag}..."
 tempdir=$(mktemp -d "${TMPDIR:-/tmp/}$(basename "$0").XXXXXXXXXXXX")
 cd "$tempdir"
 mkdir repository
-silent git clone --branch $commit_tag --depth 1 "$git_url" repository & spinner
+if $verbose; then
+  git clone --branch $commit_tag --depth 1 "$git_url" repository
+else
+  silent git clone --branch $commit_tag --depth 1 "$git_url" repository & spinner
+fi
+
 cd repository
 
 #=================================================
@@ -98,7 +105,11 @@ cd repository
 echo
 echo 2/3 Building your app...
 export "ANDROID_HOME=/home/loowiz/Android/Sdk"
-silent ./gradlew clean assembleRelease --no-build-cache --no-configuration-cache --no-daemon  & spinner
+if $verbose; then
+  ./gradlew clean assembleRelease --no-build-cache --no-configuration-cache --no-daemon
+else
+  silent ./gradlew clean assembleRelease --no-build-cache --no-configuration-cache --no-daemon  & spinner
+fi
 cd "$tempdir/repository/app/build/outputs/apk/release/"
 
 #=================================================
@@ -107,7 +118,11 @@ cd "$tempdir/repository/app/build/outputs/apk/release/"
 echo
 echo "3/3 Signing your apk file"
 echo
-silent zipalign -v -p 4 app-release-unsigned.apk app-release-unsigned-aligned.apk & spinner
+if $verbose; then
+  zipalign -v -p 4 app-release-unsigned.apk app-release-unsigned-aligned.apk
+else
+  silent zipalign -v -p 4 app-release-unsigned.apk app-release-unsigned-aligned.apk & spinner
+fi
 apksigner sign --ks "$keystore_path" --out "$output_file" "$tempdir/repository/app/build/outputs/apk/release/app-release-unsigned-aligned.apk" && echo Your signed apk file can be found at $output_file
 rm -rf $tempdir
 exit
