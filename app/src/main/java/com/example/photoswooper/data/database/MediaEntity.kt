@@ -7,12 +7,6 @@
 package com.example.photoswooper.data.database
 
 import android.content.ContentResolver
-import android.content.ContentUris
-import android.content.ContentValues
-import android.database.sqlite.SQLiteDatabase
-import android.provider.MediaStore
-import android.util.Log
-import androidx.core.net.toUri
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -20,8 +14,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
-import com.example.photoswooper.utils.calculateMediaHash
-import java.io.FileNotFoundException
 
 /* This represents a row in the mediaStatus table in Room */
 @Entity(
@@ -75,49 +67,11 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
-/** Update previous media hashes to use the new lower number of input bytes to avoid memory usage issues */
+/** This was used to update previous media hashes to use the new lower number of input bytes to avoid memory usage issues
+ *
+ * However, this migration was causing memory usage issues & crashes so now the migration is obsolete.
+ * */
 class MIGRATION_3_4(val contentResolver: ContentResolver) : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        db.query("SELECT mediaStoreId, type FROM mediaStatus").use { cursor ->
-            val mediaStoreIdIndex = cursor.getColumnIndexOrThrow("mediaStoreId")
-            val typeIndex = cursor.getColumnIndexOrThrow("type")
-            while (cursor.moveToNext()) {
-                val currentMediaStoreId = cursor.getInt(mediaStoreIdIndex)
-                val typeString = cursor.getString(typeIndex)
-                val uri = when (typeString) {
-                    "PHOTO" -> ContentUris.withAppendedId(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        currentMediaStoreId.toLong()
-                    )
-
-                    "VIDEO" -> ContentUris.withAppendedId(
-                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                        currentMediaStoreId.toLong()
-                    )
-
-                    else -> {
-                        "".toUri()
-                    }
-                }
-                val fileHash: String
-                try {
-                    contentResolver.openInputStream(uri).use { fileInputStream ->
-                        fileHash = calculateMediaHash(fileInputStream)
-                    }
-                    val contentValues = ContentValues().apply {
-                        put("fileHash", fileHash)
-                    }
-                    db.update(
-                        "mediaStatus",
-                        SQLiteDatabase.CONFLICT_REPLACE,
-                        contentValues,
-                        "mediaStoreId = ?",
-                        arrayOf(currentMediaStoreId.toString())
-                    )
-                } catch (_: FileNotFoundException) {
-                    Log.e("DatabaseMigration 3-4", "Unable to access file - skipping.")
-                }
-            }
-        }
     }
 }

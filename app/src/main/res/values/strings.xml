@@ -139,4 +139,5 @@
     <string name="go_to_permission_settings">Go to permission settings</string>
     <string name="the_file_is_empty">the file is empty</string>
     <string name="unable_to_load_image">PhotoSwooper was unable to display this image</string>
+    <string name="reset_zoom">Reset zoom</string>
 </resources>

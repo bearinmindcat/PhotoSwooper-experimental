@@ -30,11 +30,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.io.DataInputStream
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStream
-import java.security.MessageDigest
 import java.util.Calendar
 import kotlin.time.Duration.Companion.days
 
@@ -494,35 +492,38 @@ class ContentResolverInterface(
     }
 }
 
+/** This function used to calculate the hash of the media file for a future duplicate file feature but was causing
+ * memory usage issues and crashes so now returns a placeholder value of -1*/
 fun calculateMediaHash(fileInputStream: InputStream?): String {
-    val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
-
-    /** Limit on the number of bytes to hash of a video file to reduce memory use */
-    val numBytesToHash = 128
-    val availableBytes = fileInputStream?.available() ?: 0
-    val fileBytes: ByteArray
-
-
-    if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        fileBytes =
-            if (availableBytes > numBytesToHash)
-                fileInputStream?.readNBytes(numBytesToHash) ?: ByteArray(0)
-            else
-                fileInputStream?.readAllBytes() ?: ByteArray(0)
-    } else {
-        val hashLength =
-            if (availableBytes > numBytesToHash)
-                numBytesToHash
-            else
-                availableBytes
-        fileBytes = ByteArray(hashLength)
-        val dataInputStream = DataInputStream(fileInputStream)
-        dataInputStream.readFully(
-            fileBytes,
-            0,
-            hashLength
-        ) // Read less of file for videos to reduce memory use
-    }
-    val hash: ByteArray = digest.digest(fileBytes)
-    return hash.toHexString()
+    return (-1).toString()
+//    val digest: MessageDigest = MessageDigest.getInstance("SHA-512")
+//
+//    /** Limit on the number of bytes to hash of a video file to reduce memory use */
+//    val numBytesToHash = 128
+//    val availableBytes = fileInputStream?.available() ?: 0
+//    val fileBytes: ByteArray
+//
+//
+//    if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//        fileBytes =
+//            if (availableBytes > numBytesToHash)
+//                fileInputStream?.readNBytes(numBytesToHash) ?: ByteArray(0)
+//            else
+//                fileInputStream?.readAllBytes() ?: ByteArray(0)
+//    } else {
+//        val hashLength =
+//            if (availableBytes > numBytesToHash)
+//                numBytesToHash
+//            else
+//                availableBytes
+//        fileBytes = ByteArray(hashLength)
+//        val dataInputStream = DataInputStream(fileInputStream)
+//        dataInputStream.readFully(
+//            fileBytes,
+//            0,
+//            hashLength
+//        ) // Read less of file for videos to reduce memory use
+//    }
+//    val hash: ByteArray = digest.digest(fileBytes)
+//    return hash.toHexString()
 }
