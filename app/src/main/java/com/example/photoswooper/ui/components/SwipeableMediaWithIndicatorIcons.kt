@@ -407,7 +407,6 @@ fun SwipeableMediaWithIndicatorIcons(
                 }
         }
         // If zooming, show reset zoom button
-        if (!swipingEnabled) {
             FloatingActionButton(
                 onClick = { zoomScale = 1f },
                 modifier = Modifier
@@ -416,10 +415,9 @@ fun SwipeableMediaWithIndicatorIcons(
                     .align(Alignment.BottomEnd)
             ) {
                 Icon(
-                    painterResource(R.drawable.arrows_out_simple),
-                    contentDescription = stringResource(R.string.reset_zoom),
+                    painterResource(R.drawable.magnifying_glass_minus),
+                    contentDescription = if (!swipingEnabled) stringResource(R.string.reset_zoom) else null,
                 )
-            }
         }
     }
 }
