@@ -1,0 +1,3 @@
+- Add reset zoom button
+- Allow direct zooming on media, without first double tapping
+- Fix crash caused by updating to the previous version
