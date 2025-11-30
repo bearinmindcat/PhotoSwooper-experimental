@@ -14,7 +14,10 @@ room {
 android {
     namespace = "com.example.photoswooper"
     compileSdk = 36
-
+    // For reproducible builds (https://izzyondroid.org/docs/reproducibleBuilds/DebugFailedRBs/#native-library-stripping)
+    packaging {
+        jniLibs.keepDebugSymbols.add("**/*.so")
+    }
     defaultConfig {
         applicationId = "com.example.photoswooper"
         minSdk = 24
@@ -57,7 +60,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -91,6 +93,5 @@ dependencies {
     testImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
 
 }
