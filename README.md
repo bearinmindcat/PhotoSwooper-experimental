@@ -7,9 +7,9 @@
 [![Codeberg version number](https://img.shields.io/gitea/v/release/loowiz/PhotoSwooper?gitea_url=https%3A%2F%2Fcodeberg.org&logo=codeberg&label=Codeberg)](https://codeberg.org/Loowiz/PhotoSwooper/releases)
 
 
-[<img alt="Get it on Codeberg" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid2.png" height="60">](https://apt.izzysoft.de/fdroid/index/apk/com.example.photoswooper)
+[<img src="https://f-droid.org/badge/get-it-on.png" alt="Get it on F-Droid" height="60">](https://f-droid.org/packages/com.example.photoswooper)
+[<img alt="Get it on IzzyOnDroid" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid2.png" height="60">](https://apt.izzysoft.de/fdroid/index/apk/com.example.photoswooper)
 [<img alt="Get it on Codeberg" src="https://get-it-on.codeberg.org/get-it-on-blue-on-white.png" height="60">](https://codeberg.org/Loowiz/PhotoSwooper/releases)
-</a>
 
 A dating app for ur photos <3
 
