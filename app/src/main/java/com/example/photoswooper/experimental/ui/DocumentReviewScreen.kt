@@ -132,11 +132,16 @@ fun FileReviewScreen(
             ) {
                 Surface(
                     shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 6.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
-                        modifier = Modifier.padding(24.dp)
+                        modifier = Modifier.padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            top = 24.dp,
+                            bottom = 16.dp
+                        )
                     ) {
                         Text(
                             text = if (fileCount == 1)
@@ -146,18 +151,22 @@ fun FileReviewScreen(
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = FontWeight.Normal
                             ),
-                            textAlign = TextAlign.Center,
+                            color = Color.White,
+                            textAlign = TextAlign.Start,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 24.dp)
+                                .padding(bottom = 32.dp)
                         )
                         Row(
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            modifier = Modifier.fillMaxWidth()
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
                         ) {
                             TextButton(onClick = { viewModel.dismissNonMediaDeleteDialog() }) {
                                 Text(
                                     "Deny",
+                                    color = Color.White,
                                     style = MaterialTheme.typography.labelLarge.copy(
                                         fontWeight = FontWeight.Medium
                                     )
@@ -166,6 +175,7 @@ fun FileReviewScreen(
                             TextButton(onClick = { viewModel.confirmNonMediaDelete() }) {
                                 Text(
                                     "Allow",
+                                    color = Color.White,
                                     style = MaterialTheme.typography.labelLarge.copy(
                                         fontWeight = FontWeight.Medium
                                     )
