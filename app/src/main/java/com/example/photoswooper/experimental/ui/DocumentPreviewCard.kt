@@ -127,8 +127,8 @@ private fun AudioPreview(
 
     // Set up the media item when this composable enters
     DisposableEffect(document.uri) {
-        // Use file:// URI directly — ExoPlayer's FileDataSource handles it
-        exoPlayer.setMediaItem(MediaItem.fromUri(document.uri))
+        val path = document.uri.path ?: document.uri.toString()
+        exoPlayer.setMediaItem(MediaItem.fromUri(path))
         exoPlayer.prepare()
 
         onDispose {
@@ -199,9 +199,11 @@ private fun VideoPreview(
     }
 
     DisposableEffect(document.uri) {
-        // Use file:// URI directly — ExoPlayer's FileDataSource handles it
-        // with MANAGE_EXTERNAL_STORAGE permission (no FileProvider needed)
-        exoPlayer.setMediaItem(MediaItem.fromUri(document.uri))
+        // Use raw file path — file:// URIs with special characters (spaces,
+        // parentheses, brackets) can break ExoPlayer's URI parsing.
+        // Absolute paths bypass URI encoding issues entirely.
+        val path = document.uri.path ?: document.uri.toString()
+        exoPlayer.setMediaItem(MediaItem.fromUri(path))
         exoPlayer.prepare()
         exoPlayer.play()
 

@@ -42,6 +42,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -104,6 +105,7 @@ fun FileReviewScreen(
     var selectedDocuments by remember { mutableStateOf(setOf<Document>()) }
     var selectionMode by remember { mutableStateOf(false) }
     var currentFilter by remember { mutableStateOf(MediaStatus.DELETE) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     val filteredDocs = uiState.documents.filter { it.status == currentFilter }
     val context = LocalContext.current
     val view = LocalView.current
@@ -309,13 +311,39 @@ fun FileReviewScreen(
                 onClick = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    viewModel.deleteMarkedDocuments()
+                    showDeleteConfirmation = true
                 }
             ) {
                 Icon(painterResource(MediaStatus.DELETE.iconDrawableId), null)
                 Spacer(Modifier.width(dimensionResource(R.dimen.padding_small)))
                 Text("Delete ${filteredDocs.size} items")
             }
+        }
+
+        // Confirmation dialog before deletion
+        if (showDeleteConfirmation) {
+            val deleteCount = uiState.documents.count { it.status == MediaStatus.DELETE }
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmation = false },
+                title = { Text("Delete $deleteCount items?") },
+                text = {
+                    Text("Media files (images, audio, video) will be moved to trash. " +
+                         "All other file types will be permanently deleted.")
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        showDeleteConfirmation = false
+                        viewModel.deleteMarkedDocuments()
+                    }) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmation = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
     }
