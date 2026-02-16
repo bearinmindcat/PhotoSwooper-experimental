@@ -128,7 +128,7 @@ fun FileReviewScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 12.dp)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
             ) {
                 Surface(
                     shape = MaterialTheme.shapes.extraLarge,
