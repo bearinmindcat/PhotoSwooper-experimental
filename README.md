@@ -1,6 +1,6 @@
-# PhotoSwooperModded
+# PhotoSwooper + Experimental Features
 
-Added experimental document swiping functionality to the original PhotoSwooper app. Swipe through documents, audio, and video files the same way you swipe photos. All original credits go to the owner here https://codeberg.org/Loowiz/PhotoSwooper and you can see all the changes I made by looking at the experimental folder and EXPERIMENTAL_CHANGES.md file.
+All original credits go to the owner here https://codeberg.org/Loowiz/PhotoSwooper ; I was inspired to add functionality to swipe on all system file types as well from the reddit thread here https://www.reddit.com/r/fossdroid/comments/1r4jbkt/is_there_a_tinderstyle_swipe_app_just_like/ ; though I'll try to keep up with updates to the original, I wouldn't count on it unless someone PMs be about functionality of the app breaking.
 
 **Link to releases:** [https://gitlab.com/bearincrypto1/photoswoopermodded/-/releases](https://gitlab.com/bearincrypto1/photoswoopermodded/-/releases)
 
