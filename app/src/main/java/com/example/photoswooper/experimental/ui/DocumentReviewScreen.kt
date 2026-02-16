@@ -145,9 +145,9 @@ fun FileReviewScreen(
                     ) {
                         Text(
                             text = if (fileCount == 1)
-                                "Allow $appName to move this file to trash?"
+                                "Allow $appName to permanently delete 1 file?"
                             else
-                                "Allow $appName to move these $fileCount files to trash?",
+                                "Allow $appName to permanently delete $fileCount files?",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = FontWeight.Normal
                             ),
