@@ -11,19 +11,23 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.photoswooper.experimental.data.database.DocumentEntity
+import com.example.photoswooper.experimental.data.database.DocumentStatusDao
+import com.example.photoswooper.experimental.data.database.MIGRATION_4_5
 
 /**
  * Database class with a singleton Instance object.
  */
 @Database(
-    entities = [MediaEntity::class],
-    version = 4,
+    entities = [MediaEntity::class, DocumentEntity::class],
+    version = 5,
     autoMigrations = [
         AutoMigration(from = 1, to = 2)
     ]
 )
 abstract class MediaStatusDatabase : RoomDatabase() {
     abstract fun mediaStatusDao(): MediaStatusDao
+    abstract fun documentStatusDao(): DocumentStatusDao
 
     companion object {
         @Volatile
@@ -34,7 +38,7 @@ abstract class MediaStatusDatabase : RoomDatabase() {
             // if the Instance is not null, return it, otherwise create a new database instance.
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, MediaStatusDatabase::class.java, "mediaStatusDatabase")
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4(context.contentResolver))
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4(context.contentResolver), MIGRATION_4_5)
                     .build()
                     .also { Instance = it }
             }
