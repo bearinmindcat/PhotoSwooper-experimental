@@ -167,7 +167,7 @@ fun FileReviewScreen(
                                 Text(
                                     "Deny",
                                     color = Color.White,
-                                    style = MaterialTheme.typography.labelLarge.copy(
+                                    style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = FontWeight.Medium
                                     )
                                 )
@@ -176,7 +176,7 @@ fun FileReviewScreen(
                                 Text(
                                     "Allow",
                                     color = Color.White,
-                                    style = MaterialTheme.typography.labelLarge.copy(
+                                    style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = FontWeight.Medium
                                     )
                                 )
