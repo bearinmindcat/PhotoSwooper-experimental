@@ -127,7 +127,7 @@ fun FileReviewScreen(
                 contentAlignment = Alignment.BottomCenter,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 32.dp)
+                    .padding(bottom = 20.dp)
                     .padding(horizontal = 16.dp)
             ) {
                 Surface(
@@ -158,7 +158,7 @@ fun FileReviewScreen(
                                 .padding(bottom = 32.dp)
                         )
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+                            horizontalArrangement = Arrangement.spacedBy(80.dp, Alignment.CenterHorizontally),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 8.dp)
