@@ -14,12 +14,16 @@ git clone https://gitlab.com/bearincrypto1/photoswoopermodded.git
 
 ```
 com.example.photoswooper/
-└── experimental/                              # All mod-specific code
+└── experimental/                              # all experimental specific code in here, take a look!
 ```
 
-## Things to be aware of
+## Things too be aware of...
 
 All media files will go to trash, all non-media file types will go straight to "permanent delete." There's currently no android api like what this app uses with "MediaStore" for other non-media files so those "other types" will just be permanently deleted.
+
+Experimental swiping is seperate from the main media swiping feature on the app, you will have to press "Start Swiping" and vice-verse "Stop Swiping" to get to/from the experimental swiping area for all system files.
+
+For experimental swiping for "all system files" you need to enable the "MANAGE_EXTERNAL_STORAGE" slide permission and you have to manually add folders to be scanned for swiping. Note that sub-folders inside of any folder you select will be part of the scan as well, but if you want to narrow your scope in you can manually select folders outside of the "quick add folders" that just lists all the folders from the internal storage.
 
 ## Screenshots
 
