@@ -322,44 +322,40 @@ class DocumentSwipeViewModel(
         return _uiState.value.documents.filter { it.status == MediaStatus.DELETE }
     }
 
-    private val mediaTypes = setOf(
-        com.example.photoswooper.experimental.data.DocumentType.IMAGE,
-        com.example.photoswooper.experimental.data.DocumentType.AUDIO,
-        com.example.photoswooper.experimental.data.DocumentType.VIDEO,
-    )
-
     /**
-     * Delete all documents marked DELETE.
-     * Non-media files are deleted immediately; media files go through the system trash dialog.
+     * Show the system trash dialog for media files. Nothing is deleted yet —
+     * actual deletion happens in onDocumentDeletion() after the user presses Allow.
+     * If there are no media files (only non-media), triggers onDocumentDeletion directly.
      */
     fun deleteMarkedDocuments() {
         val docsToDelete = getDocumentsToDelete()
         if (docsToDelete.isEmpty()) return
 
-        val nonMediaDocs = docsToDelete.filter { it.documentType !in mediaTypes }
-
         uiCoroutineScope.launch(Dispatchers.IO) {
-            documentResolverInterface.trashDocuments(docsToDelete)
-
-            // Non-media files were deleted directly — mark them as HIDE now
-            if (nonMediaDocs.isNotEmpty()) {
-                markDocumentsAsHidden(nonMediaDocs)
+            val dialogShown = documentResolverInterface.showTrashDialog(docsToDelete)
+            // If no system dialog was shown (no media files or API < 30),
+            // trigger deletion directly since there's no callback coming
+            if (!dialogShown) {
+                onDocumentDeletion(approved = true)
             }
         }
     }
 
     /**
-     * Called from MainActivity.onActivityResult when the system trash dialog completes.
-     * Only applies to media files (image/audio/video) that went through the dialog.
+     * Called from MainActivity.onActivityResult when the user presses Allow/Deny,
+     * or called directly if there were no media files to show a dialog for.
+     * Deletes non-media files and marks everything as HIDE.
      */
     fun onDocumentDeletion(approved: Boolean) {
         if (!approved) return
 
-        val mediaDocs = getDocumentsToDelete().filter { it.documentType in mediaTypes }
-        if (mediaDocs.isEmpty()) return
+        val docsToDelete = getDocumentsToDelete()
+        if (docsToDelete.isEmpty()) return
 
         uiCoroutineScope.launch(Dispatchers.IO) {
-            markDocumentsAsHidden(mediaDocs)
+            // Delete non-media files now (media files were already trashed by the system)
+            documentResolverInterface.deleteNonMediaFiles(docsToDelete)
+            markDocumentsAsHidden(docsToDelete)
         }
     }
 
