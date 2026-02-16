@@ -23,7 +23,9 @@ All media files will go to trash, all non-media file types will go straight to "
 
 ## Screenshots
 
-![Experimental Tab](screenshots/experimental_tab.png) ![Review Screen](screenshots/review_screen.png)
+| Experimental Tab | Review Screen |
+|---|---|
+| <img src="screenshots/experimental_tab.png" alt="Experimental Tab" width="300"/> | <img src="screenshots/review_screen.png" alt="Review Screen" width="300"/> |
 
 ## License
 
