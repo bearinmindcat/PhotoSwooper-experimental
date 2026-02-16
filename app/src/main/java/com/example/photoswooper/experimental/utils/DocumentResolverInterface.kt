@@ -176,29 +176,31 @@ class DocumentResolverInterface(
                 return directlyDeleted + mediaDocs.size
             }
 
-            val filePaths = mediaDocs.mapNotNull { it.uri.path }
             val contentUris = mutableListOf<Uri>()
-            val unresolved = mutableListOf<String>()
+            val unresolvedDocs = mutableListOf<Document>()
 
             // First pass: check which files are already indexed in MediaStore
             withContext(Dispatchers.IO) {
-                for (path in filePaths) {
-                    val uri = getMediaStoreUriForFile(path)
+                for (doc in mediaDocs) {
+                    val path = doc.uri.path ?: continue
+                    val uri = getMediaStoreUriForFile(path, doc.documentType)
                     if (uri != null) contentUris.add(uri)
-                    else unresolved.add(path)
+                    else unresolvedDocs.add(doc)
                 }
             }
 
             // Second pass: scan unresolved files into MediaStore, then retry
-            if (unresolved.isNotEmpty()) {
+            if (unresolvedDocs.isNotEmpty()) {
                 try {
+                    val unresolvedPaths = unresolvedDocs.mapNotNull { it.uri.path }
                     withTimeoutOrNull(15_000) {
-                        scanFilesIntoMediaStore(unresolved)
+                        scanFilesIntoMediaStore(unresolvedPaths)
                     }
                     delay(500)
                     withContext(Dispatchers.IO) {
-                        for (path in unresolved) {
-                            val uri = getMediaStoreUriForFile(path)
+                        for (doc in unresolvedDocs) {
+                            val path = doc.uri.path ?: continue
+                            val uri = getMediaStoreUriForFile(path, doc.documentType)
                             if (uri != null) contentUris.add(uri)
                         }
                     }
@@ -261,23 +263,30 @@ class DocumentResolverInterface(
     }
 
     /**
-     * Query MediaStore.Files to find the content URI for a given absolute file path.
+     * Query the specific MediaStore media table (Images/Audio/Video) to find
+     * the content URI for a given absolute file path.
+     * createTrashRequest requires URIs from media-specific tables, NOT MediaStore.Files.
      */
-    private fun getMediaStoreUriForFile(filePath: String): Uri? {
-        val filesUri = MediaStore.Files.getContentUri("external")
-        val projection = arrayOf(MediaStore.Files.FileColumns._ID)
-        val selection = "${MediaStore.Files.FileColumns.DATA} = ?"
+    private fun getMediaStoreUriForFile(filePath: String, docType: DocumentType): Uri? {
+        val collectionUri = when (docType) {
+            DocumentType.IMAGE -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            DocumentType.AUDIO -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            DocumentType.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            else -> return null // Non-media types can't go through MediaStore trash
+        }
+        val projection = arrayOf(MediaStore.MediaColumns._ID)
+        val selection = "${MediaStore.MediaColumns.DATA} = ?"
         val selectionArgs = arrayOf(filePath)
 
         try {
             contentResolver.query(
-                filesUri, projection, selection, selectionArgs, null
+                collectionUri, projection, selection, selectionArgs, null
             )?.use { cursor ->
                 if (cursor.moveToFirst()) {
                     val id = cursor.getLong(
-                        cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                        cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                     )
-                    return ContentUris.withAppendedId(filesUri, id)
+                    return ContentUris.withAppendedId(collectionUri, id)
                 }
             }
         } catch (e: Exception) {
