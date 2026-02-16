@@ -37,6 +37,10 @@ com.example.photoswooper/
     └── EXPERIMENTAL_CHANGES.md                # Complete log of changes to the original codebase
 ```
 
+## Screenshots
+
+![Experimental Tab](screenshots/experimental_tab.png) ![Review Screen](screenshots/review_screen.png)
+
 ## License
 
 This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE) file for details.
