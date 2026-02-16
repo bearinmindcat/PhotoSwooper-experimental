@@ -42,14 +42,17 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -111,32 +114,68 @@ fun FileReviewScreen(
     val showNonMediaDialog by viewModel.showNonMediaDeleteDialog.collectAsState()
     val appName = remember { context.applicationInfo.loadLabel(context.packageManager).toString() }
 
-    // Confirmation popup for non-media files (mimics system trash dialog wording)
+    // Confirmation popup for non-media files (mimics system trash dialog)
     if (showNonMediaDialog) {
         val docsToDelete = viewModel.getDocumentsToDelete()
         val fileCount = docsToDelete.size
 
-        AlertDialog(
+        Dialog(
             onDismissRequest = { viewModel.dismissNonMediaDeleteDialog() },
-            text = {
-                Text(
-                    text = if (fileCount == 1)
-                        "Allow $appName to move this file to trash?"
-                    else
-                        "Allow $appName to move these $fileCount files to trash?",
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissNonMediaDeleteDialog() }) {
-                    Text("Deny")
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                contentAlignment = Alignment.BottomCenter,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 48.dp)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 6.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Text(
+                            text = if (fileCount == 1)
+                                "Allow $appName to move this file to trash?"
+                            else
+                                "Allow $appName to move these $fileCount files to trash?",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Normal
+                            ),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 24.dp)
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            TextButton(onClick = { viewModel.dismissNonMediaDeleteDialog() }) {
+                                Text(
+                                    "Deny",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
+                            TextButton(onClick = { viewModel.confirmNonMediaDelete() }) {
+                                Text(
+                                    "Allow",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.confirmNonMediaDelete() }) {
-                    Text("Allow")
-                }
-            },
-        )
+            }
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
