@@ -17,6 +17,10 @@ com.example.photoswooper/
 └── experimental/                              # All mod-specific code
 ```
 
+## Things to be aware of
+
+All media files will go to trash, all non-media file types will go straight to "permanent delete." There's currently no android api like what this app uses with "MediaStore" for other non-media files so those "other types" will just be permanently deleted.
+
 ## Screenshots
 
 ![Experimental Tab](screenshots/experimental_tab.png) ![Review Screen](screenshots/review_screen.png)
