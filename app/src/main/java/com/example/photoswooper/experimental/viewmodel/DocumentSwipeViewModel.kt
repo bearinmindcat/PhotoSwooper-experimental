@@ -322,52 +322,74 @@ class DocumentSwipeViewModel(
         return _uiState.value.documents.filter { it.status == MediaStatus.DELETE }
     }
 
+    private val mediaTypes = setOf(
+        com.example.photoswooper.experimental.data.DocumentType.IMAGE,
+        com.example.photoswooper.experimental.data.DocumentType.AUDIO,
+        com.example.photoswooper.experimental.data.DocumentType.VIDEO,
+    )
+
     /**
-     * Launch the system trash dialog for all documents marked DELETE.
-     * The actual state update happens in onDocumentDeletion() called from onActivityResult.
+     * Delete all documents marked DELETE.
+     * Non-media files are deleted immediately; media files go through the system trash dialog.
      */
     fun deleteMarkedDocuments() {
         val docsToDelete = getDocumentsToDelete()
         if (docsToDelete.isEmpty()) return
-        uiCoroutineScope.launch {
+
+        val nonMediaDocs = docsToDelete.filter { it.documentType !in mediaTypes }
+
+        uiCoroutineScope.launch(Dispatchers.IO) {
             documentResolverInterface.trashDocuments(docsToDelete)
+
+            // Non-media files were deleted directly — mark them as HIDE now
+            if (nonMediaDocs.isNotEmpty()) {
+                markDocumentsAsHidden(nonMediaDocs)
+            }
         }
     }
 
     /**
      * Called from MainActivity.onActivityResult when the system trash dialog completes.
+     * Only applies to media files (image/audio/video) that went through the dialog.
      */
     fun onDocumentDeletion(approved: Boolean) {
         if (!approved) return
 
-        val docsToDelete = getDocumentsToDelete()
-        val deletedSize = docsToDelete.sumOf { it.size }
+        val mediaDocs = getDocumentsToDelete().filter { it.documentType in mediaTypes }
+        if (mediaDocs.isEmpty()) return
 
         uiCoroutineScope.launch(Dispatchers.IO) {
-            for (doc in docsToDelete) {
-                val entity = dao.findByUri(doc.uri.toString())
-                if (entity != null) {
-                    dao.update(entity.copy(status = MediaStatus.HIDE))
-                }
-            }
+            markDocumentsAsHidden(mediaDocs)
+        }
+    }
 
-            _uiState.update { state ->
-                val updatedDocs = state.documents.map { doc ->
-                    if (doc.status == MediaStatus.DELETE) doc.copy(status = MediaStatus.HIDE)
-                    else doc
-                }.toMutableList()
-                val newTotal = state.spaceSaved + deletedSize
-                state.copy(
-                    documents = updatedDocs,
-                    spaceSaved = newTotal
-                )
-            }
+    private suspend fun markDocumentsAsHidden(docs: List<Document>) {
+        val deletedSize = docs.sumOf { it.size }
+        val uriStrings = docs.map { it.uri.toString() }.toSet()
 
-            dataStoreInterface.setLongSettingValue(
-                _uiState.value.spaceSaved,
-                spaceSavedKey
+        for (doc in docs) {
+            val entity = dao.findByUri(doc.uri.toString())
+            if (entity != null) {
+                dao.update(entity.copy(status = MediaStatus.HIDE))
+            }
+        }
+
+        _uiState.update { state ->
+            val updatedDocs = state.documents.map { doc ->
+                if (doc.uri.toString() in uriStrings) doc.copy(status = MediaStatus.HIDE)
+                else doc
+            }.toMutableList()
+            val newTotal = state.spaceSaved + deletedSize
+            state.copy(
+                documents = updatedDocs,
+                spaceSaved = newTotal
             )
         }
+
+        dataStoreInterface.setLongSettingValue(
+            _uiState.value.spaceSaved,
+            spaceSavedKey
+        )
     }
 
     fun unswipeDocuments(documents: Set<Document>) {
