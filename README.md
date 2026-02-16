@@ -25,6 +25,8 @@ Experimental swiping is seperate from the main media swiping feature on the app,
 
 For experimental swiping for "all system files" you need to enable the "MANAGE_EXTERNAL_STORAGE" slide permission and you have to manually add folders to be scanned for swiping. Note that sub-folders inside of any folder you select will be part of the scan as well, but if you want to narrow your scope in you can manually select folders outside of the "quick add folders" that just lists all the folders from the internal storage.
 
+Videos are currently not scaled, but I can change that if it bothers you, I'm just too lazy right now honestly lol.
+
 ## Screenshots
 
 | Experimental Tab | Review Screen |
