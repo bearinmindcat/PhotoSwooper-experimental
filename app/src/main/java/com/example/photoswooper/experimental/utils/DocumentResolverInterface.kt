@@ -133,106 +133,95 @@ class DocumentResolverInterface(
     }
 
     /**
-     * Delete documents marked for deletion.
-     * - Media files (image/audio/video) go through the system trash dialog (Android 11+)
-     *   so they appear in the system recycle bin and can be recovered.
-     * - Non-media files (PDFs, text, archives, etc.) are deleted directly with File.delete()
-     *   because MediaStore.createTrashRequest only accepts media items.
-     * Returns the number of non-media files deleted directly (already done, no dialog needed).
+     * Show the system trash dialog for media files (image/audio/video).
+     * Does NOT delete anything — just launches the system confirmation dialog.
+     * Returns true if the system dialog was shown, false if there were no media files.
      */
-    suspend fun trashDocuments(documents: List<Document>): Int {
-        if (documents.isEmpty()) return 0
+    suspend fun showTrashDialog(documents: List<Document>): Boolean {
+        if (documents.isEmpty()) return false
 
-        // Split into media (image/audio/video) and non-media (everything else)
         val mediaTypes = setOf(DocumentType.IMAGE, DocumentType.AUDIO, DocumentType.VIDEO)
         val mediaDocs = documents.filter { it.documentType in mediaTypes }
-        val nonMediaDocs = documents.filter { it.documentType !in mediaTypes }
+        if (mediaDocs.isEmpty()) return false
 
-        // Delete non-media files directly (MANAGE_EXTERNAL_STORAGE grants access)
-        var directlyDeleted = 0
-        if (nonMediaDocs.isNotEmpty()) {
-            withContext(Dispatchers.IO) {
-                for (doc in nonMediaDocs) {
-                    try {
-                        val file = File(doc.uri.path!!)
-                        if (file.delete()) directlyDeleted++
-                        else Log.w("DocumentResolver", "Failed to delete: ${doc.uri.path}")
-                    } catch (e: Exception) {
-                        Log.e("DocumentResolver", "Error deleting file: ${e.message}", e)
-                    }
-                }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+
+        val contentUris = mutableListOf<Uri>()
+        val unresolvedDocs = mutableListOf<Document>()
+
+        withContext(Dispatchers.IO) {
+            for (doc in mediaDocs) {
+                val path = doc.uri.path ?: continue
+                val uri = getMediaStoreUriForFile(path, doc.documentType)
+                if (uri != null) contentUris.add(uri)
+                else unresolvedDocs.add(doc)
             }
-            Log.d("DocumentResolver", "Directly deleted $directlyDeleted/${nonMediaDocs.size} non-media files")
         }
 
-        // For media files, use system trash dialog (Android 11+) or direct delete
-        if (mediaDocs.isNotEmpty()) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        if (unresolvedDocs.isNotEmpty()) {
+            try {
+                val unresolvedPaths = unresolvedDocs.mapNotNull { it.uri.path }
+                withTimeoutOrNull(15_000) {
+                    scanFilesIntoMediaStore(unresolvedPaths)
+                }
+                delay(500)
                 withContext(Dispatchers.IO) {
-                    for (doc in mediaDocs) {
-                        try { File(doc.uri.path!!).delete() } catch (_: Exception) {}
+                    for (doc in unresolvedDocs) {
+                        val path = doc.uri.path ?: continue
+                        val uri = getMediaStoreUriForFile(path, doc.documentType)
+                        if (uri != null) contentUris.add(uri)
                     }
                 }
-                return directlyDeleted + mediaDocs.size
-            }
-
-            val contentUris = mutableListOf<Uri>()
-            val unresolvedDocs = mutableListOf<Document>()
-
-            // First pass: check which files are already indexed in MediaStore
-            withContext(Dispatchers.IO) {
-                for (doc in mediaDocs) {
-                    val path = doc.uri.path ?: continue
-                    val uri = getMediaStoreUriForFile(path, doc.documentType)
-                    if (uri != null) contentUris.add(uri)
-                    else unresolvedDocs.add(doc)
-                }
-            }
-
-            // Second pass: scan unresolved files into MediaStore, then retry
-            if (unresolvedDocs.isNotEmpty()) {
-                try {
-                    val unresolvedPaths = unresolvedDocs.mapNotNull { it.uri.path }
-                    withTimeoutOrNull(15_000) {
-                        scanFilesIntoMediaStore(unresolvedPaths)
-                    }
-                    delay(500)
-                    withContext(Dispatchers.IO) {
-                        for (doc in unresolvedDocs) {
-                            val path = doc.uri.path ?: continue
-                            val uri = getMediaStoreUriForFile(path, doc.documentType)
-                            if (uri != null) contentUris.add(uri)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("DocumentResolver", "Error scanning files: ${e.message}", e)
-                }
-            }
-
-            if (contentUris.isNotEmpty()) {
-                withContext(Dispatchers.Main) {
-                    try {
-                        val trashRequest = MediaStore.createTrashRequest(
-                            contentResolver,
-                            contentUris,
-                            true
-                        )
-                        startIntentSenderForResult(
-                            activity,
-                            trashRequest.intentSender,
-                            DOCUMENT_DELETE_REQUEST_CODE,
-                            null, 0, 0, 0,
-                            Bundle.EMPTY
-                        )
-                    } catch (e: Exception) {
-                        Log.e("DocumentResolver", "Error creating trash request: ${e.message}", e)
-                        Toast.makeText(activity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
+            } catch (e: Exception) {
+                Log.e("DocumentResolver", "Error scanning files: ${e.message}", e)
             }
         }
 
-        return directlyDeleted
+        if (contentUris.isEmpty()) return false
+
+        withContext(Dispatchers.Main) {
+            try {
+                val trashRequest = MediaStore.createTrashRequest(
+                    contentResolver,
+                    contentUris,
+                    true
+                )
+                startIntentSenderForResult(
+                    activity,
+                    trashRequest.intentSender,
+                    DOCUMENT_DELETE_REQUEST_CODE,
+                    null, 0, 0, 0,
+                    Bundle.EMPTY
+                )
+            } catch (e: Exception) {
+                Log.e("DocumentResolver", "Error creating trash request: ${e.message}", e)
+                Toast.makeText(activity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+        return true
+    }
+
+    /**
+     * Delete non-media files directly using File.delete().
+     * Called after user approves deletion (from onDocumentDeletion).
+     */
+    suspend fun deleteNonMediaFiles(documents: List<Document>): Int {
+        val mediaTypes = setOf(DocumentType.IMAGE, DocumentType.AUDIO, DocumentType.VIDEO)
+        val nonMediaDocs = documents.filter { it.documentType !in mediaTypes }
+        if (nonMediaDocs.isEmpty()) return 0
+
+        var deleted = 0
+        withContext(Dispatchers.IO) {
+            for (doc in nonMediaDocs) {
+                try {
+                    val file = File(doc.uri.path!!)
+                    if (file.delete()) deleted++
+                } catch (e: Exception) {
+                    Log.e("DocumentResolver", "Error deleting file: ${e.message}", e)
+                }
+            }
+        }
+        return deleted
     }
 
     /**
