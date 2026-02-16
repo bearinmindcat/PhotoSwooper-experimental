@@ -59,6 +59,9 @@ class DocumentSwipeViewModel(
     private val _showDocumentInfo = MutableStateFlow(false)
     val showDocumentInfo: StateFlow<Boolean> = _showDocumentInfo
 
+    private val _showNonMediaDeleteDialog = MutableStateFlow(false)
+    val showNonMediaDeleteDialog: StateFlow<Boolean> = _showNonMediaDeleteDialog
+
     override fun toggleInfoAndFloatingActionsRow() {
         _showFloatingActions.update { !it }
     }
@@ -325,7 +328,7 @@ class DocumentSwipeViewModel(
     /**
      * Show the system trash dialog for media files. Nothing is deleted yet —
      * actual deletion happens in onDocumentDeletion() after the user presses Allow.
-     * If there are no media files (only non-media), triggers onDocumentDeletion directly.
+     * If there are no media files (only non-media), shows the in-app confirmation dialog.
      */
     fun deleteMarkedDocuments() {
         val docsToDelete = getDocumentsToDelete()
@@ -334,11 +337,20 @@ class DocumentSwipeViewModel(
         uiCoroutineScope.launch(Dispatchers.IO) {
             val dialogShown = documentResolverInterface.showTrashDialog(docsToDelete)
             // If no system dialog was shown (no media files or API < 30),
-            // trigger deletion directly since there's no callback coming
+            // show our custom confirmation dialog instead
             if (!dialogShown) {
-                onDocumentDeletion(approved = true)
+                _showNonMediaDeleteDialog.update { true }
             }
         }
+    }
+
+    fun dismissNonMediaDeleteDialog() {
+        _showNonMediaDeleteDialog.update { false }
+    }
+
+    fun confirmNonMediaDelete() {
+        _showNonMediaDeleteDialog.update { false }
+        onDocumentDeletion(approved = true)
     }
 
     /**
