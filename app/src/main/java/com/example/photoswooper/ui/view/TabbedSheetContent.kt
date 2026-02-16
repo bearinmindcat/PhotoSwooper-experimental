@@ -54,6 +54,10 @@ import androidx.compose.ui.unit.dp
 import com.example.photoswooper.R
 import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.dataStore
+import coil3.ImageLoader
+import com.example.photoswooper.experimental.ui.FileReviewScreen
+import com.example.photoswooper.experimental.ui.ExperimentalScreen
+import com.example.photoswooper.experimental.viewmodel.DocumentSwipeViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
 import com.example.photoswooper.utils.DataStoreInterface
@@ -64,7 +68,7 @@ import kotlinx.coroutines.launch
 
 
 enum class TabIndex {
-    REVIEW, STATS, SETTINGS
+    REVIEW, STATS, SETTINGS, EXPERIMENTAL
 }
 
 
@@ -80,7 +84,10 @@ fun TabbedSheetContent(
     updateTabIndex: (Int) -> Unit,
     mainViewModel: MainViewModel,
     statsViewModel: StatsViewModel,
+    documentSwipeViewModel: DocumentSwipeViewModel,
+    imageLoader: ImageLoader,
     expandBottomSheet: (CoroutineScope) -> Unit,
+    collapseBottomSheet: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -164,7 +171,7 @@ fun TabbedSheetContent(
                     width = animatedTabIndicatorWidth.value,
                     modifier = Modifier
                         .tabIndicatorOffset(
-                            if (tabIndex == 2 && !statisticsEnabled) 1
+                            if (!statisticsEnabled && tabIndex >= 2) tabIndex - 1
                                     else tabIndex
                         )
                 )
@@ -215,6 +222,20 @@ fun TabbedSheetContent(
                     stringResource(R.string.settings),
                 )
             }
+            Tab(
+                selected = (tabIndex == TabIndex.EXPERIMENTAL.ordinal),
+                onClick = { CoroutineScope(Dispatchers.Default).launch { onTabChange(TabIndex.EXPERIMENTAL) } },
+                modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_small))
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_experiment),
+                    contentDescription = stringResource(R.string.show_experimental),
+                    modifier = Modifier.size(dimensionResource(R.dimen.small_icon))
+                )
+                Text(
+                    stringResource(R.string.experimental),
+                )
+            }
         }
         AnimatedContent(
             tabIndex,
@@ -243,9 +264,14 @@ fun TabbedSheetContent(
             },
             modifier = Modifier.fillMaxHeight(fractionOfScreenForContent) // Prevents bottom sheet drag handle being hidden by status bar due to height
         ) {
+            val docUiState by documentSwipeViewModel.uiState.collectAsState()
             when (it) {
                 TabIndex.REVIEW.ordinal -> {
-                    ReviewScreen(mainViewModel)
+                    if (docUiState.isSwipeMode) {
+                        FileReviewScreen(viewModel = documentSwipeViewModel, imageLoader = imageLoader)
+                    } else {
+                        ReviewScreen(mainViewModel)
+                    }
                 }
 
                 TabIndex.STATS.ordinal -> {
@@ -259,6 +285,13 @@ fun TabbedSheetContent(
 
                 TabIndex.SETTINGS.ordinal -> {
                     PreferencesScreen()
+                }
+
+                TabIndex.EXPERIMENTAL.ordinal -> {
+                    ExperimentalScreen(
+                        viewModel = documentSwipeViewModel,
+                        onStartSwiping = collapseBottomSheet
+                    )
                 }
             }
         }

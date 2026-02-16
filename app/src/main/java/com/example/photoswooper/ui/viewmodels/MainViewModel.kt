@@ -30,6 +30,7 @@ import com.example.photoswooper.data.LongPreference
 import com.example.photoswooper.data.MAX_TUTORIAL_INDEX
 import com.example.photoswooper.data.StringPreference
 import com.example.photoswooper.data.database.MediaStatusDao
+import com.example.photoswooper.experimental.SwipeController
 import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaFilter
 import com.example.photoswooper.data.models.MediaSortField
@@ -85,7 +86,7 @@ class MainViewModel(
     private val savedMediaFilter: MediaFilter?,
     private val updateSavedMediaFilter: (MediaFilter) -> Unit
 //    val initialUiState: MainUiState,
-) : ViewModel() {
+) : ViewModel(), SwipeController {
     private val _uiState = MutableStateFlow(MainUiState(isPlaying = player.isPlaying))
     val uiState = _uiState.asStateFlow()
 
@@ -99,7 +100,7 @@ class MainViewModel(
     val reduceAnimations = dataStoreInterface
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting)
 
-    val animatedMediaScale = Animatable(0f)
+    override val animatedMediaScale = Animatable(0f)
 
     init {
         // Restore from values before configuration change, if they exist
@@ -157,6 +158,8 @@ class MainViewModel(
             null
         }
 
+    override fun getCurrentItemSize(): Long? = getCurrentMedia()?.size
+
     fun getMediaToDelete() = _uiState.value.mediaItems.filter { media ->
         media.status == MediaStatus.DELETE
     }
@@ -182,7 +185,7 @@ class MainViewModel(
         }
     }
 
-    fun onMediaLoaded(mediaAspectRatio: Float = 1f) {
+    override fun onMediaLoaded(mediaAspectRatio: Float) {
         _uiState.update { currentState ->
             currentState.copy(
                 mediaReady = true,
@@ -192,7 +195,7 @@ class MainViewModel(
         animateMediaEntry()
     }
 
-    fun onMediaError(errorMessage: String?) {
+    override fun onMediaError(errorMessage: String?) {
         val currentIndex = uiState.value.currentIndex
         _uiState.update { currentState ->
             currentState.mediaItems[currentIndex] = currentState.mediaItems[currentIndex].copy(decodingError = errorMessage)
@@ -338,7 +341,11 @@ class MainViewModel(
             mediaItems.add(mediaItemToInsert)
     }
 
-    fun markItem(status: MediaStatus, index: Int = _uiState.value.currentIndex) {
+    override fun markItem(status: MediaStatus) {
+        markItem(status, _uiState.value.currentIndex)
+    }
+
+    fun markItem(status: MediaStatus, index: Int) {
         // Set the status
         _uiState.update { currentState ->
             currentState.mediaItems.set(index, currentState.mediaItems[index].copy(status = status))
@@ -391,7 +398,7 @@ class MainViewModel(
         }
     }
 
-    fun next() {
+    override fun next() {
         // Increment currentIndex
         seekToIndex(uiState.value.currentIndex + 1)
         Log.v(
@@ -557,7 +564,11 @@ class MainViewModel(
         }
     }
 
-    fun toggleInfoAndFloatingActionsRow(newState: Boolean = !uiState.value.showInfoAndFloatingActionsRow) {
+    override fun toggleInfoAndFloatingActionsRow() {
+        toggleInfoAndFloatingActionsRow(!uiState.value.showInfoAndFloatingActionsRow)
+    }
+
+    fun toggleInfoAndFloatingActionsRow(newState: Boolean) {
         _uiState.update { currentState ->
             currentState.copy(
                 showInfoAndFloatingActionsRow = newState,

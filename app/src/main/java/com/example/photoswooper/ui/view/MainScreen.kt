@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -97,6 +98,9 @@ import com.example.photoswooper.ui.components.FloatingActionsRow
 import com.example.photoswooper.ui.components.InfoRow
 import com.example.photoswooper.ui.components.ReviewDeletedButton
 import com.example.photoswooper.ui.components.SwipeableMediaWithIndicatorIcons
+import com.example.photoswooper.experimental.data.SwipeableItem
+import com.example.photoswooper.experimental.ui.DocumentFloatingActionsRow
+import com.example.photoswooper.experimental.ui.DocumentInfoRow
 import com.example.photoswooper.ui.components.tiny.AnimatedExpandCollapseIcon
 import com.example.photoswooper.ui.viewmodels.FilterDialogViewModel
 import com.example.photoswooper.ui.viewmodels.MainViewModel
@@ -119,6 +123,7 @@ import kotlinx.coroutines.launch
 fun MainScreen(
     statsViewModel: StatsViewModel,
     mainViewModel: MainViewModel,
+    documentSwipeViewModel: com.example.photoswooper.experimental.viewmodel.DocumentSwipeViewModel,
     imageLoader: ImageLoader,
     skipReview: Boolean
 ) {
@@ -137,7 +142,11 @@ fun MainScreen(
         .collectAsState(1)
 
     val uiState by mainViewModel.uiState.collectAsState()
-    val numToDelete = uiState.mediaItems.count { it.status == MediaStatus.DELETE }
+    val docUiState by documentSwipeViewModel.uiState.collectAsState()
+    val numToDelete = if (docUiState.isSwipeMode)
+        documentSwipeViewModel.getDocumentsToDelete().size
+    else
+        uiState.mediaItems.count { it.status == MediaStatus.DELETE }
     val currentMediaItem =
         try {
             uiState.mediaItems[uiState.currentIndex]
@@ -215,6 +224,11 @@ fun MainScreen(
         }
     }
 
+    // Back handler to exit document swipe mode
+    BackHandler(enabled = docUiState.isSwipeMode) {
+        documentSwipeViewModel.exitSwipeMode()
+    }
+
     Box(Modifier.fillMaxSize()) {
         BottomSheetScaffold(
             content = { paddingValues ->
@@ -230,6 +244,81 @@ fun MainScreen(
                         )
                 ) {
                     when {
+                        /* When document swiping mode is active */
+                        docUiState.isSwipeMode -> {
+                            val currentDoc = documentSwipeViewModel.getCurrentDocument()
+                            when {
+                                docUiState.fetchingDocuments -> {
+                                    CircularProgressIndicator()
+                                }
+                                currentDoc != null && currentDoc.status == MediaStatus.UNSET -> {
+                                    SwipeableMediaWithIndicatorIcons(
+                                        item = SwipeableItem.DocumentItem(currentDoc),
+                                        controller = documentSwipeViewModel,
+                                        imageLoader = imageLoader,
+                                        isReady = docUiState.documentReady,
+                                    )
+                                }
+                                docUiState.documents.isEmpty() -> {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_file_generic),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "No documents found",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                        Text(
+                                            text = "Add folders in the Experimental tab to scan for documents",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(top = 4.dp, start = 32.dp, end = 32.dp)
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    // All documents swiped
+                                    val docDeleteCount = documentSwipeViewModel.getDocumentsToDelete().size
+                                    if (docDeleteCount > 0) {
+                                        ReviewDeletedButton(
+                                            numToDelete = docDeleteCount,
+                                            skipReview = skipReview,
+                                            navigateToReviewScreen = { navigateToReviewScreen() },
+                                            deleteMedia = {
+                                                documentSwipeViewModel.deleteMarkedDocuments()
+                                            }
+                                        )
+                                    } else {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.check),
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(64.dp)
+                                                    .padding(bottom = dimensionResource(R.dimen.padding_medium))
+                                            )
+                                            Text(
+                                                text = "You've gone through all documents!",
+                                                style = MaterialTheme.typography.titleLarge,
+                                                textAlign = TextAlign.Center,
+                                            )
+                                            Button(
+                                                onClick = { documentSwipeViewModel.exitSwipeMode() },
+                                                modifier = Modifier.padding(top = 8.dp)
+                                            ) {
+                                                Text("Done")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         /* When permissions not granted */
                         (uiState.permissionsGranted == false) -> {
                             RequestPermissionsScreen(mainViewModel, context, view)
@@ -247,9 +336,11 @@ fun MainScreen(
 
                         (currentMediaItem != null && currentMediaItem.status == MediaStatus.UNSET) -> {
                             SwipeableMediaWithIndicatorIcons(
-                                currentMediaItem,
-                                mainViewModel,
-                                imageLoader,
+                                item = SwipeableItem.MediaItem(currentMediaItem),
+                                controller = mainViewModel,
+                                imageLoader = imageLoader,
+                                isReady = uiState.mediaReady,
+                                mediaAspectRatio = uiState.mediaAspectRatio,
                             )
                         }
 
@@ -282,7 +373,7 @@ fun MainScreen(
                     }
                     // Column of floating actions & info drawer
                     AnimatedVisibility(
-                        visible = uiState.showInfoAndFloatingActionsRow && currentMediaItem != null,
+                        visible = uiState.showInfoAndFloatingActionsRow && currentMediaItem != null && !docUiState.isSwipeMode,
                         enter =
                             if (reduceAnimations) fadeIn()
                             else fadeIn() + slideInVertically(
@@ -344,6 +435,67 @@ fun MainScreen(
                             }
                         }
                     }
+                    // Document floating actions & info row
+                    val docShowFloatingActions by documentSwipeViewModel.showFloatingActions.collectAsState()
+                    val docShowInfo by documentSwipeViewModel.showDocumentInfo.collectAsState()
+                    val currentDoc = if (docUiState.isSwipeMode) documentSwipeViewModel.getCurrentDocument() else null
+                    AnimatedVisibility(
+                        visible = docShowFloatingActions && currentDoc != null && docUiState.isSwipeMode,
+                        enter =
+                            if (reduceAnimations) fadeIn()
+                            else fadeIn() + slideInVertically(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                ),
+                                initialOffsetY = { it }
+                            ),
+                        exit =
+                            if (reduceAnimations) fadeOut()
+                            else fadeOut() + slideOutVertically(
+                                animationSpec = spring(
+                                    stiffness = Spring.StiffnessMediumLow,
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                ),
+                                targetOffsetY = { it }
+                            ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .align(Alignment.BottomCenter)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
+                        ) {
+                            DocumentFloatingActionsRow(
+                                viewModel = documentSwipeViewModel,
+                                currentDocumentType = currentDoc?.documentType,
+                                modifier = Modifier.widthIn(max = 640.dp)
+                            )
+                            AnimatedVisibility(
+                                docShowInfo,
+                                enter = if (reduceAnimations) fadeIn()
+                                else fadeIn() + expandVertically(
+                                    animationSpec = spring(
+                                        stiffness = Spring.StiffnessMediumLow,
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                    ),
+                                ),
+                                exit = if (reduceAnimations) fadeOut()
+                                else fadeOut() + shrinkVertically(
+                                    animationSpec = spring(
+                                        stiffness = Spring.StiffnessMediumLow,
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                    ),
+                                ),
+                            ) {
+                                DocumentInfoRow(
+                                    document = currentDoc,
+                                    modifier = Modifier.widthIn(max = 640.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             },
             sheetContent = {
@@ -352,6 +504,19 @@ fun MainScreen(
                     mainViewModel,
                     navigateToReviewScreen = { navigateToReviewScreen() },
                     skipReview = skipReview,
+                    deleteMedia = {
+                        if (docUiState.isSwipeMode) documentSwipeViewModel.deleteMarkedDocuments()
+                        else mainViewModel.deleteMarkedMedia()
+                    },
+                    onUndo = {
+                        if (docUiState.isSwipeMode) {
+                            documentSwipeViewModel.undoLastSwipe()
+                            true
+                        } else {
+                            mainViewModel.undo()
+                        }
+                    },
+                    experimentalSpaceSaved = docUiState.spaceSaved,
                     modifier = Modifier.onGloballyPositioned { coordinates ->
                         with(density) {
                             animateActionBarHeightTo(coordinates.size.height.toDp().value)
@@ -363,7 +528,14 @@ fun MainScreen(
                     updateTabIndex = { sheetContentTabIndex = it },
                     mainViewModel = mainViewModel,
                     statsViewModel = statsViewModel,
+                    documentSwipeViewModel = documentSwipeViewModel,
+                    imageLoader = imageLoader,
                     expandBottomSheet = { mainViewModel.expandBottomSheet(it) },
+                    collapseBottomSheet = {
+                        coroutineScope.launch {
+                            mainViewModel.bottomSheetScaffoldState.bottomSheetState.partialExpand()
+                        }
+                    },
                     modifier = Modifier
                         .windowInsetsPadding(WindowInsets.navigationBars),
                 )

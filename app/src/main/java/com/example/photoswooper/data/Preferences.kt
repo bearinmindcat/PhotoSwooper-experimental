@@ -176,6 +176,9 @@ enum class LongPreference(val default: Long, val setting: String) {
     // Filtering
     FILTER_MIN_FILE_SIZE(0, "filter_min_file_size"),
     FILTER_MAX_FILE_SIZE(Long.MAX_VALUE, "filter_max_file_size"),
+
+    // Experimental
+    DOCUMENT_SPACE_SAVED(0L, "document_space_saved"),
 }
 
 enum class StringPreference(val default: String, val setting: String) {
@@ -185,5 +188,9 @@ enum class StringPreference(val default: String, val setting: String) {
     FILTER_CONTAINS_TEXT("", "filter_contains_text"),
 
     /**Most recent crash log*/
-    CRASH_LOG("", "crash_log")
+    CRASH_LOG("", "crash_log"),
+
+    // Experimental: document swiping
+    DOCUMENT_SCAN_FOLDERS("", "document_scan_folders"),
+    DOCUMENT_EXCLUDED_EXTENSIONS("", "document_excluded_extensions"),
 }

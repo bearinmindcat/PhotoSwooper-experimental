@@ -81,12 +81,13 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.data.BooleanPreference
-import com.example.photoswooper.data.models.Media
 import com.example.photoswooper.data.models.MediaStatus
 import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.dataStore
+import com.example.photoswooper.experimental.SwipeController
+import com.example.photoswooper.experimental.data.SwipeableItem
+import com.example.photoswooper.experimental.ui.DocumentPreviewCard
 import com.example.photoswooper.player
-import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.delay
@@ -96,16 +97,22 @@ import kotlin.math.absoluteValue
 
 
 /**
- * Composable function containing a swipeable & zoomable image, with icons behind it showing what each swipe does
+ * Composable function containing a swipeable & zoomable item, with icons behind it showing what each swipe does.
+ * Supports both photos/videos (via [SwipeableItem.MediaItem]) and documents (via [SwipeableItem.DocumentItem]).
  *
- * @param media The [Media] to be displayed.
- * @param anchoredDraggableState The [AnchoredDraggableState] object for handling swipe gestures.
+ * @param item The [SwipeableItem] to be displayed (photo, video, or document).
+ * @param controller The [SwipeController] for handling swipe actions (mark, next, etc.).
+ * @param imageLoader The Coil [ImageLoader] for photo rendering (null for documents).
+ * @param isReady Whether the current item is loaded and ready to display.
+ * @param mediaAspectRatio Aspect ratio for video display (default 1f).
  */
 @Composable
 fun SwipeableMediaWithIndicatorIcons(
-    media: Media,
-    viewModel: MainViewModel,
-    imageLoader: ImageLoader,
+    item: SwipeableItem,
+    controller: SwipeController,
+    imageLoader: ImageLoader?,
+    isReady: Boolean,
+    mediaAspectRatio: Float = 1f,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -113,19 +120,16 @@ fun SwipeableMediaWithIndicatorIcons(
     val coroutineScope = rememberCoroutineScope()
     val reduceAnimations by DataStoreInterface(LocalContext.current.dataStore)
         .getBooleanSettingValue(BooleanPreference.REDUCE_ANIMATIONS.setting).collectAsState(false)
-    val uiState by viewModel.uiState.collectAsState()
-    val currentMediaItem =
-        try {
-            uiState.mediaItems[uiState.currentIndex]
-        } catch (_: IndexOutOfBoundsException) {
-            null
-        }
 
-    /** The id of the most recently loaded image
+    /** The id of the most recently loaded item
      *
-     * Used to ensure the image that is loaded is actually a new one crazy haptic feedback on configuration change */
+     * Used to ensure the item that is loaded is actually a new one — prevents crazy haptic feedback on configuration change */
+    val itemId = when (item) {
+        is SwipeableItem.MediaItem -> item.id
+        is SwipeableItem.DocumentItem -> item.uri.hashCode().toLong()
+    }
     var cachedMediaId by rememberSaveable { mutableLongStateOf(0) }
-    /** Alpha used to give the illusion of a photo swiping away and disappearing*/
+    /** Alpha used to give the illusion of an item swiping away and disappearing*/
     var alphaValue by remember { mutableFloatStateOf(1f) }
     var indicatorIconsAlpha by remember { mutableFloatStateOf(0f) }
 
@@ -147,12 +151,12 @@ fun SwipeableMediaWithIndicatorIcons(
         animationSpec = defaultEntryAnimationSpec
     )
 
-    // Perform haptic feedback based on whether a new media item has been loaded (i.e. not a reload from config change)
-    LaunchedEffect(uiState.mediaReady) {
-        if (uiState.mediaReady) {
+    // Perform haptic feedback based on whether a new item has been loaded (i.e. not a reload from config change)
+    LaunchedEffect(isReady) {
+        if (isReady) {
             coroutineScope.launch {
-                if (cachedMediaId != media.id) {
-                    cachedMediaId = media.id
+                if (cachedMediaId != itemId) {
+                    cachedMediaId = itemId
                     view.performHapticFeedback(
                         HapticFeedbackConstants.CLOCK_TICK
                     )
@@ -161,7 +165,7 @@ fun SwipeableMediaWithIndicatorIcons(
         }
     }
 
-    /* State of media's dragged position (dragging photo/video left/right) */
+    /* State of item's dragged position (dragging left/right) */
     val anchoredDraggableState = remember {
         AnchoredDraggableState(
             initialValue = DragAnchors.Center,
@@ -177,8 +181,8 @@ fun SwipeableMediaWithIndicatorIcons(
     LaunchedEffect(anchoredDraggableState) {
         snapshotFlow { anchoredDraggableState.targetValue }
             .collectLatest { position ->
-                // Only perform haptic feedback if media is visible
-                if (viewModel.animatedMediaScale.value != 0f) {
+                // Only perform haptic feedback if item is visible
+                if (controller.animatedMediaScale.value != 0f) {
                     when (position) {
                         DragAnchors.Left -> {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -213,18 +217,18 @@ fun SwipeableMediaWithIndicatorIcons(
             .collectLatest { position ->
                 when (position) {
                     DragAnchors.Left -> {
-                        viewModel.markItem(MediaStatus.DELETE)
-                        viewModel.animatedMediaScale.snapTo(0f)
-                        viewModel.next()
+                        controller.markItem(MediaStatus.DELETE)
+                        controller.animatedMediaScale.snapTo(0f)
+                        controller.next()
                         anchoredDraggableState.snapTo(
                             DragAnchors.Center,
                         )
                     }
 
                     DragAnchors.Right -> {
-                        viewModel.markItem(MediaStatus.KEEP)
-                        viewModel.animatedMediaScale.snapTo(0f)
-                        viewModel.next()
+                        controller.markItem(MediaStatus.KEEP)
+                        controller.animatedMediaScale.snapTo(0f)
+                        controller.next()
                         anchoredDraggableState.snapTo(
                             DragAnchors.Center
                         )
@@ -235,12 +239,12 @@ fun SwipeableMediaWithIndicatorIcons(
                 }
             }
     }
-    
-    /* Animate image size & alpha depending on how far the user has swiped */
+
+    /* Animate item size & alpha depending on how far the user has swiped */
     LaunchedEffect(anchoredDraggableState.requireOffset()) {
         if (!reduceAnimations) {
-            if (uiState.mediaReady) // This prevents interference with entry animation
-                viewModel.animatedMediaScale.snapTo(
+            if (isReady) // This prevents interference with entry animation
+                controller.animatedMediaScale.snapTo(
                     ((1.25f - (anchoredDraggableState.requireOffset().absoluteValue) / DragAnchors.Right.offset / 2f))
                         .coerceIn(0.8f, 1f),
                 )
@@ -251,6 +255,9 @@ fun SwipeableMediaWithIndicatorIcons(
             .coerceIn(0f, 1f)
     }
 
+    // Resolution for zoom offset (only for media items)
+    val itemResolution = (item as? SwipeableItem.MediaItem)?.resolution
+
     Box(contentAlignment = Alignment.Center) {
         // If swiping, show indicators in the background
         if (swipingEnabled)
@@ -260,13 +267,13 @@ fun SwipeableMediaWithIndicatorIcons(
                 displayDeleteHint = displayDeleteHint,
                 modifier = Modifier.alpha(indicatorIconsAlpha)
             )
-        if (!uiState.mediaReady)
+        if (!isReady)
             CircularProgressIndicator()
-        /* Swipeable box containing video or image */
+        /* Swipeable box containing video, image, or document */
         Box(
             contentAlignment = Alignment.Center,
             modifier = modifier
-                .fillMaxSize() // Expands bounds of swiping outside actual media
+                .fillMaxSize() // Expands bounds of swiping outside actual content
                 .alpha(alphaValue)
                 // Allow panning to be visible outside original bounds
                 .clipToBounds()
@@ -304,12 +311,12 @@ fun SwipeableMediaWithIndicatorIcons(
                                 zoomScale = 2f
                                 zoomOffset = clickOffset.copy(
                                     x = -clickOffset.x - Resources.getSystem().displayMetrics.widthPixels.toFloat() / 25,
-                                    y = -clickOffset.y + (media.resolution?.substringAfterLast("×")?.toFloat()
+                                    y = -clickOffset.y + (itemResolution?.substringAfterLast("×")?.toFloat()
                                         ?: 0f) / 25,
                                 )
                             }
                         },
-                        onTap = { viewModel.toggleInfoAndFloatingActionsRow() }
+                        onTap = { controller.toggleInfoAndFloatingActionsRow() }
                     )
                 }
                 // Apply effects of zoom
@@ -339,43 +346,59 @@ fun SwipeableMediaWithIndicatorIcons(
                 )
 
         ) {
-            // Container setting scale of either the photo or video
-                Box (Modifier.scale(viewModel.animatedMediaScale.value)) {
-                    if (currentMediaItem?.decodingError == null) {
-                        when (media.type) {
-                            MediaType.PHOTO -> {
-                                AsyncImage(
-                                    model = media.uri,
-                                    imageLoader = imageLoader,
-                                    contentDescription = null,
-                                    onSuccess = {
-                                        /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
-                                        viewModel.onMediaLoaded()
-                                    },
-                                    onError = { error ->
-                                        viewModel.onMediaError(
-                                            error.result.throwable.localizedMessage
-                                                ?: error.result.throwable.message
+            // Container setting scale of the content
+                Box (Modifier.scale(controller.animatedMediaScale.value)) {
+                    if (item.decodingError == null) {
+                        when (item) {
+                            is SwipeableItem.MediaItem -> {
+                                when (item.type) {
+                                    MediaType.PHOTO -> {
+                                        AsyncImage(
+                                            model = item.uri,
+                                            imageLoader = imageLoader!!,
+                                            contentDescription = null,
+                                            onSuccess = {
+                                                /* TODO("Adjust animation when undoing - enter from side they were swiped to") */
+                                                controller.onMediaLoaded()
+                                            },
+                                            onError = { error ->
+                                                controller.onMediaError(
+                                                    error.result.throwable.localizedMessage
+                                                        ?: error.result.throwable.message
+                                                )
+                                            },
+                                            contentScale = ContentScale.Fit,
+                                            modifier = Modifier
+                                                .fillMaxSize()
                                         )
-                                    },
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                )
+                                    }
+
+                                    MediaType.VIDEO -> {
+                                        PlayerSurface(
+                                            player = player,
+                                            surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+                                            modifier = Modifier
+                                                .aspectRatio(mediaAspectRatio)
+                                                .fillMaxSize()
+                                        )
+                                    }
+                                }
                             }
 
-                            MediaType.VIDEO -> {
-                                PlayerSurface(
-                                    player = player,
-                                    surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-                                    modifier = Modifier
-                                        .aspectRatio(uiState.mediaAspectRatio)
-                                        .fillMaxSize()
+                            is SwipeableItem.DocumentItem -> {
+                                DocumentPreviewCard(
+                                    document = item.document,
+                                    imageLoader = imageLoader,
+                                    exoPlayer = player,
+                                    modifier = Modifier.fillMaxSize()
                                 )
+                                LaunchedEffect(item.uri) {
+                                    controller.onMediaLoaded()
+                                }
                             }
                         }
                     }
-                    // If there is an error loading the media, display the error message
+                    // If there is an error loading the item, display the error message
                     else {
                         Column(
                             verticalArrangement = Arrangement.Center,
@@ -386,14 +409,14 @@ fun SwipeableMediaWithIndicatorIcons(
                                 text = buildAnnotatedString {
                                     append("PhotoSwooper was unable to load this file with error:\n")
                                     pushStyle(SpanStyle(fontFamily = FontFamily.Monospace))
-                                    append(currentMediaItem.decodingError)
+                                    append(item.decodingError)
                                     pop()
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center,
                             )
-                            if (viewModel.getCurrentMedia()?.size == 0L)
+                            if (controller.getCurrentItemSize() == 0L)
                                 Text(
                                     text = "This was likely because the file is empty",
                                     fontWeight = FontWeight.Bold,

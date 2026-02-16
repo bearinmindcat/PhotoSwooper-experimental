@@ -68,6 +68,9 @@ import com.example.photoswooper.ui.view.MainScreen
 import com.example.photoswooper.ui.view.Onboardingcreen
 import com.example.photoswooper.ui.viewmodels.MainViewModel
 import com.example.photoswooper.ui.viewmodels.StatsViewModel
+import com.example.photoswooper.experimental.data.database.DocumentStatusDao
+import com.example.photoswooper.experimental.utils.DocumentResolverInterface
+import com.example.photoswooper.experimental.viewmodel.DocumentSwipeViewModel
 import com.example.photoswooper.utils.ContentResolverInterface
 import com.example.photoswooper.utils.DataStoreInterface
 import kotlinx.coroutines.CoroutineScope
@@ -90,6 +93,7 @@ else
 class MainActivity : AppCompatActivity() {
     private lateinit var mediaStatusDao: MediaStatusDao
     private lateinit var mainViewModel: MainViewModel
+    private lateinit var documentSwipeViewModel: com.example.photoswooper.experimental.viewmodel.DocumentSwipeViewModel
 
     @androidx.annotation.OptIn(UnstableApi::class)
     @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +104,7 @@ class MainActivity : AppCompatActivity() {
 
         val database = MediaStatusDatabase.getDatabase(applicationContext)
         mediaStatusDao = database.mediaStatusDao()
+        val documentStatusDao = database.documentStatusDao()
 
         val dataStoreInterface = DataStoreInterface(dataStore)
 
@@ -117,10 +122,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Custom image loader for animated GIFs
+        // Custom image loader for animated GIFs, SVGs, and video thumbnails
         val imageLoader = ImageLoader.Builder(this)
             .components {
                 add(VideoFrameDecoder.Factory())
+                add(coil3.svg.SvgDecoder.Factory())
+                add(coil3.gif.GifDecoder.Factory())
             }
             .memoryCache(null)
             .diskCache(null) // Disable cache so animation is called every time in AsyncImage (needs an onSuccess call)
@@ -210,8 +217,24 @@ class MainActivity : AppCompatActivity() {
                             savedUiState = savedStatsUiState.value,
                             updateSavedUiState = { savedStatsUiState.value = it }
                         ) }
+                        val documentResolverInterface = remember {
+                            DocumentResolverInterface(
+                                dao = documentStatusDao,
+                                contentResolver = contentResolver,
+                                activity = this@MainActivity,
+                            )
+                        }
+                        documentSwipeViewModel = remember {
+                            DocumentSwipeViewModel(
+                                documentResolverInterface = documentResolverInterface,
+                                dao = documentStatusDao,
+                                dataStoreInterface = dataStoreInterface,
+                                uiCoroutineScope = uiCoroutineScope,
+                            )
+                        }
                         MainScreen(
                             mainViewModel = mainViewModel,
+                            documentSwipeViewModel = documentSwipeViewModel,
                             imageLoader = imageLoader,
                             statsViewModel = statsViewModel,
                             skipReview = skipReview
@@ -365,7 +388,7 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         when (requestCode) {
-            // Delete a file
+            // Delete a photo/video
             in 100..102 -> {
                 if (resultCode != RESULT_CANCELED) {
                     if (SDK_INT >= Build.VERSION_CODES.R)
@@ -381,6 +404,14 @@ class MainActivity : AppCompatActivity() {
                     CoroutineScope(Dispatchers.Main).launch {
                             mainViewModel.onDeletion(listOf(), true)
                         }
+            }
+            // Delete documents (experimental)
+            200 -> {
+                CoroutineScope(Dispatchers.Main).launch {
+                    documentSwipeViewModel.onDocumentDeletion(
+                        approved = resultCode != RESULT_CANCELED
+                    )
+                }
             }
         }
     }

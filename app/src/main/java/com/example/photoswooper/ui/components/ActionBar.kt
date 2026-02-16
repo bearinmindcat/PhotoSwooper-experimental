@@ -67,6 +67,9 @@ fun ActionBar(
     viewModel: MainViewModel,
     skipReview: Boolean,
     navigateToReviewScreen: () -> Unit,
+    deleteMedia: () -> Unit = { viewModel.deleteMarkedMedia() },
+    onUndo: () -> Boolean = { viewModel.undo() },
+    experimentalSpaceSaved: Long = 0,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -126,7 +129,7 @@ fun ActionBar(
                 /* Undo button TODO("Add rotation animation when clicked")*/
                 FilledIconButton(
                     onClick = {
-                        val undoResult = viewModel.undo()
+                        val undoResult = onUndo()
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             if (undoResult)
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -150,9 +153,7 @@ fun ActionBar(
                     numToDelete = numToDelete,
                     skipReview = skipReview,
                     navigateToReviewScreen = { navigateToReviewScreen() },
-                    deleteMedia = {
-                        viewModel.deleteMarkedMedia()
-                    }
+                    deleteMedia = { deleteMedia() }
                 )
                 /* Filter button */
                 FilledTonalIconButton(
@@ -238,5 +239,10 @@ fun ActionBar(
                     )
             )
         }
+        Text(
+            text = "Total space saved from experimental: ${formatShortFileSize(context, experimentalSpaceSaved)}",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(bottom = dimensionResource(R.dimen.padding_small))
+        )
     }
 }
