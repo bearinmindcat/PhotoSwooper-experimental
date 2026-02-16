@@ -44,11 +44,14 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -93,7 +96,7 @@ import java.util.zip.ZipInputStream
 
 private const val TAG = "DocReviewScreen"
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FileReviewScreen(
     viewModel: DocumentSwipeViewModel,
@@ -107,6 +110,95 @@ fun FileReviewScreen(
     val filteredDocs = uiState.documents.filter { it.status == currentFilter }
     val context = LocalContext.current
     val view = LocalView.current
+    val showNonMediaDialog by viewModel.showNonMediaDeleteDialog.collectAsState()
+    val appName = remember { context.applicationInfo.loadLabel(context.packageManager).toString() }
+
+    // Bottom sheet confirmation dialog for non-media files (mimics system trash dialog)
+    if (showNonMediaDialog) {
+        val docsToDelete = viewModel.getDocumentsToDelete()
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val fileCount = docsToDelete.size
+        val fileLabel = if (fileCount == 1) "file" else "files"
+
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.dismissNonMediaDeleteDialog() },
+            sheetState = sheetState,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                // File icon preview area
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .padding(bottom = 16.dp)
+                ) {
+                    if (fileCount == 1) {
+                        val doc = docsToDelete.first()
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                painter = painterResource(doc.documentType.iconResId),
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = doc.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        // Multiple files — show stacked icons
+                        Icon(
+                            painter = painterResource(R.drawable.trash),
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // "Allow ... to permanently delete this file?" text
+                Text(
+                    text = "Allow $appName to permanently delete ${
+                        if (fileCount == 1) "this $fileLabel" else "$fileCount $fileLabel"
+                    }?",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                // Deny / Allow buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextButton(
+                        onClick = { viewModel.dismissNonMediaDeleteDialog() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Deny")
+                    }
+                    TextButton(
+                        onClick = { viewModel.confirmNonMediaDelete() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Allow")
+                    }
+                }
+            }
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
