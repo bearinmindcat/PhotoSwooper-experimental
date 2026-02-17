@@ -7,6 +7,7 @@ composeBom = "2025.11.01"
 datastorePreferences = "1.2.0"
 exifinterface = "1.4.1"
 koalaplotCore = "0.10.3"
+poi = "3.17"
 kotlin = "2.2.21"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -53,6 +54,8 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
+poi = { module = "org.apache.poi:poi", version.ref = "poi" }
+poi-scratchpad = { module = "org.apache.poi:poi-scratchpad", version.ref = "poi" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "junitKtx" }
 androidx-room-testing-android = { group = "androidx.room", name = "room-testing-android", version.ref = "roomTestingAndroid" }

@@ -15,6 +15,7 @@ git clone https://gitlab.com/bearincrypto1/photoswoopermodded.git
 ```
 com.example.photoswooper/
 └── experimental/                              # all experimental specific code in here, take a look!
+    └── thingstopotentiallyadd.md              # things I might add in the future
 ```
 
 ## Things too be aware of...

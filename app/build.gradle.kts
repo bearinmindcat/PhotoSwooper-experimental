@@ -89,6 +89,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.media3.exoplayer) // For video playback
     implementation(libs.androidx.media3.ui.compose) // For video playback UI
+    implementation(libs.poi) // For .doc file text extraction
+    implementation(libs.poi.scratchpad) // For .doc (HWPF) support
 
     debugImplementation(libs.androidx.ui.tooling)
 

@@ -51,6 +51,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import coil3.ImageLoader
 import coil3.video.VideoFrameDecoder
@@ -248,7 +249,9 @@ class MainActivity : AppCompatActivity() {
     private fun initialisePlayer() {
         val dataStoreInterface = DataStoreInterface(this.dataStore)
 
-        player = ExoPlayer.Builder(this).build()
+        val renderersFactory = DefaultRenderersFactory(this)
+            .setEnableDecoderFallback(true)
+        player = ExoPlayer.Builder(this, renderersFactory).build()
         player.prepare()
         player.addListener(
             object : Player.Listener {
