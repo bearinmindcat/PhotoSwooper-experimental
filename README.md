@@ -33,6 +33,10 @@ Videos are currently not scaled, but I can change that if it bothers you, I'm ju
 |---|---|
 | <img src="screenshots/experimental_tab.png" alt="Experimental Tab" width="300"/> | <img src="screenshots/review_screen.png" alt="Review Screen" width="300"/> |
 
+| Github store screenshot |
+|---|
+| <img src="screenshots/github_store.png" alt="Github store screenshot" width="300"/> |
+
 ## License
 
 This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE) file for details.
