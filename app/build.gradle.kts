@@ -29,6 +29,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     buildTypes {
@@ -91,6 +94,7 @@ dependencies {
     implementation(libs.androidx.media3.ui.compose) // For video playback UI
     implementation(libs.poi) // For .doc file text extraction
     implementation(libs.poi.scratchpad) // For .doc (HWPF) support
+    implementation("com.github.bearinmindcat:libreoffice-android-sdk:v0.0.5-beta") // For LibreOffice document rendering
 
     debugImplementation(libs.androidx.ui.tooling)
 

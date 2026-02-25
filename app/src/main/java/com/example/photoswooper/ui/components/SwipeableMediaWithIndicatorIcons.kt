@@ -86,6 +86,7 @@ import com.example.photoswooper.data.models.MediaType
 import com.example.photoswooper.dataStore
 import com.example.photoswooper.experimental.SwipeController
 import com.example.photoswooper.experimental.data.SwipeableItem
+import com.example.photoswooper.experimental.ConversionPipelineDocView.DocRenderMethod
 import com.example.photoswooper.experimental.ui.DocumentPreviewCard
 import com.example.photoswooper.player
 import com.example.photoswooper.ui.viewmodels.defaultEntryAnimationSpec
@@ -113,6 +114,7 @@ fun SwipeableMediaWithIndicatorIcons(
     imageLoader: ImageLoader?,
     isReady: Boolean,
     mediaAspectRatio: Float = 1f,
+    docRenderMethod: DocRenderMethod = DocRenderMethod.PLAIN_TEXT,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -390,6 +392,7 @@ fun SwipeableMediaWithIndicatorIcons(
                                     document = item.document,
                                     imageLoader = imageLoader,
                                     exoPlayer = player,
+                                    docRenderMethod = docRenderMethod,
                                     modifier = Modifier.fillMaxSize()
                                 )
                                 LaunchedEffect(item.uri) {

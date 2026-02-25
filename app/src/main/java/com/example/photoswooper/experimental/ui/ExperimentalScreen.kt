@@ -110,6 +110,8 @@ fun ExperimentalScreen(
         onStopSwiping = { viewModel.exitSwipeMode() },
         onAddExcludedExtension = { viewModel.addExcludedExtension(it) },
         onRemoveExcludedExtension = { viewModel.removeExcludedExtension(it) },
+        onToggleWebView = { viewModel.toggleWebViewRendering() },
+        onToggleLibreOffice = { viewModel.toggleLibreOfficeRendering() },
         onResetMatches = {
             viewModel.resetMatches()
             Toast.makeText(context, "File swipes have been reset", Toast.LENGTH_SHORT).show()
@@ -131,6 +133,8 @@ private fun MainExpContent(
     onStopSwiping: () -> Unit,
     onAddExcludedExtension: (String) -> Unit,
     onRemoveExcludedExtension: (String) -> Unit,
+    onToggleWebView: () -> Unit,
+    onToggleLibreOffice: () -> Unit,
     onResetMatches: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -444,6 +448,96 @@ private fun MainExpContent(
                     }
 
                     Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+
+        // Document rendering settings — collapsible
+        run {
+            var renderingExpanded by rememberSaveable { mutableStateOf(false) }
+
+            ListItem(
+                leadingContent = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_apk_document),
+                        contentDescription = null
+                    )
+                },
+                headlineContent = {
+                    Text("Document rendering")
+                },
+                supportingContent = {
+                    Text("Render .docx, .xlsx, .pptx, .csv files instead of using basic .txt layout")
+                },
+                trailingContent = {
+                    Icon(
+                        painter = painterResource(
+                            if (renderingExpanded) R.drawable.caret_down else R.drawable.caret_right
+                        ),
+                        contentDescription = null
+                    )
+                },
+                modifier = Modifier.clickable { renderingExpanded = !renderingExpanded }
+            )
+
+            AnimatedVisibility(
+                visible = renderingExpanded,
+                enter = expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ) + fadeIn(),
+                exit = shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ) + fadeOut()
+            ) {
+                Column {
+                    ListItem(
+                        leadingContent = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_apk_document),
+                                contentDescription = null
+                            )
+                        },
+                        headlineContent = {
+                            Text("Android WebView")
+                        },
+                        supportingContent = {
+                            Text("Renders or wraps documents in HTML with a basic viewer to move around the document")
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = uiState.webViewRenderingEnabled,
+                                onCheckedChange = { onToggleWebView() }
+                            )
+                        },
+                        modifier = Modifier.clickable { onToggleWebView() }
+                    )
+                    ListItem(
+                        leadingContent = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_apk_document),
+                                contentDescription = null
+                            )
+                        },
+                        headlineContent = {
+                            Text("LibreOffice SDK")
+                        },
+                        supportingContent = {
+                            Text("Using to test SDK (DOES NOT WORK)")
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = uiState.libreOfficeRenderingEnabled,
+                                onCheckedChange = { onToggleLibreOffice() }
+                            )
+                        },
+                        modifier = Modifier.clickable { onToggleLibreOffice() }
+                    )
                 }
             }
         }

@@ -257,28 +257,23 @@ fun MainScreen(
                                         controller = documentSwipeViewModel,
                                         imageLoader = imageLoader,
                                         isReady = docUiState.documentReady,
+                                        docRenderMethod = docUiState.docRenderMethod,
                                     )
                                 }
                                 docUiState.documents.isEmpty() -> {
+                                    // No swipes available (no documents found or all swiped)
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
-                                            painter = painterResource(R.drawable.ic_file_generic),
+                                            painter = painterResource(R.drawable.ic_folder_match),
                                             contentDescription = null,
                                             modifier = Modifier.size(64.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = "No documents found",
+                                            text = "No swipes available",
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(top = 8.dp)
-                                        )
-                                        Text(
-                                            text = "Add folders in the Experimental tab to scan for documents",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.padding(top = 4.dp, start = 32.dp, end = 32.dp)
                                         )
                                     }
                                 }
@@ -297,23 +292,17 @@ fun MainScreen(
                                     } else {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Icon(
-                                                painter = painterResource(R.drawable.check),
+                                                painter = painterResource(R.drawable.ic_folder_match),
                                                 contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(64.dp)
-                                                    .padding(bottom = dimensionResource(R.dimen.padding_medium))
+                                                modifier = Modifier.size(64.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                             Text(
-                                                text = "You've gone through all documents!",
-                                                style = MaterialTheme.typography.titleLarge,
-                                                textAlign = TextAlign.Center,
-                                            )
-                                            Button(
-                                                onClick = { documentSwipeViewModel.exitSwipeMode() },
+                                                text = "No swipes available",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(top = 8.dp)
-                                            ) {
-                                                Text("Done")
-                                            }
+                                            )
                                         }
                                     }
                                 }

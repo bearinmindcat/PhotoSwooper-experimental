@@ -9,7 +9,14 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,7 +54,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import androidx.media3.common.MediaItem
@@ -57,6 +68,9 @@ import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
+import com.example.photoswooper.experimental.ConversionPipelineDocView.DocRenderMethod
+import com.example.photoswooper.experimental.ConversionPipelineDocView.LibreOfficeDocPreview
+import com.example.photoswooper.experimental.ConversionPipelineDocView.WebViewDocPreview
 import com.example.photoswooper.experimental.data.Document
 import com.example.photoswooper.experimental.data.DocumentType
 import kotlinx.coroutines.Dispatchers
@@ -74,19 +88,36 @@ fun DocumentPreviewCard(
     document: Document,
     imageLoader: ImageLoader? = null,
     exoPlayer: ExoPlayer? = null,
+    docRenderMethod: DocRenderMethod = DocRenderMethod.PLAIN_TEXT,
     modifier: Modifier = Modifier
 ) {
     when (document.documentType) {
         DocumentType.PDF -> PdfPreview(document, modifier)
-        DocumentType.TEXT, DocumentType.CODE -> TextPreview(document, modifier)
+        DocumentType.TEXT, DocumentType.CODE -> {
+            if (document.extension.lowercase() == "csv" && docRenderMethod == DocRenderMethod.WEBVIEW) {
+                WebViewDocPreview(document, modifier)
+            } else {
+                TextPreview(document, modifier)
+            }
+        }
         DocumentType.IMAGE -> ImagePreview(document, imageLoader, modifier)
         DocumentType.APK -> ApkPreview(document, modifier)
         DocumentType.EPUB -> EpubPreview(document, modifier)
         DocumentType.AUDIO -> AudioPreview(document, exoPlayer, modifier)
         DocumentType.VIDEO -> VideoPreview(document, exoPlayer, modifier)
-        DocumentType.WORD -> WordPreview(document, modifier)
-        DocumentType.EXCEL -> ExcelPreview(document, modifier)
-        DocumentType.POWERPOINT -> PowerPointPreview(document, modifier)
+        DocumentType.WORD, DocumentType.EXCEL, DocumentType.POWERPOINT -> {
+            when (docRenderMethod) {
+                DocRenderMethod.LIBREOFFICE -> LibreOfficeDocPreview(document, modifier)
+                DocRenderMethod.WEBVIEW -> WebViewDocPreview(document, modifier)
+                DocRenderMethod.PLAIN_TEXT -> {
+                    when (document.documentType) {
+                        DocumentType.WORD -> WordPreview(document, modifier)
+                        DocumentType.EXCEL -> ExcelPreview(document, modifier)
+                        else -> PowerPointPreview(document, modifier)
+                    }
+                }
+            }
+        }
         else -> GenericFileCard(document, modifier)
     }
 }
@@ -651,14 +682,17 @@ private fun ThumbnailPreview(document: Document, modifier: Modifier) {
 
 @Composable
 private fun PdfPreview(document: Document, modifier: Modifier) {
-    var bitmap by remember(document.uri) { mutableStateOf<Bitmap?>(null) }
+    var firstPageBitmap by remember(document.uri) { mutableStateOf<Bitmap?>(null) }
+    var allPageBitmaps by remember(document.uri) { mutableStateOf<List<Bitmap>>(emptyList()) }
+    var pageCount by remember(document.uri) { mutableStateOf(0) }
     var loadFailed by remember(document.uri) { mutableStateOf(false) }
+    var showInteractive by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    // Render page 1 immediately for preview, then render remaining pages in background
     LaunchedEffect(document.uri) {
         withContext(Dispatchers.IO) {
             try {
-                // Use direct file access for file:// URIs, ContentResolver for content:// URIs
                 val pfd = if (document.uri.scheme == "file") {
                     val path = document.uri.path
                     if (path != null) {
@@ -675,19 +709,24 @@ private fun PdfPreview(document: Document, modifier: Modifier) {
                     pfd.use { fd ->
                         val renderer = PdfRenderer(fd)
                         renderer.use { r ->
-                            if (r.pageCount > 0) {
-                                val page = r.openPage(0)
+                            pageCount = r.pageCount
+                            val bitmaps = mutableListOf<Bitmap>()
+                            val maxPages = minOf(r.pageCount, 50)
+                            for (i in 0 until maxPages) {
+                                val page = r.openPage(i)
                                 page.use { p ->
                                     val scale = 2
                                     val bmp = Bitmap.createBitmap(
                                         p.width * scale, p.height * scale, Bitmap.Config.ARGB_8888
                                     )
-                                    // Fill with white background before rendering
                                     Canvas(bmp).drawColor(AndroidColor.WHITE)
                                     p.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                                    bitmap = bmp
+                                    bitmaps.add(bmp)
                                 }
+                                // Show first page as soon as it's ready
+                                if (i == 0) firstPageBitmap = bitmaps[0]
                             }
+                            allPageBitmaps = bitmaps
                         }
                     }
                 } else {
@@ -701,15 +740,146 @@ private fun PdfPreview(document: Document, modifier: Modifier) {
         }
     }
 
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap!!.asImageBitmap(),
-            contentDescription = "PDF preview: ${document.name}",
-            contentScale = ContentScale.Fit,
-            modifier = modifier.fillMaxSize()
+    when {
+        loadFailed -> GenericFileCard(document, modifier)
+        firstPageBitmap != null -> {
+            // Card preview showing page 1 — tap to open interactive view
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(32.dp)
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    Image(
+                        bitmap = firstPageBitmap!!.asImageBitmap(),
+                        contentDescription = "PDF preview: ${document.name}",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+
+                    // Transparent overlay to capture taps
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { showInteractive = true }
+                    )
+                }
+            }
+
+            // Fullscreen interactive dialog
+            if (showInteractive && allPageBitmaps.isNotEmpty()) {
+                InteractivePdfDialog(
+                    pageBitmaps = allPageBitmaps,
+                    pageCount = pageCount,
+                    onDismiss = { showInteractive = false }
+                )
+            }
+        }
+        else -> {
+            // Loading state
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = modifier.fillMaxSize().padding(32.dp)
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Fullscreen dialog showing all PDF pages stacked vertically, scrollable.
+ */
+@Composable
+private fun InteractivePdfDialog(
+    pageBitmaps: List<Bitmap>,
+    pageCount: Int,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false,
+            decorFitsSystemWindows = false
         )
-    } else {
-        GenericFileCard(document, modifier)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(8.dp)
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        pageBitmaps.forEachIndexed { idx, bmp ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = "PDF page ${idx + 1}",
+                                contentScale = ContentScale.FillWidth,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            // Thin divider between pages
+                            if (idx < pageBitmaps.size - 1) {
+                                Spacer(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(2.dp)
+                                        .background(MaterialTheme.colorScheme.outlineVariant)
+                                )
+                            }
+                        }
+                        // Page count indicator at bottom
+                        if (pageCount > pageBitmaps.size) {
+                            Text(
+                                text = "${pageBitmaps.size} of $pageCount pages shown",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    // Close button
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.9f))
+                            .clickable { onDismiss() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.x),
+                            contentDescription = "Close",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -747,7 +917,7 @@ private fun TextPreview(document: Document, modifier: Modifier) {
         ),
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(32.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
             if (textContent != null) {
@@ -874,7 +1044,7 @@ private fun WordPreview(document: Document, modifier: Modifier) {
             ),
             modifier = modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(32.dp)
         ) {
             Column(Modifier.padding(16.dp)) {
                 if (textContent != null) {
@@ -1027,7 +1197,7 @@ private fun ExcelPreview(document: Document, modifier: Modifier) {
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ),
-            modifier = modifier.fillMaxSize().padding(16.dp)
+            modifier = modifier.fillMaxSize().padding(32.dp)
         ) {
             Column(Modifier.padding(16.dp)) {
                 if (textContent != null) {
@@ -1145,7 +1315,7 @@ private fun PowerPointPreview(document: Document, modifier: Modifier) {
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ),
-            modifier = modifier.fillMaxSize().padding(16.dp)
+            modifier = modifier.fillMaxSize().padding(32.dp)
         ) {
             Column(Modifier.padding(16.dp)) {
                 if (textContent != null) {

@@ -8,7 +8,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.photoswooper.data.BooleanPreference
 import com.example.photoswooper.data.models.MediaStatus
+import com.example.photoswooper.experimental.ConversionPipelineDocView.DocRenderMethod
 import com.example.photoswooper.experimental.SwipeController
 import com.example.photoswooper.experimental.data.Document
 import com.example.photoswooper.experimental.data.DocumentFilter
@@ -36,6 +38,9 @@ data class DocumentSwipeUiState(
     val excludedExtensions: Set<String> = emptySet(),
     val isSwipeMode: Boolean = false,
     val spaceSaved: Long = 0,
+    val docRenderMethod: DocRenderMethod = DocRenderMethod.PLAIN_TEXT,
+    val webViewRenderingEnabled: Boolean = false,
+    val libreOfficeRenderingEnabled: Boolean = false,
 )
 
 class DocumentSwipeViewModel(
@@ -122,6 +127,49 @@ class DocumentSwipeViewModel(
                 _uiState.update { state -> state.copy(spaceSaved = saved) }
             } catch (_: Exception) {}
 
+            // Load rendering preferences
+            try {
+                val webViewEnabled = dataStoreInterface.getBooleanSettingValue(
+                    BooleanPreference.DOC_WEBVIEW_RENDERING.setting
+                ).first()
+                val libreOfficeEnabled = dataStoreInterface.getBooleanSettingValue(
+                    BooleanPreference.DOC_LIBREOFFICE_RENDERING.setting
+                ).first()
+                _uiState.update { state ->
+                    state.copy(
+                        webViewRenderingEnabled = webViewEnabled,
+                        libreOfficeRenderingEnabled = libreOfficeEnabled,
+                        docRenderMethod = DocRenderMethod.getActive(webViewEnabled, libreOfficeEnabled)
+                    )
+                }
+            } catch (_: Exception) {}
+
+        }
+    }
+
+    fun toggleWebViewRendering() {
+        val newValue = !_uiState.value.webViewRenderingEnabled
+        _uiState.update { state ->
+            state.copy(
+                webViewRenderingEnabled = newValue,
+                docRenderMethod = DocRenderMethod.getActive(newValue, state.libreOfficeRenderingEnabled)
+            )
+        }
+        uiCoroutineScope.launch(Dispatchers.IO) {
+            dataStoreInterface.setBooleanSettingValue(newValue, BooleanPreference.DOC_WEBVIEW_RENDERING.setting)
+        }
+    }
+
+    fun toggleLibreOfficeRendering() {
+        val newValue = !_uiState.value.libreOfficeRenderingEnabled
+        _uiState.update { state ->
+            state.copy(
+                libreOfficeRenderingEnabled = newValue,
+                docRenderMethod = DocRenderMethod.getActive(state.webViewRenderingEnabled, newValue)
+            )
+        }
+        uiCoroutineScope.launch(Dispatchers.IO) {
+            dataStoreInterface.setBooleanSettingValue(newValue, BooleanPreference.DOC_LIBREOFFICE_RENDERING.setting)
         }
     }
 
@@ -185,6 +233,9 @@ class DocumentSwipeViewModel(
     fun resetMatches() {
         uiCoroutineScope.launch(Dispatchers.IO) {
             dao.resetAllStatuses()
+        }.invokeOnCompletion {
+            // Rescan so numUnset and document list reflect the reset
+            scanDocuments()
         }
     }
 

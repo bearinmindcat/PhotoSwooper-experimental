@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# LibreOffice Android SDK — keep JNI and wrapper classes
+-keep class org.libreoffice.kit.** { *; }
+-keep class org.libreoffice.sdk.** { *; }
