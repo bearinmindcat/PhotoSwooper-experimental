@@ -28,9 +28,9 @@ For experimental swiping for "all system files" you need to enable the "MANAGE_E
 
 ## Screenshots
 
-| Experimental Tab | Review Screen | Github store screenshot |
-|---|---|---|
-| <img src="screenshots/experimental_tab.png" alt="Experimental Tab" width="300"/> | <img src="screenshots/review_screen.png" alt="Review Screen" width="300"/> | <img src="screenshots/github_store.png" alt="Github store screenshot" width="300"/> |
+| Experimental Tab | Review Screen | Github Store | WebView Screen |
+|---|---|---|---|
+| <img src="screenshots/experimental_tab.png" alt="Experimental Tab" width="300"/> | <img src="screenshots/review_screen.png" alt="Review Screen" width="300"/> | <img src="screenshots/github_store.png" alt="Github Store" width="300"/> | <img src="screenshots/webview_screen.png" alt="WebView Screen" width="300"/> |
 
 ## License
 
