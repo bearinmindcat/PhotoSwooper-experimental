@@ -40,7 +40,6 @@ data class DocumentSwipeUiState(
     val spaceSaved: Long = 0,
     val docRenderMethod: DocRenderMethod = DocRenderMethod.PLAIN_TEXT,
     val webViewRenderingEnabled: Boolean = false,
-    val libreOfficeRenderingEnabled: Boolean = false,
 )
 
 class DocumentSwipeViewModel(
@@ -132,14 +131,10 @@ class DocumentSwipeViewModel(
                 val webViewEnabled = dataStoreInterface.getBooleanSettingValue(
                     BooleanPreference.DOC_WEBVIEW_RENDERING.setting
                 ).first()
-                val libreOfficeEnabled = dataStoreInterface.getBooleanSettingValue(
-                    BooleanPreference.DOC_LIBREOFFICE_RENDERING.setting
-                ).first()
                 _uiState.update { state ->
                     state.copy(
                         webViewRenderingEnabled = webViewEnabled,
-                        libreOfficeRenderingEnabled = libreOfficeEnabled,
-                        docRenderMethod = DocRenderMethod.getActive(webViewEnabled, libreOfficeEnabled)
+                        docRenderMethod = DocRenderMethod.getActive(webViewEnabled)
                     )
                 }
             } catch (_: Exception) {}
@@ -152,24 +147,11 @@ class DocumentSwipeViewModel(
         _uiState.update { state ->
             state.copy(
                 webViewRenderingEnabled = newValue,
-                docRenderMethod = DocRenderMethod.getActive(newValue, state.libreOfficeRenderingEnabled)
+                docRenderMethod = DocRenderMethod.getActive(newValue)
             )
         }
         uiCoroutineScope.launch(Dispatchers.IO) {
             dataStoreInterface.setBooleanSettingValue(newValue, BooleanPreference.DOC_WEBVIEW_RENDERING.setting)
-        }
-    }
-
-    fun toggleLibreOfficeRendering() {
-        val newValue = !_uiState.value.libreOfficeRenderingEnabled
-        _uiState.update { state ->
-            state.copy(
-                libreOfficeRenderingEnabled = newValue,
-                docRenderMethod = DocRenderMethod.getActive(state.webViewRenderingEnabled, newValue)
-            )
-        }
-        uiCoroutineScope.launch(Dispatchers.IO) {
-            dataStoreInterface.setBooleanSettingValue(newValue, BooleanPreference.DOC_LIBREOFFICE_RENDERING.setting)
         }
     }
 

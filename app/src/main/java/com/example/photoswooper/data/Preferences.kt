@@ -136,14 +136,6 @@ enum class BooleanPreference(
         description = R.string.doc_webview_rendering_desc,
         icon = R.drawable.ic_apk_document
     ),
-    DOC_LIBREOFFICE_RENDERING(
-        default = false,
-        setting = "doc_libreoffice_rendering",
-        title = R.string.doc_libreoffice_rendering,
-        description = R.string.doc_libreoffice_rendering_desc,
-        icon = R.drawable.ic_apk_document
-    ),
-
     // Not displayed in PreferencesScreen
     /** Whether the user last set the info row to be in the expanded view, or single row */
     INFO_ROW_EXPANDED(

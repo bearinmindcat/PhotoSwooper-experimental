@@ -69,7 +69,6 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import com.example.photoswooper.R
 import com.example.photoswooper.experimental.ConversionPipelineDocView.DocRenderMethod
-import com.example.photoswooper.experimental.ConversionPipelineDocView.LibreOfficeDocPreview
 import com.example.photoswooper.experimental.ConversionPipelineDocView.WebViewDocPreview
 import com.example.photoswooper.experimental.data.Document
 import com.example.photoswooper.experimental.data.DocumentType
@@ -107,7 +106,6 @@ fun DocumentPreviewCard(
         DocumentType.VIDEO -> VideoPreview(document, exoPlayer, modifier)
         DocumentType.WORD, DocumentType.EXCEL, DocumentType.POWERPOINT -> {
             when (docRenderMethod) {
-                DocRenderMethod.LIBREOFFICE -> LibreOfficeDocPreview(document, modifier)
                 DocRenderMethod.WEBVIEW -> WebViewDocPreview(document, modifier)
                 DocRenderMethod.PLAIN_TEXT -> {
                     when (document.documentType) {

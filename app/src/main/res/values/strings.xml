@@ -148,6 +148,4 @@
     <!-- Experimental rendering -->
     <string name="doc_webview_rendering">WebView document rendering</string>
     <string name="doc_webview_rendering_desc">Render documents with formatted HTML in WebView</string>
-    <string name="doc_libreoffice_rendering">LibreOffice document rendering</string>
-    <string name="doc_libreoffice_rendering_desc">Render documents using LibreOffice conversion</string>
 </resources>

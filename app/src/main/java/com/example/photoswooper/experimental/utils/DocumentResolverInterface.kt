@@ -50,6 +50,11 @@ class DocumentResolverInterface(
     ): Int {
         if (!directory.exists() || !directory.isDirectory) return 0
 
+        // Skip restricted Android folders that can't be deleted without root/Shizuku
+        val canonicalPath = directory.absolutePath
+        val restrictedSuffix = listOf("/Android/data", "/Android/obb")
+        if (restrictedSuffix.any { canonicalPath.endsWith(it) || canonicalPath.contains("$it/") }) return 0
+
         var numAdded = 0
         try {
             val files = directory.listFiles() ?: return 0

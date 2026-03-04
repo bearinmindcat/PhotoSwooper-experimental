@@ -111,7 +111,6 @@ fun ExperimentalScreen(
         onAddExcludedExtension = { viewModel.addExcludedExtension(it) },
         onRemoveExcludedExtension = { viewModel.removeExcludedExtension(it) },
         onToggleWebView = { viewModel.toggleWebViewRendering() },
-        onToggleLibreOffice = { viewModel.toggleLibreOfficeRendering() },
         onResetMatches = {
             viewModel.resetMatches()
             Toast.makeText(context, "File swipes have been reset", Toast.LENGTH_SHORT).show()
@@ -134,7 +133,6 @@ private fun MainExpContent(
     onAddExcludedExtension: (String) -> Unit,
     onRemoveExcludedExtension: (String) -> Unit,
     onToggleWebView: () -> Unit,
-    onToggleLibreOffice: () -> Unit,
     onResetMatches: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -499,7 +497,7 @@ private fun MainExpContent(
                     ListItem(
                         leadingContent = {
                             Icon(
-                                painter = painterResource(R.drawable.ic_apk_document),
+                                painter = painterResource(R.drawable.ic_preview),
                                 contentDescription = null
                             )
                         },
@@ -517,30 +515,25 @@ private fun MainExpContent(
                         },
                         modifier = Modifier.clickable { onToggleWebView() }
                     )
-                    ListItem(
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_apk_document),
-                                contentDescription = null
-                            )
-                        },
-                        headlineContent = {
-                            Text("LibreOffice SDK")
-                        },
-                        supportingContent = {
-                            Text("Using to test SDK (DOES NOT WORK)")
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = uiState.libreOfficeRenderingEnabled,
-                                onCheckedChange = { onToggleLibreOffice() }
-                            )
-                        },
-                        modifier = Modifier.clickable { onToggleLibreOffice() }
-                    )
                 }
             }
         }
+
+        // Disabled folders — informational
+        ListItem(
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_adb),
+                    contentDescription = null
+                )
+            },
+            headlineContent = {
+                Text("Disabled Folders")
+            },
+            supportingContent = {
+                Text("Need root or shizuku to be able to swipe files in these folders: /Android/data/ & /Android/obb/")
+            }
+        )
 
         Spacer(Modifier.height(16.dp))
 
