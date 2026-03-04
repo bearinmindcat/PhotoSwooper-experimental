@@ -207,8 +207,11 @@ fun generateXlsxHtml(bytes: ByteArray): String {
         var eventType = parser.eventType
         var cellType: String? = null
         var inV = false
+        var inT = false // for inline strings <is><t>
         var inRow = false
         var rowCount = 0
+        var cellValue = StringBuilder()
+        var hasCellValue = false
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             when (eventType) {
@@ -218,22 +221,38 @@ fun generateXlsxHtml(bytes: ByteArray): String {
                         rowCount++
                         sb.append("<tr>")
                     }
-                    "c" -> cellType = parser.getAttributeValue(null, "t")
+                    "c" -> {
+                        cellType = parser.getAttributeValue(null, "t")
+                        cellValue.clear()
+                        hasCellValue = false
+                    }
                     "v" -> inV = true
+                    "t" -> inT = true // handles both shared string <t> and inline <is><t>
                 }
-                XmlPullParser.TEXT -> if (inV) {
-                    val value = parser.text
-                    val displayValue = if (cellType == "s") {
-                        val idx = value.toIntOrNull()
-                        if (idx != null && idx < sharedStrings.size) sharedStrings[idx]
-                        else value
-                    } else value
-                    val tag = if (rowCount == 1) "th" else "td"
-                    sb.append("<$tag>${escapeHtml(displayValue)}</$tag>")
+                XmlPullParser.TEXT -> {
+                    if (inV) {
+                        cellValue.append(parser.text)
+                        hasCellValue = true
+                    } else if (inT && (cellType == "inlineStr" || cellType == "str")) {
+                        cellValue.append(parser.text)
+                        hasCellValue = true
+                    }
                 }
                 XmlPullParser.END_TAG -> {
-                    if (localName(parser.name) == "v") inV = false
-                    if (localName(parser.name) == "row") {
+                    val endName = localName(parser.name)
+                    if (endName == "v") inV = false
+                    if (endName == "t") inT = false
+                    if (endName == "c" && hasCellValue) {
+                        val value = cellValue.toString()
+                        val displayValue = if (cellType == "s") {
+                            val idx = value.toIntOrNull()
+                            if (idx != null && idx < sharedStrings.size) sharedStrings[idx]
+                            else value
+                        } else value
+                        val tag = if (rowCount == 1) "th" else "td"
+                        sb.append("<$tag>${escapeHtml(displayValue)}</$tag>")
+                    }
+                    if (endName == "row") {
                         inRow = false
                         sb.append("</tr>")
                     }
@@ -245,6 +264,13 @@ fun generateXlsxHtml(bytes: ByteArray): String {
     }
 
     sb.append("</table>")
+
+    // If the table is just <table></table> with no rows, the file may have no data
+    if (sb.length < 20) {
+        Log.w(TAG, "generateXlsxHtml: No data found in $sheetEntry. Available entries: ${entries.keys}")
+        return htmlWrapper("Spreadsheet", "<p>No data found in spreadsheet</p>")
+    }
+
     return htmlWrapper("Spreadsheet", sb.toString())
 }
 
