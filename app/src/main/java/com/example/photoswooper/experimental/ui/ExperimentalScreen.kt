@@ -531,7 +531,7 @@ private fun MainExpContent(
                 Text("Disabled Folders")
             },
             supportingContent = {
-                Text("Need root or shizuku to be able to swipe files in these folders: /Android/data/ & /Android/obb/")
+                Text("Need root or shizuku to be able to swipe files in these folders: Android/data/ & Android/obb/")
             }
         )
 
